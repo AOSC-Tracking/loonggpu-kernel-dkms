@@ -21,6 +21,10 @@
 #include "gsgpu.h"
 #include <linux/vgaarb.h>
 #include <linux/console.h>
+#include <linux/version.h>
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 13, 0))
+#include <linux/aperture.h>
+#endif
 #if defined(LG_DRM_DRM_APERTURE_H_PRESENT)
 #include <drm/drm_aperture.h>
 #endif
@@ -839,8 +843,13 @@ static int lg_kick_out_firmware_fb(struct pci_dev *pdev, struct drm_driver *drv)
 
 	return 0;
 #else
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 13, 0))
+	aperture_remove_conflicting_devices(pci_resource_start(pdev, 2),
+					     pci_resource_len(pdev, 2), drv->name);
+#else
 	drm_aperture_remove_conflicting_framebuffers(pci_resource_start(pdev, 2),
 						pci_resource_len(pdev, 2), drv);
+#endif
 	return 0;
 #endif
 }
