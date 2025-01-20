@@ -14,8 +14,13 @@
 #include <linux/dma-buf.h>
 #include "gsgpu_helper.h"
 #include "gsgpu_display.h"
+#include <linux/module.h>
 #if defined (MODULE_IMPORT_NS)
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 13, 0))
+MODULE_IMPORT_NS("DMA_BUF");
+#else
 MODULE_IMPORT_NS(DMA_BUF);
+#endif
 #endif
 
 static void gsgpu_display_flip_callback(struct dma_fence *f,
