@@ -14,7 +14,6 @@
 
 static struct drm_encoder *best_encoder(struct drm_connector *connector)
 {
-	int i;
 	struct drm_encoder *encoder;
 
 	/* pick the first one */

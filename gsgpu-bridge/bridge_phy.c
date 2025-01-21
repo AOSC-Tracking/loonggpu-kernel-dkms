@@ -66,7 +66,6 @@ static struct drm_encoder *
 bridge_phy_connector_best_encoder(struct drm_connector *connector)
 {
 	struct drm_encoder *encoder;
-	int i;
 
 	/* pick the first one */
 	lg_drm_connector_for_each_possible_encoder(connector, encoder, i)
