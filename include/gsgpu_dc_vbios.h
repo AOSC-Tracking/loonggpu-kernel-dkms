@@ -213,5 +213,6 @@ void dc_vbios_exit(struct gsgpu_vbios *vbios);
 u8 gsgpu_vbios_checksum(const u8 *data, int size);
 u32 gsgpu_vbios_version(struct gsgpu_vbios *vbios);
 bool check_vbios_info(void);
+void dc_vbios_show(struct gsgpu_vbios *vbios);
 
 #endif

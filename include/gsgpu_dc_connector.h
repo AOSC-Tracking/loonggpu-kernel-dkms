@@ -24,5 +24,6 @@ struct gsgpu_dc_connector {
 
 struct gsgpu_dc_connector *dc_connector_construct(struct gsgpu_dc *dc, struct connector_resource *resource);
 int gsgpu_dc_connector_init(struct gsgpu_device *adev, uint32_t link_index);
+struct drm_connector_state *gsgpu_dc_connector_atomic_duplicate_state(struct drm_connector *connector);
 
 #endif /* __GSGPU_DC_CONNECTOR__ */

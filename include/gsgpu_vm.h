@@ -327,6 +327,9 @@ int gsgpu_vm_ioctl(struct drm_device *dev, void *data, struct drm_file *filp);
 bool gsgpu_vm_need_pipeline_sync(struct gsgpu_ring *ring,
 				  struct gsgpu_job *job);
 
+void gsgpu_vm_get_entry(struct gsgpu_pte_update_params *p, u64 addr,
+			struct gsgpu_vm_pt **entry,
+			struct gsgpu_vm_pt **parent);
 void gsgpu_vm_get_task_info(struct gsgpu_device *adev, unsigned int pasid,
 			 struct gsgpu_task_info *task_info);
 

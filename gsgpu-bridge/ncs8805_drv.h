@@ -80,4 +80,6 @@ struct display_mode {
 	struct drm_display_mode  mode;
 };
 
+int ncs8805_suspend(struct gsgpu_bridge_phy *phy);
+int ncs8805_resume(struct gsgpu_bridge_phy *phy);
 #endif

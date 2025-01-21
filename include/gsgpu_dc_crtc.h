@@ -45,4 +45,5 @@ bool dc_crtc_vblank_enable(struct gsgpu_dc_crtc *crtc, bool enable);
 u32 dc_crtc_get_vblank_counter(struct gsgpu_dc_crtc *crtc);
 bool dc_crtc_vblank_ack(struct gsgpu_dc_crtc *crtc);
 
+bool dc_set_pll(struct gsgpu_dc_crtc *crtc, u32 clock);
 #endif /* __DC_CRTC_H__ */

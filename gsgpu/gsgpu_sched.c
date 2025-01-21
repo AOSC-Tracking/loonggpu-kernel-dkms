@@ -3,6 +3,7 @@
 #include <linux/file.h>
 #include "gsgpu_drm.h"
 #include "gsgpu.h"
+#include "gsgpu_sched.h"
 #include "gsgpu_scheduler_helper.h"
 #include "gsgpu_vm.h"
 

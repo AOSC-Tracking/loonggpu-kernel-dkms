@@ -102,6 +102,9 @@ int gsgpu_fill_buffer(struct gsgpu_bo *bo,
 
 int gsgpu_mmap(struct file *filp, struct vm_area_struct *vma);
 int gsgpu_ttm_alloc_gart(struct ttm_buffer_object *bo);
+int gsgpu_ttm_gart_bind(struct gsgpu_device *adev,
+			struct ttm_buffer_object *tbo,
+			uint64_t flags);
 int gsgpu_ttm_recover_gart(struct ttm_buffer_object *tbo);
 
 int gsgpu_ttm_tt_get_user_pages(struct ttm_tt *ttm, struct page **pages);

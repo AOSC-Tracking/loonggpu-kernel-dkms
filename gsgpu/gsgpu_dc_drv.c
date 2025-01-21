@@ -694,7 +694,7 @@ static void gsgpu_dc_commit_planes(struct drm_atomic_state *state,
 	}
 }
 
-void gsgpu_dc_atomic_commit_tail(struct drm_atomic_state *state)
+static void gsgpu_dc_atomic_commit_tail(struct drm_atomic_state *state)
 {
 	struct drm_device *dev = state->dev;
 	struct gsgpu_device *adev = dev->dev_private;
@@ -1069,7 +1069,7 @@ static int dc_hw_fini(void *handle)
 	return 0;
 }
 
-void gsgpu_dc_crtc_suspend(struct gsgpu_dc *dc)
+static void gsgpu_dc_crtc_suspend(struct gsgpu_dc *dc)
 {
 	struct gsgpu_dc_crtc *dc_crtc;
 

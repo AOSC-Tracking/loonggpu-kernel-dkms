@@ -89,5 +89,6 @@ void dc_set_irq_funcs(struct gsgpu_device *adev);
 void gsgpu_dc_hpd_init(struct gsgpu_device *adev);
 void gsgpu_dc_hpd_disable(struct gsgpu_device *adev);
 bool dc_interrupt_enable(struct gsgpu_dc *dc, enum dc_irq_source src, bool enable);
+void gsgpu_dc_irq_unregister_interrupt(struct gsgpu_device *adev, enum dc_irq_source irq_source, void *ih);
 
 #endif /* __GSGPU_DM_IRQ_H__ */

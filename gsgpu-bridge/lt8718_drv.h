@@ -170,4 +170,16 @@ static const struct reg_sequence lt8718_output_set_cfg[] = {
 		{ 0x884b, 0x92},
 		{ 0x8074, 0x28},
 };
+
+void dpcd_write_funtion(struct gsgpu_bridge_phy *phy, unsigned int  address, unsigned char data);
+unsigned char dpcd_read_funtion(struct gsgpu_bridge_phy *phy, unsigned int address);
+void link_configuration(struct gsgpu_bridge_phy *phy);
+void drive_write_funtion(struct gsgpu_bridge_phy *phy, unsigned char data);
+int tps_status(struct gsgpu_bridge_phy *phy, unsigned char tps);
+unsigned char read_adjust_request(struct gsgpu_bridge_phy *phy, unsigned char tps);
+void vd_dp_tx_swing_init(struct gsgpu_bridge_phy *phy,unsigned char swing);
+void end_training(struct gsgpu_bridge_phy *phy);
+void write_funtion(struct gsgpu_bridge_phy *phy, unsigned char number, unsigned char *data);
+void lt8718_edid_read(struct gsgpu_bridge_phy *phy);
+void dp_out_video_open(struct gsgpu_bridge_phy *phy);
 #endif

@@ -102,4 +102,7 @@ static const struct reg_sequence lt9721_tx_phy_cfg[] = {
 	{ 0x8030, 0x0e },
 };
 
+int lt9721_hdmi_rx_cdr(struct gsgpu_bridge_phy *phy);
+int lt9721_rx_pll(struct gsgpu_bridge_phy *phy);
+int lt9721_hdmi_format(struct gsgpu_bridge_phy *phy);
 #endif

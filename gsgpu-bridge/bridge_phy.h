@@ -286,13 +286,22 @@ int bridge_phy_register(struct gsgpu_bridge_phy *phy,
 			u32 feature, struct bridge_phy_helper *helper);
 
 int bridge_phy_lt6711_init(struct gsgpu_dc_bridge *dc_bridge);
+int bridge_phy_lt6711_remove(struct gsgpu_dc_bridge *phy);
 int bridge_phy_lt9721_init(struct gsgpu_dc_bridge *res);
 int bridge_phy_lt8619_init(struct gsgpu_dc_bridge *dc_bridge);
 int bridge_phy_ncs8805_init(struct gsgpu_dc_bridge *dc_bridge);
+int bridge_phy_ncs8805_remove(struct gsgpu_dc_bridge *phy);
 int bridge_phy_lt8718_init(struct gsgpu_dc_bridge *dc_bridge);
 void bridge_phy_mode_set(struct gsgpu_bridge_phy *phy,
 				struct drm_display_mode *mode,
 				struct drm_display_mode *adj_mode);
 void gsgpu_bridge_suspend(struct gsgpu_device *adev);
 void gsgpu_bridge_resume(struct gsgpu_device *adev);
+
+void bridge_phy_reg_mask_seq(struct gsgpu_bridge_phy *phy,
+			     const struct reg_mask_seq *seq, size_t seq_size);
+void bridge_phy_reg_update_bits(struct gsgpu_bridge_phy *phy, unsigned int reg,
+				unsigned int mask, unsigned int val);
+int bridge_phy_reg_dump(struct gsgpu_bridge_phy *phy, size_t start,
+			size_t count);
 #endif /* __BRIDGE_PHY_H__ */

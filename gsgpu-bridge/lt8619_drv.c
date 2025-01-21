@@ -604,7 +604,7 @@ static int lt8619_lvds_config(struct gsgpu_bridge_phy *phy)
 	return 0;
 }
 
-void lt8619_bridge_enable(struct gsgpu_bridge_phy *phy)
+static void lt8619_bridge_enable(struct gsgpu_bridge_phy *phy)
 {
 	lt8619_hdmi_rx_reset(phy);
 	lt8619_vid_chk_soft_reset(phy);

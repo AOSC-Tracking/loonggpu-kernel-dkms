@@ -1,6 +1,7 @@
 #include "gsgpu.h"
 #include "gsgpu_dc_resource.h"
 #include "gsgpu_dc_vbios.h"
+#include "gsgpu_pm.h"
 
 #define FREQ_LEVEL0 0xf
 #define FREQ_LEVEL1 0xd
