@@ -60,6 +60,74 @@ struct gsgpu_bo_list_entry;
 #define GSGPU_VM_CONTEXT_GFX 0
 #define GSGPU_VM_CONTEXT_COMPUTE 1
 
+/**
+ * struct gsgpu_pte_update_params - Local structure
+ *
+ * Encapsulate some VM table update parameters to reduce
+ * the number of function parameters
+ *
+ */
+struct gsgpu_pte_update_params {
+
+	/**
+	 * @ldev: gsgpu device we do this update for
+	 */
+	struct gsgpu_device *ldev;
+
+	/**
+	 * @vm: optional gsgpu_vm we do this update for
+	 */
+	struct gsgpu_vm *vm;
+
+	/**
+	 * @src: address where to copy page table entries from
+	 */
+	u64 src;
+
+	/**
+	 * @ib: indirect buffer to fill with commands
+	 */
+	struct gsgpu_ib *ib;
+
+	/**
+	 * @func: Function which actually does the update
+	 */
+	void (*func)(struct gsgpu_pte_update_params *params,
+		     struct gsgpu_bo *bo, u64 pe,
+		     u64 addr, unsigned count, u32 incr,
+		     u64 flags);
+	/**
+	 * @pages_addr:
+	 *
+	 * DMA addresses to use for mapping, used during VM update by CPU
+	 */
+	dma_addr_t *pages_addr;
+
+	/**
+	 * @kptr:
+	 *
+	 * Kernel pointer of PD/PT BO that needs to be updated,
+	 * used during VM update by CPU
+	 */
+	void *kptr;
+};
+
+/**
+ * struct gsgpu_prt_cb - Helper to disable partial resident texture feature from a fence callback
+ */
+struct gsgpu_prt_cb {
+
+	/**
+	 * @ldev: gsgpu device
+	 */
+	struct gsgpu_device *ldev;
+
+	/**
+	 * @cb: callback
+	 */
+	struct dma_fence_cb cb;
+};
+
 /* VMPT level enumerate, and the hiberachy is:
  * DIR0->DIR1->DIR2
  */
