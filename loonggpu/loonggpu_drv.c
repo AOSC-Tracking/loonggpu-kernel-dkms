@@ -773,7 +773,9 @@ static struct drm_driver kms_driver = {
 
 	.name = DRIVER_NAME,
 	.desc = DRIVER_DESC,
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(6, 14, 0))
 	.date = DRIVER_DATE,
+#endif
 	.major = KMS_DRIVER_MAJOR,
 	.minor = KMS_DRIVER_MINOR,
 	.patchlevel = KMS_DRIVER_PATCHLEVEL,
