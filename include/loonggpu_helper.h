@@ -1254,6 +1254,20 @@ static inline void lg_ttm_placement_set_num_busy(struct ttm_placement *placement
 #define lg_drm_driver_set_lastclose
 #endif
 
+#if defined(LG_DRM_DRIVER_TIMER_CONTAINER_OF)
+#define lg_drm_timer_container_of timer_container_of
+#else
+#define lg_drm_timer_container_of from_timer
+#endif
+
+#if defined(LG_DRM_DRIVER_TIMER_DELETE_SYNC)
+#define lg_drm_timer_delete_sync timer_delete_sync
+#define lg_drm_timer_delete timer_delete
+#else
+#define lg_drm_timer_delete_sync del_timer_sync
+#define lg_drm_timer_delete del_timer
+#endif
+
 #if defined(VERIFY_WRITE)
 #define lg_access_ok(type, addr, size) access_ok(type, addr, size)
 #else

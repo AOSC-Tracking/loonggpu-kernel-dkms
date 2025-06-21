@@ -197,3 +197,4 @@ LG_CONFTEST_TYPE_COMPILE_TESTS += mode_config_has_fb_modifiers
 LG_CONFTEST_TYPE_COMPILE_TESTS += mmu_notifier_ops_has_free_notifier
 LG_CONFTEST_TYPE_COMPILE_TESTS += pwm_add_table
 LG_CONFTEST_TYPE_COMPILE_TESTS += drm_sched_init_has_struct_arg
+LG_CONFTEST_TYPE_COMPILE_TESTS += timer_container_of
