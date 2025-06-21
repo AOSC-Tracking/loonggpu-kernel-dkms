@@ -1227,4 +1227,10 @@ static inline void lg_ttm_placement_set_num_busy(struct ttm_placement *placement
 #define lg_drm_timer_container_of from_timer
 #endif
 
+#if defined(LG_DRM_DRIVER_TIMER_DELETE_SYNC)
+#define lg_drm_timer_delete_sync timer_delete_sync
+#else
+#define lg_drm_timer_delete_sync del_timer_sync
+#endif
+
 #endif /* __GSGPU_HELPER_H__ */

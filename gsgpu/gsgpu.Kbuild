@@ -183,3 +183,4 @@ LG_CONFTEST_TYPE_COMPILE_TESTS += pwm_request
 LG_CONFTEST_TYPE_COMPILE_TESTS += atomic_check
 LG_CONFTEST_TYPE_COMPILE_TESTS += drm_sched_init_has_struct_arg
 LG_CONFTEST_TYPE_COMPILE_TESTS += timer_container_of
+LG_CONFTEST_TYPE_COMPILE_TESTS += timer_delete_sync
