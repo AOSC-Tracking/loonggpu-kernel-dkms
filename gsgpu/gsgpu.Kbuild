@@ -181,3 +181,4 @@ LG_CONFTEST_TYPE_COMPILE_TESTS += drm_driver_has_lastclose
 LG_CONFTEST_TYPE_COMPILE_TESTS += drm_fb_helper_single_add_all_connectors
 LG_CONFTEST_TYPE_COMPILE_TESTS += pwm_request
 LG_CONFTEST_TYPE_COMPILE_TESTS += atomic_check
+LG_CONFTEST_TYPE_COMPILE_TESTS += drm_sched_init_has_struct_arg
