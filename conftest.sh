@@ -2722,6 +2722,23 @@ compile_test() {
             compile_check_conftest "$CODE" "LG_DRM_DRIVER_SYNCOBJ_TIMELINE_PRESENT" "" "types"
         ;;
 
+        timer_container_of)
+            #
+            # Determine whether from_timer is renamed to timer_container_of.
+            #
+            # Changed by commit 41cb08555c4164996d67c78b3bf1c658075b75f1
+			# ("treewide, timers: Rename from_timer() to timer_container_of()")
+            #
+            CODE="
+            #include <linux/timer.h>
+
+            #ifndef timer_container_of
+            #error no timer_container_of
+            #endif"
+
+            compile_check_conftest "$CODE" "LG_DRM_DRIVER_TIMER_CONTAINER_OF" "" "types"
+        ;;
+
         uts_release)
             #
             # print the kernel's UTS_RELEASE string.
