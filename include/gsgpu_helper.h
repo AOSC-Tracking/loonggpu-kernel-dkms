@@ -1220,4 +1220,11 @@ static inline void lg_ttm_placement_set_num_busy(struct ttm_placement *placement
 #else
 #define lg_drm_driver_set_lastclose
 #endif
+
+#if defined(LG_DRM_DRIVER_TIMER_CONTAINER_OF)
+#define lg_drm_timer_container_of timer_container_of
+#else
+#define lg_drm_timer_container_of from_timer
+#endif
+
 #endif /* __GSGPU_HELPER_H__ */

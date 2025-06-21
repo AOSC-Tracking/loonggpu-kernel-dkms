@@ -255,7 +255,7 @@ void gsgpu_fence_process(struct gsgpu_ring *ring)
  */
 static void gsgpu_fence_fallback(struct timer_list *t)
 {
-	struct gsgpu_ring *ring = from_timer(ring, t,
+	struct gsgpu_ring *ring = lg_drm_timer_container_of(ring, t,
 					      fence_drv.fallback_timer);
 
 	gsgpu_fence_process(ring);
