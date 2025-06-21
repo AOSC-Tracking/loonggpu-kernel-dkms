@@ -119,7 +119,7 @@ static void timer_power_ctrl_callback(struct timer_list *timer)
 	if (loonggpu_lcd_ctrl_open_detect(open_timer->ls_bl) ==
 			open_timer->ls_bl->lcd_ctrl->gpio_detect_open_polarity) {
 		loonggpu_lcd_ctrl_hw_action(open_timer->ls_bl, true);
-		del_timer(&open_timer->timer);
+		lg_drm_timer_delete(&open_timer->timer);
 		open_timer->running = false;
 		return;
 	}
@@ -138,7 +138,7 @@ static void loonggpu_lcd_ctrl_hw_action_timer(struct loonggpu_backlight *ls_bl, 
 		ls_bl->lcd_ctrl->open_timer.running = true;
 	} else {
 		if (ls_bl->lcd_ctrl->open_timer.running)
-			del_timer(&ls_bl->lcd_ctrl->open_timer.timer);
+			lg_drm_timer_delete(&ls_bl->lcd_ctrl->open_timer.timer);
 		else
 			loonggpu_lcd_ctrl_hw_action(ls_bl, false);
 		ls_bl->lcd_ctrl->open_timer.running = false;
