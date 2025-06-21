@@ -1210,6 +1210,24 @@ compile_test() {
             compile_check_conftest "$CODE" "LG_DRM_SCHED_INIT_HAS_SUBMIT_WQ" "" "types"
         ;;
 
+        drm_sched_init_has_struct_arg)
+            #
+            # Determine if drm_sched_init uses struct drm_sched_init_args arg.
+            #
+            # Changed by commit 796a9f55a8d1d85387b973df9a06cbf4bc2d6327
+            # drm/sched: Use struct for drm_sched_init() params
+            #
+            CODE="
+            #include <drm/gpu_scheduler.h>
+            typeof(drm_sched_init) conftest_drm_sched_init_has_submit_wq;
+            int conftest_drm_sched_init_has_submit_wq(struct drm_gpu_scheduler *sched,
+                                                      const struct drm_sched_init_args *args
+                                                      ) {
+                return 0;
+            }"
+            compile_check_conftest "$CODE" "LG_DRM_SCHED_INIT_HAS_STRUCT_ARG" "" "types"
+        ;;
+
         drm_sched_job_init_has_credits)
             #
             # Determine if drm_sched_job_init has credits arg.

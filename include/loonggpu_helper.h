@@ -738,7 +738,7 @@ static inline long lg_get_user_pages(uint64_t userptr, unsigned num_pages,
 static inline struct drm_sched_rq *lg_sched_to_sched_rq(struct drm_gpu_scheduler *sched,
 					enum drm_sched_priority priority)
 {
-#if defined(LG_DRM_SCHED_INIT_HAS_DEVICE_RQ) || defined (LG_DRM_SCHED_INIT_HAS_SUBMIT_WQ)
+#if defined(LG_DRM_SCHED_INIT_HAS_DEVICE_RQ) || defined (LG_DRM_SCHED_INIT_HAS_SUBMIT_WQ) || defined (LG_DRM_SCHED_INIT_HAS_STRUCT_ARG)
 	return sched->sched_rq[priority];
 #else
 	return &sched->sched_rq[priority];
@@ -751,7 +751,19 @@ static inline int lg_drm_sched_init(struct loonggpu_ring *ring,
 				unsigned hang_limit,
 				long timeout, struct loonggpu_device *adev)
 {
-#if defined(LG_DRM_SCHED_INIT_HAS_DEVICE)
+#if defined (LG_DRM_SCHED_INIT_HAS_STRUCT_ARG)
+	const struct drm_sched_init_args args = {
+		.ops = ops,
+		.num_rqs = DRM_SCHED_PRIORITY_COUNT,
+		.credit_limit = num_hw_submission,
+		.hang_limit = hang_limit,
+		.timeout = timeout,
+		.name = ring->name,
+		.dev = adev->dev,
+	};
+
+	return drm_sched_init(&ring->sched, &args);
+#elif defined(LG_DRM_SCHED_INIT_HAS_DEVICE)
 	return drm_sched_init(&ring->sched, ops,
 			   num_hw_submission, hang_limit,
 			   timeout, NULL,
@@ -1147,7 +1159,7 @@ static inline bool lg_ring_sched_thread_avai(struct loonggpu_ring *ring)
 {
 	if (!ring)
 		return false;
-#if defined(LG_DRM_SCHED_INIT_HAS_SUBMIT_WQ)
+#if defined(LG_DRM_SCHED_INIT_HAS_SUBMIT_WQ) || defined(LG_DRM_SCHED_INIT_HAS_STRUCT_ARG) 
 	if (!drm_sched_wqueue_ready(&ring->sched))
 		return false;
 #else
@@ -1159,7 +1171,7 @@ static inline bool lg_ring_sched_thread_avai(struct loonggpu_ring *ring)
 
 static inline void lg_ring_sched_thread_park(struct loonggpu_ring *ring)
 {
-#if defined(LG_DRM_SCHED_INIT_HAS_SUBMIT_WQ)
+#if defined(LG_DRM_SCHED_INIT_HAS_SUBMIT_WQ) || defined(LG_DRM_SCHED_INIT_HAS_STRUCT_ARG)
 	drm_sched_wqueue_stop(&ring->sched);
 #else
 	kthread_park(ring->sched.thread);
@@ -1168,7 +1180,7 @@ static inline void lg_ring_sched_thread_park(struct loonggpu_ring *ring)
 
 static inline void lg_ring_sched_thread_unpark(struct loonggpu_ring *ring)
 {
-#if defined(LG_DRM_SCHED_INIT_HAS_SUBMIT_WQ)
+#if defined(LG_DRM_SCHED_INIT_HAS_SUBMIT_WQ) || defined(LG_DRM_SCHED_INIT_HAS_STRUCT_ARG)
 	drm_sched_wqueue_start(&ring->sched);
 #else
 	kthread_unpark(ring->sched.thread);
