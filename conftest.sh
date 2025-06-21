@@ -2739,6 +2739,21 @@ compile_test() {
             compile_check_conftest "$CODE" "LG_DRM_DRIVER_TIMER_CONTAINER_OF" "" "types"
         ;;
 
+        timer_delete_sync)
+            #
+            # Determine whether del_timer_sync has been renamed to timer_delete_sync
+            #
+            # Changed by commit 8fa7292fee5c5240402371ea89ab285ec856c916
+			# ("treewide: Switch/rename to timer_delete[_sync]()")
+            #
+            CODE="
+            #include <linux/timer.h>
+
+            void *func = timer_delete_sync;"
+
+            compile_check_conftest "$CODE" "LG_DRM_DRIVER_TIMER_DELETE_SYNC" "" "types"
+        ;;
+
         uts_release)
             #
             # print the kernel's UTS_RELEASE string.

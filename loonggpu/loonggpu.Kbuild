@@ -196,3 +196,4 @@ LG_CONFTEST_TYPE_COMPILE_TESTS += dma_resv_replace_fences
 LG_CONFTEST_TYPE_COMPILE_TESTS += mode_config_has_fb_modifiers
 LG_CONFTEST_TYPE_COMPILE_TESTS += drm_sched_init_has_struct_arg
 LG_CONFTEST_TYPE_COMPILE_TESTS += timer_container_of
+LG_CONFTEST_TYPE_COMPILE_TESTS += timer_delete_sync
