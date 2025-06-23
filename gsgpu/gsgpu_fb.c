@@ -184,8 +184,11 @@ out_unref:
 	return ret;
 }
 
-static int gsgpufb_create(struct drm_fb_helper *helper,
-			   struct drm_fb_helper_surface_size *sizes)
+static const struct drm_fb_helper_funcs gsgpu_fbdev_fb_helper_funcs = {
+};
+
+int gsgpu_driver_fbdev_probe(struct drm_fb_helper *helper,
+			     struct drm_fb_helper_surface_size *sizes)
 {
 	struct gsgpu_device *adev = helper->dev->dev_private;
 	struct drm_mode_fb_cmd2 mode_cmd = { };
@@ -227,6 +230,7 @@ static int gsgpufb_create(struct drm_fb_helper *helper,
 	}
 
 	/* setup helper */
+	helper->funcs = &gsgpu_fbdev_fb_helper_funcs;
 	helper->fb = fb;
 
 	/* okay we have an object now allocate the framebuffer */
@@ -272,107 +276,6 @@ err_kfree:
 err_gsgpufb_destroy_pinned_object:
 	gsgpufb_destroy_pinned_object(gobj);
 	return ret;
-}
-
-static const struct drm_fb_helper_funcs gsgpu_fb_helper_funcs = {
-	.fb_probe = gsgpufb_create,
-};
-
-static void gsgpu_fbdev_client_unregister(struct drm_client_dev *client)
-{
-	struct drm_fb_helper *fb_helper = drm_fb_helper_from_client(client);
-	struct drm_device *dev = fb_helper->dev;
-	struct gsgpu_device *rdev = dev->dev_private;
-
-	if (fb_helper->info) {
-		vga_switcheroo_client_fb_set(rdev->pdev, NULL);
-		drm_helper_force_disable_all(dev);
-		drm_fb_helper_unregister_info(fb_helper);
-	} else {
-		drm_client_release(&fb_helper->client);
-		drm_fb_helper_unprepare(fb_helper);
-		kfree(fb_helper);
-	}
-}
-
-static int gsgpu_fbdev_client_restore(struct drm_client_dev *client)
-{
-	drm_fb_helper_lastclose(client->dev);
-	vga_switcheroo_process_delayed_switch();
-
-	return 0;
-}
-
-static int gsgpu_fbdev_client_hotplug(struct drm_client_dev *client) {
-	struct drm_fb_helper *fb_helper = drm_fb_helper_from_client(client);
-	struct drm_device *dev = client->dev;
-	struct gsgpu_device *rdev = dev->dev_private;
-	int ret;
-
-	if (dev->fb_helper)
-		return drm_fb_helper_hotplug_event(dev->fb_helper);
-
-	ret = drm_fb_helper_init(dev, fb_helper);
-	if (ret)
-		goto err_drm_err;
-
-	if (!drm_drv_uses_atomic_modeset(dev))
-		drm_helper_disable_unused_functions(dev);
-
-	ret = drm_fb_helper_initial_config(fb_helper);
-	if (ret)
-		goto err_drm_fb_helper_fini;
-
-	vga_switcheroo_client_fb_set(rdev->pdev, fb_helper->info);
-
-	return 0;
-
-err_drm_fb_helper_fini:
-	drm_fb_helper_fini(fb_helper);
-err_drm_err:
-	drm_err(dev, "Failed to setup gsgpu fbdev emulation (ret = %d)\n",
-		ret);
-	return ret;
-}
-
-static const struct drm_client_funcs gsgpu_fbdev_client_funcs = {
-	.owner = THIS_MODULE,
-	.unregister = gsgpu_fbdev_client_unregister,
-	.restore = gsgpu_fbdev_client_restore,
-	.hotplug = gsgpu_fbdev_client_hotplug,
-};
-
-void gsgpu_fbdev_setup(struct gsgpu_device *adev)
-{
-	struct drm_fb_helper *fb_helper;
-	int bpp_sel = 32;
-	int ret;
-
-	/* select 8 bpp console on low vram cards */
-	if (adev->gmc.real_vram_size <= (32*1024*1024))
-		bpp_sel = 8;
-
-	fb_helper = kzalloc(sizeof(*fb_helper), GFP_KERNEL);
-	if (!fb_helper)
-		return;
-
-	lg_drm_fb_helper_prepare(adev->ddev, fb_helper,
-				bpp_sel, &gsgpu_fb_helper_funcs);
-
-	ret = drm_client_init(adev->ddev, &fb_helper->client, "gsgpu-fbdev",
-			      &gsgpu_fbdev_client_funcs);
-	if (ret) {
-		drm_err(adev->ddev, "Failed to register client: %d\n", ret);
-		goto err_drm_client_init;
-	}
-
-	drm_client_register(&fb_helper->client);
-
-	return;
-
-err_drm_client_init:
-	drm_fb_helper_unprepare(fb_helper);
-	kfree(fb_helper);
 }
 
 void gsgpu_fbdev_set_suspend(struct gsgpu_device *adev, int state)
