@@ -1399,8 +1399,6 @@ int gsgpu_device_init(struct gsgpu_device *adev,
 		goto failed;
 	}
 
-	gsgpu_fbdev_init(adev);
-
 	r = gsgpu_pm_sysfs_init(adev);
 	if (r)
 		DRM_ERROR("registering pm debugfs failed (%d).\n", r);
@@ -1478,7 +1476,6 @@ void gsgpu_device_fini(struct gsgpu_device *adev)
 
 	gsgpu_ib_pool_fini(adev);
 	gsgpu_fence_driver_fini(adev);
-	gsgpu_fbdev_fini(adev);
 	r = gsgpu_device_ip_fini(adev);
 	if (adev->firmware.gpu_info_fw) {
 		release_firmware(adev->firmware.gpu_info_fw);
