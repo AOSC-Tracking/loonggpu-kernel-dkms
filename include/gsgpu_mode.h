@@ -65,12 +65,6 @@ struct gsgpu_framebuffer {
 	uint64_t address;
 };
 
-struct gsgpu_fbdev {
-	struct drm_fb_helper helper;
-	struct gsgpu_framebuffer rfb;
-	struct gsgpu_device *adev;
-};
-
 struct gsgpu_crtc {
 	struct drm_crtc base;
 	int crtc_id;
@@ -140,8 +134,6 @@ struct gsgpu_mode_info {
 	struct drm_property *underscan_vborder_property;
 	/* audio */
 	struct drm_property *audio_property;
-	/* pointer to fbdev info structure */
-	struct gsgpu_fbdev *rfbdev;
 	int			num_crtc; /* number of crtcs */
 	int			num_hpd; /* number of hpd pins */
 	int			num_i2c;
