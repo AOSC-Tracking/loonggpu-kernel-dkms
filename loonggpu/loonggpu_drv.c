@@ -6,6 +6,7 @@
 #include <linux/delay.h>
 #include <linux/pci.h>
 #include <linux/delay.h>
+#include <drm/clients/drm_client_setup.h>
 #include <drm/drm_file.h>
 #include <drm/drm_drv.h>
 #include <drm/drm_device.h>
@@ -568,7 +569,9 @@ static int loongson_vga_pci_register(struct pci_dev *pdev,
 	resource_size_t dc_rmmio_size;
 	void __iomem *dc_rmmio;
 	struct drm_device *dev;
+	struct loonggpu_device *adev;
 	int retry = 0;
+	const struct drm_format_info *format = NULL;
 
 	ret = pci_enable_device(pdev);
 	if (ret)
@@ -636,7 +639,11 @@ retry_init:
 	if (ret)
 		goto err_pci;
 
-	loonggpu_fbdev_setup(dev->dev_private);
+	adev = dev->dev_private;
+	if (adev->gmc.real_vram_size <= (32*1024*1024))
+		format = drm_format_info(DRM_FORMAT_C8);
+
+	drm_client_setup(dev, format);
 
 	return 0;
 
@@ -763,6 +770,7 @@ static struct drm_driver kms_driver = {
 	.major = KMS_DRIVER_MAJOR,
 	.minor = KMS_DRIVER_MINOR,
 	.patchlevel = KMS_DRIVER_PATCHLEVEL,
+	.fbdev_probe = loonggpu_driver_fbdev_probe,
 };
 
 static struct drm_driver *driver;
