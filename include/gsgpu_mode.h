@@ -68,7 +68,6 @@ struct gsgpu_framebuffer {
 struct gsgpu_fbdev {
 	struct drm_fb_helper helper;
 	struct gsgpu_framebuffer rfb;
-	struct list_head fbdev_list;
 	struct gsgpu_device *adev;
 };
 
