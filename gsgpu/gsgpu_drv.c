@@ -433,6 +433,8 @@ static int loongson_vga_pci_register(struct pci_dev *pdev,
 
 	pci_set_drvdata(pdev, dev);
 
+	ret = gsgpu_driver_load_kms(dev, ent->driver_data);
+
 retry_init:
 	ret = drm_dev_register(dev, pci_gpu_flags);
 	if (ret == -EAGAIN && ++retry <= 3) {
@@ -529,7 +531,6 @@ static struct drm_driver kms_driver = {
 		| DRIVER_SYNCOBJ_TIMELINE
 #endif
 		| DRIVER_RENDER | DRIVER_ATOMIC,
-	.load = gsgpu_driver_load_kms,
 	.open = gsgpu_driver_open_kms,
 	.postclose = gsgpu_driver_postclose_kms,
 	lg_drm_driver_set_lastclose
