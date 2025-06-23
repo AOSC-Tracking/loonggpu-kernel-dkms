@@ -650,11 +650,14 @@ retry_init:
 		/* Don't request EX mode too frequently which is attacking */
 		msleep(5000);
 		goto retry_init;
-	} else if (ret)
+	}
+
+	if (ret)
 		goto err_pci;
 
+	loonggpu_fbdev_setup(dev->dev_private);
 
-	return ret;
+	return 0;
 
 err_pci:
 	pci_disable_device(pdev);
@@ -743,7 +746,6 @@ static struct drm_driver kms_driver = {
 		| DRIVER_RENDER | DRIVER_ATOMIC,
 	.open = loonggpu_driver_open_kms,
 	.postclose = loonggpu_driver_postclose_kms,
-	lg_drm_driver_set_lastclose
 	.unload = loonggpu_driver_unload_kms,
 	lg_drm_driver_get_vblank_counter_setting(loonggpu_get_vblank_counter_kms)
 	lg_drm_driver_get_vblank_timestamp_setting()
