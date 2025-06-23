@@ -1433,14 +1433,12 @@ int loonggpu_device_init(struct loonggpu_device *adev,
 		max_MBps = 8; /* Allow 8 MB/s. */
 	/* Get a log2 for easy divisions. */
 	adev->mm_stats.log2_max_MBps = ilog2(max(1u, max_MBps));
-	if (adev->family_type != CHIP_NO_GPU) {
-		r = loonggpu_ib_pool_init(adev);
-		if (r) {
-			dev_err(adev->dev, "IB initialization failed (%d).\n", r);
-			goto failed;
-		}
+
+	r = loonggpu_ib_pool_init(adev);
+	if (r) {
+		dev_err(adev->dev, "IB initialization failed (%d).\n", r);
+		goto failed;
 	}
-	loonggpu_fbdev_init(adev);
 
 	r = loonggpu_pm_sysfs_init(adev);
 	if (r)
@@ -1520,7 +1518,6 @@ void loonggpu_device_fini(struct loonggpu_device *adev)
 
 	loonggpu_ib_pool_fini(adev);
 	loonggpu_fence_driver_fini(adev);
-	loonggpu_fbdev_fini(adev);
 	r = loonggpu_device_ip_fini(adev);
 	if (adev->firmware.gpu_info_fw) {
 		release_firmware(adev->firmware.gpu_info_fw);
