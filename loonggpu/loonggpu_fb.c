@@ -10,7 +10,7 @@
 #include "loonggpu_drm.h"
 
 #include <drm/drm_fb_helper.h>
-
+#include <drm/drm_gem_framebuffer_helper.h>
 
 #include "loonggpu_display.h"
 #include "loonggpu_helper.h"
@@ -338,9 +338,17 @@ void loonggpu_fbdev_set_suspend(struct loonggpu_device *adev, int state)
 
 bool loonggpu_fbdev_robj_is_fb(struct loonggpu_device *adev, struct loonggpu_bo *robj)
 {
-	if (!adev->mode_info.rfbdev)
+	struct drm_fb_helper *fb_helper = adev->ddev->fb_helper;
+	struct drm_gem_object *gobj;
+
+	if (!fb_helper)
 		return false;
-	if (robj == gem_to_loonggpu_bo(adev->mode_info.rfbdev->rfb.base.obj[0]))
-		return true;
-	return false;
+
+	gobj = drm_gem_fb_get_obj(fb_helper->fb, 0);
+	if (!gobj)
+		return false;
+	if (gobj != &robj->tbo.base)
+		return false;
+
+	return true;
 }
