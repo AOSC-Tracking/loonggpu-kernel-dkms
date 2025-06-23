@@ -219,7 +219,6 @@ static int gsgpufb_create(struct drm_fb_helper *helper,
 		goto out;
 	}
 
-	info->par = helper;
 	info->skip_vt_switch = false;
 
 	fb = kzalloc(sizeof(struct gsgpu_framebuffer), GFP_KERNEL);
