@@ -336,19 +336,6 @@ void loonggpu_fbdev_set_suspend(struct loonggpu_device *adev, int state)
 						   state);
 }
 
-int loonggpu_fbdev_total_size(struct loonggpu_device *adev)
-{
-	struct loonggpu_bo *robj;
-	int size = 0;
-
-	if (!adev->mode_info.rfbdev)
-		return 0;
-
-	robj = gem_to_loonggpu_bo(adev->mode_info.rfbdev->rfb.base.obj[0]);
-	size += loonggpu_bo_size(robj);
-	return size;
-}
-
 bool loonggpu_fbdev_robj_is_fb(struct loonggpu_device *adev, struct loonggpu_bo *robj)
 {
 	if (!adev->mode_info.rfbdev)
