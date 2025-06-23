@@ -65,17 +65,15 @@ static void gsgpu_fbdev_fb_destroy(struct fb_info *info)
 {
 	struct drm_fb_helper *fb_helper = info->par;
 	struct drm_framebuffer *fb = fb_helper->fb;
+	struct drm_gem_object *gobj = drm_gem_fb_get_obj(fb, 0);
 
-	if (fb) {
-		if (fb->obj[0]) {
-			gsgpufb_destroy_pinned_object(fb->obj[0]);
-			fb->obj[0] = NULL;
-			drm_framebuffer_unregister_private(fb);
-			drm_framebuffer_cleanup(fb);
-		}
-		kfree(fb);
-		fb_helper->fb = NULL;
-	}
+	drm_framebuffer_unregister_private(fb);
+	drm_framebuffer_cleanup(fb);
+	kfree(fb);
+	fb_helper->fb = NULL;
+
+	gsgpufb_destroy_pinned_object(gobj);
+
 	drm_fb_helper_fini(fb_helper);
 }
 
@@ -187,11 +185,11 @@ static int gsgpufb_create(struct drm_fb_helper *helper,
 			   struct drm_fb_helper_surface_size *sizes)
 {
 	struct gsgpu_device *adev = helper->dev->dev_private;
+	struct drm_mode_fb_cmd2 mode_cmd = { };
 	struct fb_info *info;
-	struct drm_framebuffer *fb = NULL;
-	struct drm_mode_fb_cmd2 mode_cmd;
-	struct drm_gem_object *gobj = NULL;
-	struct gsgpu_bo *abo = NULL;
+	struct drm_gem_object *gobj;
+	struct gsgpu_bo *abo;
+	struct drm_framebuffer *fb;
 	unsigned long tmp;
 	int ret;
 
@@ -212,32 +210,33 @@ static int gsgpufb_create(struct drm_fb_helper *helper,
 
 	abo = gem_to_gsgpu_bo(gobj);
 
-	/* okay we have an object now allocate the framebuffer */
-	info = lg_drm_fb_helper_alloc_info(helper);
-	if (IS_ERR(info)) {
-		ret = PTR_ERR(info);
-		goto out;
-	}
-
-	info->skip_vt_switch = false;
-
 	fb = kzalloc(sizeof(struct gsgpu_framebuffer), GFP_KERNEL);
 	if (!fb) {
 		ret = -ENOMEM;
-		goto out;
+		goto err_gsgpufb_destroy_pinned_object;
 	}
 
 	ret = gsgpu_display_framebuffer_init(adev->ddev, to_gsgpu_framebuffer(fb),
 					      &mode_cmd, gobj);
 	if (ret) {
 		DRM_ERROR("failed to initialize framebuffer %d\n", ret);
-		goto out;
+		goto err_kfree;
 	}
 
 	/* setup helper */
 	helper->fb = fb;
 
+	/* okay we have an object now allocate the framebuffer */
+	info = lg_drm_fb_helper_alloc_info(helper);
+	if (IS_ERR(info)) {
+		ret = PTR_ERR(info);
+		goto err_drm_framebuffer_unregister_private;
+	}
+
 	info->fbops = &gsgpufb_ops;
+	info->skip_vt_switch = false;
+
+	lg_drm_fb_helper_fill_info(info, helper, sizes);
 
 	/* not alloc from VRAM but GTT */
 	tmp = gsgpu_bo_gpu_offset(abo) - adev->gmc.vram_start;
@@ -245,8 +244,6 @@ static int gsgpufb_create(struct drm_fb_helper *helper,
 	info->fix.smem_len = gsgpu_bo_size(abo);
 	info->screen_base = gsgpu_bo_kptr(abo);
 	info->screen_size = gsgpu_bo_size(abo);
-
-	lg_drm_fb_helper_fill_info(info, helper, sizes);
 
 	/* setup aperture base/size for vesafb takeover */
 	lg_set_info_apertures(info, adev);
@@ -264,16 +261,14 @@ static int gsgpufb_create(struct drm_fb_helper *helper,
 	vga_switcheroo_client_fb_set(adev->pdev, info);
 	return 0;
 
-out:
-	if (abo) {
-
-	}
-	if (fb && ret) {
-		lg_drm_gem_object_put(gobj);
-		drm_framebuffer_unregister_private(fb);
-		drm_framebuffer_cleanup(fb);
-		kfree(fb);
-	}
+err_drm_framebuffer_unregister_private:
+	helper->fb = NULL;
+	drm_framebuffer_unregister_private(fb);
+	drm_framebuffer_cleanup(fb);
+err_kfree:
+	kfree(fb);
+err_gsgpufb_destroy_pinned_object:
+	gsgpufb_destroy_pinned_object(gobj);
 	return ret;
 }
 
