@@ -162,8 +162,7 @@ int loonggpu_display_framebuffer_init(struct drm_device *dev,
 				   const struct drm_format_info *info,
 				   struct drm_gem_object *obj);
 
-int loonggpu_fbdev_init(struct loonggpu_device *adev);
-void loonggpu_fbdev_fini(struct loonggpu_device *adev);
+void loonggpu_fbdev_setup(struct loonggpu_device *adev);
 void loonggpu_fbdev_set_suspend(struct loonggpu_device *adev, int state);
 bool loonggpu_fbdev_robj_is_fb(struct loonggpu_device *adev, struct loonggpu_bo *robj);
 int loonggpu_align_pitch(struct loonggpu_device *adev, int width, int bpp, bool tiled);
