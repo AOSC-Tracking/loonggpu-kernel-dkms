@@ -47,11 +47,44 @@ gsgpufb_release(struct fb_info *info, int user)
 	return 0;
 }
 
+static void gsgpufb_destroy_pinned_object(struct drm_gem_object *gobj)
+{
+	struct gsgpu_bo *abo = gem_to_gsgpu_bo(gobj);
+	int ret;
+
+	ret = gsgpu_bo_reserve(abo, true);
+	if (likely(ret == 0)) {
+		gsgpu_bo_kunmap(abo);
+		gsgpu_bo_unpin(abo);
+		gsgpu_bo_unreserve(abo);
+	}
+	lg_drm_gem_object_put(gobj);
+}
+
+static void gsgpu_fbdev_fb_destroy(struct fb_info *info)
+{
+	struct drm_fb_helper *fb_helper = info->par;
+	struct drm_framebuffer *fb = fb_helper->fb;
+
+	if (fb) {
+		if (fb->obj[0]) {
+			gsgpufb_destroy_pinned_object(fb->obj[0]);
+			fb->obj[0] = NULL;
+			drm_framebuffer_unregister_private(fb);
+			drm_framebuffer_cleanup(fb);
+		}
+		kfree(fb);
+		fb_helper->fb = NULL;
+	}
+	drm_fb_helper_fini(fb_helper);
+}
+
 static struct fb_ops gsgpufb_ops = {
 	.owner = THIS_MODULE,
 	DRM_FB_HELPER_DEFAULT_OPS,
 	.fb_open = gsgpufb_open,
 	.fb_release = gsgpufb_release,
+	.fb_destroy = gsgpu_fbdev_fb_destroy,
 #if defined(__FB_DEFAULT_IOMEM_OPS_DRAW)
 	__FB_DEFAULT_IOMEM_OPS_DRAW
 #else
@@ -71,20 +104,6 @@ int gsgpu_align_pitch(struct gsgpu_device *adev, int width, int cpp, bool tiled)
 	aligned &= ~255;
 
 	return aligned;
-}
-
-static void gsgpufb_destroy_pinned_object(struct drm_gem_object *gobj)
-{
-	struct gsgpu_bo *abo = gem_to_gsgpu_bo(gobj);
-	int ret;
-
-	ret = gsgpu_bo_reserve(abo, true);
-	if (likely(ret == 0)) {
-		gsgpu_bo_kunmap(abo);
-		gsgpu_bo_unpin(abo);
-		gsgpu_bo_unreserve(abo);
-	}
-	lg_drm_gem_object_put(gobj);
 }
 
 static int gsgpufb_create_pinned_object(struct drm_fb_helper *fb_helper,
@@ -264,27 +283,6 @@ out:
 	return ret;
 }
 
-static int gsgpu_fbdev_destroy(struct drm_device *dev, struct drm_fb_helper *fb_helper)
-{
-	struct drm_framebuffer *fb = fb_helper->fb;
-
-	lg_drm_fb_helper_unregister_info(fb_helper);
-
-	if (fb) {
-		if (fb->obj[0]) {
-			gsgpufb_destroy_pinned_object(fb->obj[0]);
-			fb->obj[0] = NULL;
-			drm_framebuffer_unregister_private(fb);
-			drm_framebuffer_cleanup(fb);
-		}
-		kfree(fb);
-		fb_helper->fb = NULL;
-	}
-	drm_fb_helper_fini(fb_helper);
-
-	return 0;
-}
-
 static const struct drm_fb_helper_funcs gsgpu_fb_helper_funcs = {
 	.fb_probe = gsgpufb_create,
 };
@@ -339,7 +337,7 @@ void gsgpu_fbdev_fini(struct gsgpu_device *adev)
 	if (!adev->ddev->fb_helper)
 		return;
 
-	gsgpu_fbdev_destroy(adev->ddev, adev->ddev->fb_helper);
+	drm_fb_helper_unregister_info(adev->ddev->fb_helper);
 	drm_fb_helper_unprepare(adev->ddev->fb_helper);
 	kfree(adev->ddev->fb_helper);
 	adev->ddev->fb_helper = NULL;
