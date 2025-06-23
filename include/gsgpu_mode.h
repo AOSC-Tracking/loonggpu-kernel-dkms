@@ -170,7 +170,6 @@ int gsgpu_display_framebuffer_init(struct drm_device *dev,
 int gsgpu_fbdev_init(struct gsgpu_device *adev);
 void gsgpu_fbdev_fini(struct gsgpu_device *adev);
 void gsgpu_fbdev_set_suspend(struct gsgpu_device *adev, int state);
-int gsgpu_fbdev_total_size(struct gsgpu_device *adev);
 bool gsgpu_fbdev_robj_is_fb(struct gsgpu_device *adev, struct gsgpu_bo *robj);
 int gsgpu_align_pitch(struct gsgpu_device *adev, int width, int bpp, bool tiled);
 int gsgpu_display_modeset_create_props(struct gsgpu_device *adev);

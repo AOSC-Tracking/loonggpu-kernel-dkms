@@ -340,19 +340,6 @@ void gsgpu_fbdev_set_suspend(struct gsgpu_device *adev, int state)
 						   state);
 }
 
-int gsgpu_fbdev_total_size(struct gsgpu_device *adev)
-{
-	struct gsgpu_bo *robj;
-	int size = 0;
-
-	if (!adev->mode_info.rfbdev)
-		return 0;
-
-	robj = gem_to_gsgpu_bo(adev->mode_info.rfbdev->rfb.base.obj[0]);
-	size += gsgpu_bo_size(robj);
-	return size;
-}
-
 bool gsgpu_fbdev_robj_is_fb(struct gsgpu_device *adev, struct gsgpu_bo *robj)
 {
 	if (!adev->mode_info.rfbdev)
