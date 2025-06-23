@@ -69,7 +69,6 @@ struct loonggpu_framebuffer {
 struct loonggpu_fbdev {
 	struct drm_fb_helper helper;
 	struct loonggpu_framebuffer rfb;
-	struct list_head fbdev_list;
 	struct loonggpu_device *adev;
 };
 
