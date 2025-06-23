@@ -219,7 +219,6 @@ static int loonggpufb_create(struct drm_fb_helper *helper,
 		goto out;
 	}
 
-	info->par = helper;
 	info->skip_vt_switch = false;
 
 	fb = kzalloc(sizeof(struct loonggpu_framebuffer), GFP_KERNEL);
