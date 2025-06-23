@@ -361,10 +361,6 @@ void loonggpu_fbdev_setup(struct loonggpu_device *adev)
 		goto err_drm_client_init;
 	}
 
-	ret = loonggpu_fbdev_client_hotplug(&fb_helper->client);
-	if (ret)
-		drm_dbg_kms(adev->ddev, "client hotplug ret = %d\n", ret);
-
 	drm_client_register(&fb_helper->client);
 
 	return;
