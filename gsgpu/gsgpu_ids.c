@@ -183,7 +183,7 @@ static int gsgpu_vmid_grab_idle(struct gsgpu_vm *vm,
 	if (ring->vmid_wait && !dma_fence_is_signaled(ring->vmid_wait))
 		return gsgpu_sync_fence(adev, sync, ring->vmid_wait, false);
 
-	fences = kmalloc_array(sizeof(void *), id_mgr->num_ids, GFP_KERNEL);
+	fences = kmalloc_array(id_mgr->num_ids, sizeof(void *), GFP_KERNEL);
 	if (!fences)
 		return -ENOMEM;
 
