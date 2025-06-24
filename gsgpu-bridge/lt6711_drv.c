@@ -5,7 +5,7 @@
 #include "bridge_phy.h"
 
 static enum drm_mode_status lt6711_mode_valid(struct drm_connector *connector,
-					      struct drm_display_mode *mode)
+					      const struct drm_display_mode *mode)
 {
 	if (mode->hdisplay < 1920)
 		return MODE_BAD;
