@@ -617,11 +617,6 @@ static int gsgpu_bo_move(struct ttm_buffer_object *bo, bool evict,
 		return 0;
 	}
 
-	if (old_mem->mem_type == TTM_PL_SYSTEM && bo->ttm == NULL) {
-		gsgpu_move_null(bo, new_mem);
-		return 0;
-	}
-
 	if ((old_mem->mem_type == TTM_PL_TT &&
 	     new_mem->mem_type == TTM_PL_SYSTEM) ||
 	    (old_mem->mem_type == TTM_PL_SYSTEM &&
