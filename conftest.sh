@@ -1541,21 +1541,6 @@ compile_test() {
             compile_check_conftest "$CODE" "LG_TTM_BO_PIPELINE_MOVE" "" "functions"
         ;;
 
-        ttm_tt_bind)
-            #
-            # Determine if the ttm_tt_bind function exists.
-            #
-            # Changed by commit 9e9a153bdf2555a931fd37678a8e44d170a5d943 ("drm/ttm:
-            # move ttm binding/unbinding out of ttm_tt paths") in v5.9-rc6
-            #
-            CODE="
-            #include <drm/ttm/ttm_tt.h>
-            int conftest_ttm_tt_bind(void) {
-                return ttm_tt_bind();
-            }"
-            compile_check_conftest "$CODE" "LG_TTM_TT_BIND" "" "functions"
-        ;;
-
         ttm_bo_mem_put)
             #
             # Determine if the ttm_bo_mem_put function exists.
