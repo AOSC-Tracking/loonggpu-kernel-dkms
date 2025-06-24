@@ -445,7 +445,7 @@ error:
  * help move buffers to and from VRAM.
  */
 static int loonggpu_move_blit(struct ttm_buffer_object *bo,
-			    bool evict, bool no_wait_gpu,
+			    bool evict,
 			    lg_ttm_mem_t *new_mem,
 			    lg_ttm_mem_t *old_mem)
 {
@@ -561,8 +561,7 @@ static int loonggpu_bo_move(struct ttm_buffer_object *bo, bool evict,
 	}
 
 	if (adev->mman.buffer_funcs_enabled)
-		r = loonggpu_move_blit(bo, evict, ctx->no_wait_gpu, new_mem,
-				    old_mem);
+		r = loonggpu_move_blit(bo, evict, new_mem, old_mem);
 	else
 		r = -ENODEV;
 
