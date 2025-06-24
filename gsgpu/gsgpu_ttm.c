@@ -610,11 +610,10 @@ static int gsgpu_bo_move(struct ttm_buffer_object *bo, bool evict,
 	abo = ttm_to_gsgpu_bo(bo);
 	adev = gsgpu_ttm_adev(bo->bdev);
 
-	if (!old_mem || (old_mem->mem_type == TTM_PL_SYSTEM && bo->ttm == NULL)) {
+	if (!old_mem || (old_mem->mem_type == TTM_PL_SYSTEM
+			 && bo->ttm == NULL)) {
 		gsgpu_move_null(bo, new_mem);
-		atomic64_add(lg_gbo_to_gem_obj(abo).size, &adev->num_bytes_moved);
-		gsgpu_bo_move_notify(bo, evict, new_mem);
-		return 0;
+		goto out;
 	}
 
 	if ((old_mem->mem_type == TTM_PL_TT &&
@@ -623,9 +622,7 @@ static int gsgpu_bo_move(struct ttm_buffer_object *bo, bool evict,
 	     new_mem->mem_type == TTM_PL_TT)) {
 		/* bind is enough */
 		gsgpu_move_null(bo, new_mem);
-		atomic64_add(lg_gbo_to_gem_obj(abo).size, &adev->num_bytes_moved);
-		gsgpu_bo_move_notify(bo, evict, new_mem);
-		return 0;
+		goto out;
 	}
 
 	if (!adev->mman.buffer_funcs_enabled)
@@ -659,6 +656,7 @@ memcpy:
 		abo->flags &= ~GSGPU_GEM_CREATE_CPU_ACCESS_REQUIRED;
 	}
 
+out:
 	/* update statistics */
 	atomic64_add(lg_gbo_to_gem_obj(abo).size, &adev->num_bytes_moved);
 	gsgpu_bo_move_notify(bo, evict, new_mem);
