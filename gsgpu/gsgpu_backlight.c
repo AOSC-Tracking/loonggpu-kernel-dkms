@@ -146,7 +146,7 @@ static int gsgpu_backlight_hw_request_init(struct gsgpu_backlight *ls_bl)
 	bool pwm_enable_default;
 	struct pwm_state state;
 	struct gsgpu_device *adev = ls_bl->driver_private;
-	const char pwm_name[10];
+	char pwm_name[16];
 
 	sprintf(pwm_name, "pwm%d", ls_bl->pwm_id);
 	ls_bl->pwm = lg_pwm_request(adev->ddev->dev, pwm_name, ls_bl->pwm_id, "Loongson_bl");
