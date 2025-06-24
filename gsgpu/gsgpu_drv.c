@@ -6,7 +6,13 @@
 #include <linux/delay.h>
 #include <linux/pci.h>
 #include <linux/delay.h>
+
+#if __has_include(<drm/clients/drm_client_setup.h>)
 #include <drm/clients/drm_client_setup.h>
+#else
+#include <drm/drm_client_setup.h>
+#endif
+
 #include <drm/drm_file.h>
 #include <drm/drm_drv.h>
 #include <drm/drm_device.h>
