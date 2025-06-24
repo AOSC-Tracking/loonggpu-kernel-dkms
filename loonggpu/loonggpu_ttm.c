@@ -610,6 +610,8 @@ out_cleanup:
 	return r;
 }
 
+static lg_ttm_backend_unbind_ret loonggpu_ttm_backend_unbind(lg_ttm_backend_func_arg);
+
 /**
  * loonggpu_bo_move - Move a buffer object to a new memory location
  *
@@ -643,13 +645,22 @@ static int loonggpu_bo_move(struct ttm_buffer_object *bo, bool evict,
 		goto out;
 	}
 
-	if ((old_mem->mem_type == TTM_PL_TT &&
-	     new_mem->mem_type == TTM_PL_SYSTEM) ||
-	    (old_mem->mem_type == TTM_PL_SYSTEM &&
-	     new_mem->mem_type == TTM_PL_TT)) {
+	if (old_mem->mem_type == TTM_PL_SYSTEM &&
+	    new_mem->mem_type == TTM_PL_TT) {
 		/* bind is enough */
 		loonggpu_move_null(bo, new_mem);
 		goto out;
+	}
+
+	if (old_mem->mem_type == TTM_PL_TT &&
+	    new_mem->mem_type == TTM_PL_SYSTEM) {
+		r = ttm_bo_wait_ctx(bo, ctx);
+		if (r)
+			return r;
+
+		loonggpu_ttm_backend_unbind(bo->bdev, bo->ttm);
+		loonggpu_move_null(bo, new_mem);
+		goto out; // XXX this is not in LG110, maybe a mistake
 	}
 
 	if (old_mem->mem_type == LOONGGPU_PL_DOORBELL ||
