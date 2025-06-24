@@ -152,27 +152,6 @@ static inline int lg_ttm_bo_pipeline_move(struct ttm_buffer_object *bo,
 	return r;
 }
 
-static inline int lg_ttm_tt_bind(struct ttm_buffer_object *bo, lg_ttm_mem_t *mem,
-				 struct ttm_operation_ctx *ctx)
-{
-#if defined(LG_TTM_TT_BIND)
-	return ttm_tt_bind(bo->ttm, mem, ctx);
-#else
-	int r;
-#if defined(LG_TTM_BO_POPULATE)
-	r = ttm_bo_populate(bo, ctx);
-#else
-	r = ttm_tt_populate(bo->bdev, bo->ttm, ctx);
-#endif
-	if (r)
-		return r;
-	r = loonggpu_ttm_backend_bind(bo->bdev, bo->ttm, mem);
-	if (r)
-		return r;
-	return r;
-#endif
-}
-
 static inline void lg_ttm_bo_mem_put(struct ttm_buffer_object *bo, lg_ttm_mem_t *mem)
 {
 #if defined(LG_TTM_BO_MEM_PUT) && defined(LG_DRM_TTM_TTM_BO_DRIVER_H_PRESENT)
