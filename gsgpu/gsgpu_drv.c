@@ -443,6 +443,8 @@ static int loongson_vga_pci_register(struct pci_dev *pdev,
 	pci_set_drvdata(pdev, dev);
 
 	ret = gsgpu_driver_load_kms(dev, ent->driver_data);
+	if (ret)
+		goto err_pci;
 
 retry_init:
 	ret = drm_dev_register(dev, pci_gpu_flags);
