@@ -360,7 +360,7 @@ static int loonggpu_vm_clear_bo(struct loonggpu_device *ldev,
 	if (r)
 		goto error_free;
 
-	r = loonggpu_job_submit(job, &vm->entity, LOONGGPU_FENCE_OWNER_UNDEFINED, &fence);
+	r = loonggpu_job_submit(job, &vm->entity, LOONGGPU_FENCE_OWNER_UNDEFINED, &fence, 0);
 	if (r)
 		goto error_free;
 
@@ -978,7 +978,7 @@ restart:
 		loonggpu_ring_pad_ib(ring, params.ib);
 		loonggpu_sync_resv(ldev, &job->sync, resv, LOONGGPU_SYNC_ALWAYS, LOONGGPU_FENCE_OWNER_VM, false);
 		WARN_ON(params.ib->length_dw > ndw);
-		r = loonggpu_job_submit(job, &vm->entity, LOONGGPU_FENCE_OWNER_VM, &fence);
+		r = loonggpu_job_submit(job, &vm->entity, LOONGGPU_FENCE_OWNER_VM, &fence, 0);
 		if (r)
 			goto error;
 
@@ -1235,7 +1235,7 @@ int loonggpu_vm_bo_update_mapping(struct loonggpu_device *ldev,
 
 	loonggpu_ring_pad_ib(ring, params.ib);
 	WARN_ON(params.ib->length_dw > ndw);
-	r = loonggpu_job_submit(job, &vm->entity, LOONGGPU_FENCE_OWNER_VM, &f);
+	r = loonggpu_job_submit(job, &vm->entity, LOONGGPU_FENCE_OWNER_VM, &f, 0);
 	if (r)
 		goto error_free;
 

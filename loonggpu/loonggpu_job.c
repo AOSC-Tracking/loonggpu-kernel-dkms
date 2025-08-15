@@ -54,7 +54,7 @@ int loonggpu_job_alloc(struct loonggpu_device *adev, unsigned num_ibs,
 		return 0;
 
 	return lg_drm_sched_job_init(&(*job)->base, &adev->mman.entity, 1,
-				  LOONGGPU_FENCE_OWNER_UNDEFINED);
+				  LOONGGPU_FENCE_OWNER_UNDEFINED, 0);
 #else
 	return 0;
 #endif
@@ -120,7 +120,7 @@ void loonggpu_job_free(struct loonggpu_job *job)
 }
 
 int loonggpu_job_submit(struct loonggpu_job *job, struct drm_sched_entity *entity,
-		      void *owner, struct dma_fence **f)
+		      void *owner, struct dma_fence **f, u64 client_id)
 {
 	enum drm_sched_priority priority;
 	struct loonggpu_ring *ring;
@@ -129,7 +129,7 @@ int loonggpu_job_submit(struct loonggpu_job *job, struct drm_sched_entity *entit
 	if (!f)
 		return -EINVAL;
 
-	r = lg_drm_sched_job_init(&job->base, entity, 1, owner);
+	r = lg_drm_sched_job_init(&job->base, entity, 1, owner, client_id);
 	if (r)
 		return r;
 	lg_drm_sched_job_arm(&job->base);
