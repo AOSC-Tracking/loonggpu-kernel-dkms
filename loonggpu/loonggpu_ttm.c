@@ -1971,7 +1971,7 @@ static int loonggpu_map_buffer(struct ttm_buffer_object *bo,
 		goto error_free;
 
 	r = loonggpu_job_submit(job, &adev->mman.entity,
-			      LOONGGPU_FENCE_OWNER_UNDEFINED, &fence);
+			      LOONGGPU_FENCE_OWNER_UNDEFINED, &fence, 0);
 	if (r)
 		goto error_free;
 
@@ -2043,7 +2043,7 @@ int loonggpu_copy_buffer(struct loonggpu_ring *ring, uint64_t src_offset,
 		r = loonggpu_job_submit_direct(job, ring, fence);
 	else
 		r = loonggpu_job_submit(job, &adev->mman.entity,
-				      LOONGGPU_FENCE_OWNER_UNDEFINED, fence);
+				      LOONGGPU_FENCE_OWNER_UNDEFINED, fence, 0);
 	if (r)
 		goto error_free;
 
@@ -2135,7 +2135,7 @@ int loonggpu_fill_buffer(struct loonggpu_bo *bo,
 	loonggpu_ring_pad_ib(ring, &job->ibs[0]);
 	WARN_ON(job->ibs[0].length_dw > num_dw);
 	r = loonggpu_job_submit(job, &adev->mman.entity,
-			      LOONGGPU_FENCE_OWNER_UNDEFINED, fence);
+			      LOONGGPU_FENCE_OWNER_UNDEFINED, fence, 0);
 	if (r)
 		goto error_free;
 
