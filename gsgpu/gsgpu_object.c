@@ -438,6 +438,7 @@ static int gsgpu_bo_do_create(struct gsgpu_device *adev,
 	if (bo == NULL)
 		return -ENOMEM;
 	drm_gem_private_object_init(adev->ddev, &lg_gbo_to_gem_obj(bo), size);
+	bo->tbo.base.funcs = &gsgpu_gem_object_funcs;
 	INIT_LIST_HEAD(&bo->shadow_list);
 	INIT_LIST_HEAD(&bo->va);
 	bo->preferred_domains = bp->preferred_domain ? bp->preferred_domain :
@@ -794,7 +795,7 @@ struct gsgpu_bo *gsgpu_bo_ref(struct gsgpu_bo *bo)
 	if (bo == NULL)
 		return NULL;
 
-	ttm_bo_get(&bo->tbo);
+	drm_gem_object_get(&bo->tbo.base);
 	return bo;
 }
 
@@ -806,13 +807,10 @@ struct gsgpu_bo *gsgpu_bo_ref(struct gsgpu_bo *bo)
  */
 void gsgpu_bo_unref(struct gsgpu_bo **bo)
 {
-	struct ttm_buffer_object *tbo;
-
 	if ((*bo) == NULL)
 		return;
 
-	tbo = &((*bo)->tbo);
-	ttm_bo_put(tbo);
+	drm_gem_object_put(&(*bo)->tbo.base);
 	*bo = NULL;
 }
 

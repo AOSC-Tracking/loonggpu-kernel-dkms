@@ -290,6 +290,8 @@ struct gsgpu_cs_post_dep {
 #define gem_to_gsgpu_bo(gobj) container_of((gobj), struct gsgpu_bo, gem_base)
 #endif
 
+extern const struct drm_gem_object_funcs gsgpu_gem_object_funcs;
+
 void gsgpu_gem_object_free(struct drm_gem_object *obj);
 int gsgpu_gem_object_open(struct drm_gem_object *obj,
 				struct drm_file *file_priv);
