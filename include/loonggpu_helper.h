@@ -432,7 +432,11 @@ static inline int lg_atomic_read_drm_open_count(struct drm_device *dev)
 
 #if defined(LG_DRM_SCHED_BACKEND_OPS_TIMEDOUT_JOB_RET_SCHED_STAT)
 #define lg_loonggpu_job_timedout_ret enum drm_gpu_sched_stat
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 17, 0)
+#define LG_DRM_GPU_SCHED_STAT_NOMINAL DRM_GPU_SCHED_STAT_RESET
+#else
 #define LG_DRM_GPU_SCHED_STAT_NOMINAL DRM_GPU_SCHED_STAT_NOMINAL
+#endif
 #else
 #define lg_loonggpu_job_timedout_ret void
 #define LG_DRM_GPU_SCHED_STAT_NOMINAL
