@@ -12,6 +12,7 @@
 
 #include "loonggpu_irq.h"
 #include "loonggpu_dc_irq.h"
+#include "loonggpu_display.h"
 
 struct loonggpu_bo;
 struct loonggpu_device;
@@ -156,6 +157,7 @@ int loonggpu_display_get_crtc_scanoutpos(struct drm_device *dev,
 
 int loonggpu_display_framebuffer_init(struct drm_device *dev,
 				   struct loonggpu_framebuffer *rfb,
+				   LOONGGPU_FB_CREATE_DRM_FORMAT_INFO
 				   const struct drm_mode_fb_cmd2 *mode_cmd,
 				   struct drm_gem_object *obj);
 
