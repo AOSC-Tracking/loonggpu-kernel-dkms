@@ -206,7 +206,7 @@ static int loonggpu_ttm_map_buffer(struct ttm_buffer_object *bo,
 	}
 
 	r = loonggpu_job_submit(job, &adev->mman.entity,
-			     LOONGGPU_FENCE_OWNER_UNDEFINED, &fence);
+			     LOONGGPU_FENCE_OWNER_UNDEFINED, &fence, 0);
 	if (r)
 		loonggpu_job_free(job);
 
@@ -271,7 +271,7 @@ static int loonggpu_ttm_fill_mem(struct loonggpu_ring *ring, uint32_t src_data,
 	loonggpu_ring_pad_ib(ring, &job->ibs[0]);
 	WARN_ON(job->ibs[0].length_dw > num_dw);
 	r = loonggpu_job_submit(job, &adev->mman.entity,
-			     LOONGGPU_FENCE_OWNER_UNDEFINED, fence);
+			     LOONGGPU_FENCE_OWNER_UNDEFINED, fence, 0);
 	if (r)
 		loonggpu_job_free(job);
 
