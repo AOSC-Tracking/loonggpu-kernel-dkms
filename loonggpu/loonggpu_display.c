@@ -288,6 +288,7 @@ uint32_t loonggpu_display_supported_domains(struct loonggpu_device *adev)
 
 int loonggpu_display_framebuffer_init(struct drm_device *dev,
 				    struct loonggpu_framebuffer *rfb,
+				    LOONGGPU_FB_CREATE_DRM_FORMAT_INFO
 				    const struct drm_mode_fb_cmd2 *mode_cmd,
 				    struct drm_gem_object *obj)
 {
@@ -295,7 +296,7 @@ int loonggpu_display_framebuffer_init(struct drm_device *dev,
 	rfb->base.obj[0] = obj;
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 17, 0)
-	drm_helper_mode_fill_fb_struct(dev, &rfb->base, NULL, mode_cmd);
+	drm_helper_mode_fill_fb_struct(dev, &rfb->base, info, mode_cmd);
 #else
 	drm_helper_mode_fill_fb_struct(dev, &rfb->base, mode_cmd);
 #endif
@@ -341,7 +342,12 @@ loonggpu_display_user_framebuffer_create(struct drm_device *dev,
 		return ERR_PTR(-ENOMEM);
 	}
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 17, 0)
+	ret = loonggpu_display_framebuffer_init(dev, loonggpu_fb, info, mode_cmd, obj);
+#else
 	ret = loonggpu_display_framebuffer_init(dev, loonggpu_fb, mode_cmd, obj);
+#endif
+
 	if (ret) {
 		kfree(loonggpu_fb);
 		lg_drm_gem_object_put(obj);
