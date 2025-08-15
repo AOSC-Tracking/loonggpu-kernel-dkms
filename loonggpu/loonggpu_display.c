@@ -293,7 +293,13 @@ int loonggpu_display_framebuffer_init(struct drm_device *dev,
 {
 	int ret;
 	rfb->base.obj[0] = obj;
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 17, 0)
+	drm_helper_mode_fill_fb_struct(dev, &rfb->base, NULL, mode_cmd);
+#else
 	drm_helper_mode_fill_fb_struct(dev, &rfb->base, mode_cmd);
+#endif
+
 	ret = drm_framebuffer_init(dev, &rfb->base, &loonggpu_fb_funcs);
 	if (ret) {
 		rfb->base.obj[0] = NULL;
