@@ -306,6 +306,8 @@ struct loonggpu_cs_post_dep {
 #define gem_to_loonggpu_bo(gobj) container_of((gobj), struct loonggpu_bo, gem_base)
 #endif
 
+extern const struct drm_gem_object_funcs loonggpu_gem_object_funcs;
+
 void loonggpu_gem_object_free(struct drm_gem_object *obj);
 int loonggpu_gem_object_open(struct drm_gem_object *obj,
 				struct drm_file *file_priv);

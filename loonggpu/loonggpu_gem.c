@@ -81,12 +81,11 @@ void loonggpu_gem_object_free(struct drm_gem_object *gobj)
 
 	if (robj) {
 		loonggpu_mn_unregister(robj);
-		loonggpu_bo_unref(&robj);
+		ttm_bo_put(&robj->tbo);
 	}
 }
 
-#if !defined(LG_DRM_DRIVER_HAS_GEM_FREE)
-static const struct drm_gem_object_funcs loonggpu_gem_object_funcs = {
+const struct drm_gem_object_funcs loonggpu_gem_object_funcs = {
 	.free = loonggpu_gem_object_free,
 	.open = loonggpu_gem_object_open,
 	.close = loonggpu_gem_object_close,
@@ -96,7 +95,6 @@ static const struct drm_gem_object_funcs loonggpu_gem_object_funcs = {
 	.mmap = loonggpu_gem_object_mmap,
 	.vm_ops = &loonggpu_gem_vm_ops,
 };
-#endif
 
 int loonggpu_gem_object_create(struct loonggpu_device *adev, unsigned long size,
 			     int alignment, u32 initial_domain,
@@ -142,9 +140,6 @@ retry:
 		return r;
 	}
 	*obj = &lg_gbo_to_gem_obj(bo);
-#if !defined(LG_DRM_DRIVER_HAS_GEM_FREE)
-	(*obj)->funcs = &loonggpu_gem_object_funcs;
-#endif
 	return 0;
 }
 
