@@ -1,10 +1,19 @@
 #ifndef __LOONGGPU_DISPLAY_H__
 #define __LOONGGPU_DISPLAY_H__
 
+#include <linux/version.h>
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 17, 0)
+#define LOONGGPU_FB_CREATE_DRM_FORMAT_INFO const struct drm_format_info *info,
+#else
+#define LOONGGPU_FB_CREATE_DRM_FORMAT_INFO
+#endif
+
 uint32_t loonggpu_display_supported_domains(struct loonggpu_device *adev);
 struct drm_framebuffer *
 loonggpu_display_user_framebuffer_create(struct drm_device *dev,
 				       struct drm_file *file_priv,
+				       LOONGGPU_FB_CREATE_DRM_FORMAT_INFO
 				       const struct drm_mode_fb_cmd2 *mode_cmd);
 int loonggpu_display_crtc_page_flip_target(struct drm_crtc *crtc,
                                 struct drm_framebuffer *fb,

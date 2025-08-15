@@ -305,6 +305,7 @@ int loonggpu_display_framebuffer_init(struct drm_device *dev,
 struct drm_framebuffer *
 loonggpu_display_user_framebuffer_create(struct drm_device *dev,
 				       struct drm_file *file_priv,
+				       LOONGGPU_FB_CREATE_DRM_FORMAT_INFO
 				       const struct drm_mode_fb_cmd2 *mode_cmd)
 {
 	struct drm_gem_object *obj;
