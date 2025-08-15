@@ -1814,7 +1814,7 @@ static int gsgpu_map_buffer(struct ttm_buffer_object *bo,
 		goto error_free;
 
 	r = gsgpu_job_submit(job, &adev->mman.entity,
-			      GSGPU_FENCE_OWNER_UNDEFINED, &fence);
+			      GSGPU_FENCE_OWNER_UNDEFINED, &fence, 0);
 	if (r)
 		goto error_free;
 
@@ -1886,7 +1886,7 @@ int gsgpu_copy_buffer(struct gsgpu_ring *ring, uint64_t src_offset,
 		r = gsgpu_job_submit_direct(job, ring, fence);
 	else
 		r = gsgpu_job_submit(job, &adev->mman.entity,
-				      GSGPU_FENCE_OWNER_UNDEFINED, fence);
+				      GSGPU_FENCE_OWNER_UNDEFINED, fence, 0);
 	if (r)
 		goto error_free;
 
@@ -1978,7 +1978,7 @@ int gsgpu_fill_buffer(struct gsgpu_bo *bo,
 	gsgpu_ring_pad_ib(ring, &job->ibs[0]);
 	WARN_ON(job->ibs[0].length_dw > num_dw);
 	r = gsgpu_job_submit(job, &adev->mman.entity,
-			      GSGPU_FENCE_OWNER_UNDEFINED, fence);
+			      GSGPU_FENCE_OWNER_UNDEFINED, fence, 0);
 	if (r)
 		goto error_free;
 

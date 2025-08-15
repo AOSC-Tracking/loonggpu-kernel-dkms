@@ -108,7 +108,7 @@ void gsgpu_job_free(struct gsgpu_job *job)
 }
 
 int gsgpu_job_submit(struct gsgpu_job *job, struct drm_sched_entity *entity,
-		      void *owner, struct dma_fence **f)
+		      void *owner, struct dma_fence **f, u64 client_id)
 {
 	enum drm_sched_priority priority;
 	struct gsgpu_ring *ring;
@@ -117,7 +117,7 @@ int gsgpu_job_submit(struct gsgpu_job *job, struct drm_sched_entity *entity,
 	if (!f)
 		return -EINVAL;
 
-	r = lg_drm_sched_job_init(&job->base, entity, 1, owner);
+	r = lg_drm_sched_job_init(&job->base, entity, 1, owner, client_id);
 	if (r)
 		return r;
 	lg_drm_sched_job_arm(&job->base);

@@ -312,7 +312,7 @@ static int gsgpu_vm_clear_bo(struct gsgpu_device *ldev,
 	if (r)
 		goto error_free;
 
-	r = gsgpu_job_submit(job, &vm->entity, GSGPU_FENCE_OWNER_UNDEFINED, &fence);
+	r = gsgpu_job_submit(job, &vm->entity, GSGPU_FENCE_OWNER_UNDEFINED, &fence, 0);
 	if (r)
 		goto error_free;
 
@@ -930,7 +930,7 @@ restart:
 		gsgpu_ring_pad_ib(ring, params.ib);
 		gsgpu_sync_resv(ldev, &job->sync, resv, GSGPU_SYNC_ALWAYS, GSGPU_FENCE_OWNER_VM, false);
 		WARN_ON(params.ib->length_dw > ndw);
-		r = gsgpu_job_submit(job, &vm->entity, GSGPU_FENCE_OWNER_VM, &fence);
+		r = gsgpu_job_submit(job, &vm->entity, GSGPU_FENCE_OWNER_VM, &fence, 0);
 		if (r)
 			goto error;
 
@@ -1187,7 +1187,7 @@ static int gsgpu_vm_bo_update_mapping(struct gsgpu_device *ldev,
 
 	gsgpu_ring_pad_ib(ring, params.ib);
 	WARN_ON(params.ib->length_dw > ndw);
-	r = gsgpu_job_submit(job, &vm->entity, GSGPU_FENCE_OWNER_VM, &f);
+	r = gsgpu_job_submit(job, &vm->entity, GSGPU_FENCE_OWNER_VM, &f, 0);
 	if (r)
 		goto error_free;
 

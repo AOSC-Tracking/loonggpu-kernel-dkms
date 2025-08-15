@@ -43,7 +43,7 @@ int gsgpu_job_alloc_with_ib(struct gsgpu_device *adev, unsigned size,
 void gsgpu_job_free_resources(struct gsgpu_job *job);
 void gsgpu_job_free(struct gsgpu_job *job);
 int gsgpu_job_submit(struct gsgpu_job *job, struct drm_sched_entity *entity,
-		      void *owner, struct dma_fence **f);
+		      void *owner, struct dma_fence **f, u64 client_id);
 int gsgpu_job_submit_direct(struct gsgpu_job *job, struct gsgpu_ring *ring,
 			     struct dma_fence **fence);
 

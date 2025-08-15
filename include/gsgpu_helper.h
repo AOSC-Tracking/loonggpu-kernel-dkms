@@ -1174,9 +1174,11 @@ static inline void lg_ring_sched_thread_unpark(struct gsgpu_ring *ring)
 
 static inline int lg_drm_sched_job_init(struct drm_sched_job *job,
 					struct drm_sched_entity *entity,
-					u32 credits, void *owner)
+					u32 credits, void *owner, u64 client_id)
 {
-#if defined(LG_DRM_SCHED_JOB_INIT_HAS_CREDITS)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 17, 0)
+	return drm_sched_job_init(job, entity, credits, owner, client_id);
+#elif defined(LG_DRM_SCHED_JOB_INIT_HAS_CREDITS)
 	return drm_sched_job_init(job, entity, credits, owner);
 #else
 	return drm_sched_job_init(job, entity, owner);

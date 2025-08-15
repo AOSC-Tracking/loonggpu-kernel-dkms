@@ -204,7 +204,7 @@ static int gsgpu_ttm_map_buffer(struct ttm_buffer_object *bo,
 	}
 
 	r = gsgpu_job_submit(job, &adev->mman.entity,
-			     GSGPU_FENCE_OWNER_UNDEFINED, &fence);
+			     GSGPU_FENCE_OWNER_UNDEFINED, &fence, 0);
 	if (r)
 		gsgpu_job_free(job);
 
@@ -269,7 +269,7 @@ static int gsgpu_ttm_fill_mem(struct gsgpu_ring *ring, uint32_t src_data,
 	gsgpu_ring_pad_ib(ring, &job->ibs[0]);
 	WARN_ON(job->ibs[0].length_dw > num_dw);
 	r = gsgpu_job_submit(job, &adev->mman.entity,
-			     GSGPU_FENCE_OWNER_UNDEFINED, fence);
+			     GSGPU_FENCE_OWNER_UNDEFINED, fence, 0);
 	if (r)
 		gsgpu_job_free(job);
 
