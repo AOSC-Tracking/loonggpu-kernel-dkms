@@ -122,7 +122,12 @@ static int gsgpufb_create_pinned_object(struct drm_fb_helper *fb_helper,
 	int height = mode_cmd->height;
 	u32 cpp;
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 17, 0)
+	info = drm_get_format_info(adev->ddev, mode_cmd->pixel_format,
+				   mode_cmd->modifier[0]);
+#else
 	info = drm_get_format_info(adev->ddev, mode_cmd);
+#endif
 	cpp = info->cpp[0];
 
 	/* need to align pitch with crtc limits */
