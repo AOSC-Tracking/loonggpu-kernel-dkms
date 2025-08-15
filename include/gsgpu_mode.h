@@ -12,6 +12,7 @@
 
 #include "gsgpu_irq.h"
 #include "gsgpu_dc_irq.h"
+#include "gsgpu_display.h"
 
 struct gsgpu_bo;
 struct gsgpu_device;
@@ -156,6 +157,7 @@ int gsgpu_display_get_crtc_scanoutpos(struct drm_device *dev,
 
 int gsgpu_display_framebuffer_init(struct drm_device *dev,
 				   struct gsgpu_framebuffer *rfb,
+				   GSGPU_FB_CREATE_DRM_FORMAT_INFO
 				   const struct drm_mode_fb_cmd2 *mode_cmd,
 				   struct drm_gem_object *obj);
 

@@ -108,12 +108,12 @@ int gsgpu_align_pitch(struct gsgpu_device *adev, int width, int cpp, bool tiled)
 }
 
 static int gsgpufb_create_pinned_object(struct drm_fb_helper *fb_helper,
+					GSGPU_FB_CREATE_DRM_FORMAT_INFO
 					struct drm_mode_fb_cmd2 *mode_cmd,
 					struct drm_gem_object **gobj_p)
 {
 	struct gsgpu_device *adev = fb_helper->dev->dev_private;
 	struct drm_gem_object *gobj = NULL;
-	const struct drm_format_info *info;
 	struct gsgpu_bo *abo = NULL;
 	bool fb_tiled = false; /* useful for testing */
 	u32 tiling_flags = 0, domain;
@@ -122,11 +122,9 @@ static int gsgpufb_create_pinned_object(struct drm_fb_helper *fb_helper,
 	int height = mode_cmd->height;
 	u32 cpp;
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 17, 0)
-	info = drm_get_format_info(adev->ddev, mode_cmd->pixel_format,
-				   mode_cmd->modifier[0]);
-#else
-	info = drm_get_format_info(adev->ddev, mode_cmd);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 17, 0)
+	const struct drm_format_info *info =
+		drm_get_format_info(adev->ddev, mode_cmd);
 #endif
 	cpp = info->cpp[0];
 
@@ -213,7 +211,16 @@ int gsgpu_driver_fbdev_probe(struct drm_fb_helper *helper,
 	mode_cmd.pixel_format = drm_mode_legacy_fb_format(sizes->surface_bpp,
 							  sizes->surface_depth);
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 17, 0)
+	const struct drm_format_info *format_info =
+		drm_get_format_info(adev->ddev, mode_cmd.pixel_format,
+				    mode_cmd.modifier[0]);
+	ret = gsgpufb_create_pinned_object(helper, format_info, &mode_cmd,
+					   &gobj);
+#else
 	ret = gsgpufb_create_pinned_object(helper, &mode_cmd, &gobj);
+#endif
+
 	if (ret) {
 		DRM_ERROR("failed to create fbcon object %d\n", ret);
 		return ret;
@@ -228,7 +235,10 @@ int gsgpu_driver_fbdev_probe(struct drm_fb_helper *helper,
 	}
 
 	ret = gsgpu_display_framebuffer_init(adev->ddev, to_gsgpu_framebuffer(fb),
-					      &mode_cmd, gobj);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 17, 0)
+					     format_info,
+#endif
+					     &mode_cmd, gobj);
 	if (ret) {
 		DRM_ERROR("failed to initialize framebuffer %d\n", ret);
 		goto err_kfree;
