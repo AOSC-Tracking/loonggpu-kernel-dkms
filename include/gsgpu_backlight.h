@@ -34,6 +34,7 @@ struct gsgpu_backlight {
 	void (*power)(struct gsgpu_backlight *ls_bl, bool enable);
 };
 
+#ifdef LG_GPIO_WORKS
 #define BACKLIGHT_DEFAULT_METHOD_CLOSE(ls_bl)\
 	do { \
 		ls_bl->hw_enabled = false;\
@@ -65,6 +66,12 @@ struct gsgpu_backlight {
 		BACKLIGHT_DEFAULT_METHOD_OPEN(ls_bl);\
 		ls_bl->hw_enabled = true; \
 	} while (0)
+#else /* LG_GPIO_WORKS */
+#define BACKLIGHT_DEFAULT_METHOD_CLOSE(ls_bl)
+#define BACKLIGHT_DEFAULT_METHOD_FORCE_CLOSE(ls_bl)
+#define BACKLIGHT_DEFAULT_METHOD_OPEN(ls_bl)
+#define BACKLIGHT_DEFAULT_METHOD_FORCE_OPEN(ls_bl)
+#endif
 
 int gsgpu_backlight_register(struct drm_connector *connector);
 int gsgpu_late_register(struct drm_connector *connector);

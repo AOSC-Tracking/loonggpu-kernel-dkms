@@ -10,8 +10,12 @@
 
 static bool gsgpu_backlight_get_hw_status(struct gsgpu_backlight *ls_bl)
 {
+#ifdef LG_GPIO_WORKS
 	return (gpio_get_value(GPIO_LCD_VDD) && gpio_get_value(GPIO_LCD_EN)
 		&& pwm_is_enabled(ls_bl->pwm));
+#else
+	return pwm_is_enabled(ls_bl->pwm);
+#endif
 }
 
 static void gsgpu_backlight_enable(struct gsgpu_backlight *ls_bl)
@@ -146,10 +150,23 @@ static int gsgpu_backlight_hw_request_init(struct gsgpu_backlight *ls_bl)
 	bool pwm_enable_default;
 	struct pwm_state state;
 	struct gsgpu_device *adev = ls_bl->driver_private;
-	char pwm_name[16];
 
-	sprintf(pwm_name, "pwm%d", ls_bl->pwm_id);
-	ls_bl->pwm = lg_pwm_request(adev->ddev->dev, pwm_name, ls_bl->pwm_id, "Loongson_bl");
+	if (ls_bl->pwm_id != 3) {
+		DRM_ERROR("Must use PWM3 for backlight\n");
+		goto ERROR_PWM;
+	}
+
+	/*
+	 * Note that we must patch the kernel ACPI initialization code to
+	 * register the name gsgpu_backlight using pwm_add_table to make
+	 * this work.  We cannot call pwm_add_table in this module as
+	 * pwm_add_table is only intended for board initialization and not
+	 * exported.  Even some dirty hack might allow us to call it from a
+	 * module, doing so would still cause a deadlock.
+	 *
+	 * See https://github.com/AOSC-Tracking/linux/commit/6ce646344dfb.
+	 */
+	ls_bl->pwm = pwm_get(adev->ddev->dev, "gsgpu_backlight");
 
 	if (IS_ERR(ls_bl->pwm)) {
 		DRM_ERROR("Failed to get the pwm chip\n");
@@ -171,6 +188,12 @@ static int gsgpu_backlight_hw_request_init(struct gsgpu_backlight *ls_bl)
 	if (pwm_enable_default)
 		pwm_enable(ls_bl->pwm);
 
+	/*
+	 * FIXME: The LCD backlight enable/disable and LCD power
+	 * enable/disable support is removed for now.  The upstream
+	 * kernel seems not able to find GPIO_LCD_VDD and GPIO_LCD_EN.
+	 */
+#ifdef LG_GPIO_WORKS
 	ret = gpio_request(GPIO_LCD_VDD, "GPIO_VDD");
 	if (ret) {
 		DRM_ERROR("EN request error!\n");
@@ -186,15 +209,18 @@ static int gsgpu_backlight_hw_request_init(struct gsgpu_backlight *ls_bl)
 	/* gpio init */
 	gpio_direction_output(GPIO_LCD_VDD, 1);
 	gpio_direction_output(GPIO_LCD_EN, 1);
+#endif
 
 	gsgpu_backlight_power(ls_bl, 0);
 
 	return ret;
 
+#ifdef LG_GPIO_WORKS
 ERROR_EN:
 	gpio_free(GPIO_LCD_VDD);
 ERROR_VDD:
 	lg_pwm_free(ls_bl->pwm);
+#endif
 ERROR_PWM:
 	return -ENODEV;
 }
