@@ -71,7 +71,8 @@ $(foreach _module, $(LG_KERNEL_MODULES), \
 EXTRA_CFLAGS += -I$(src)/
 EXTRA_CFLAGS += -I$(src)/include
 EXTRA_CFLAGS += -I$(src)/common/inc
-EXTRA_CFLAGS += -I$(src)/gsgpu-bridge/
+EXTRA_CFLAGS += -I$(src)/loonggpu-bridge/
+EXTRA_CFLAGS += -I$(src)/lgkcd/
 EXTRA_CFLAGS += -Wall $(DEFINES) $(INCLUDES) -Wno-cast-qual -Wno-error -Wno-format-extra-args
 EXTRA_CFLAGS += -D__KERNEL__ -DMODULE -DNVRM
 EXTRA_CFLAGS += -DLG_VERSION_STRING=\"2024.01.16\"
@@ -266,6 +267,7 @@ LG_HEADER_PRESENCE_TESTS = \
  generated/autoconf.h \
  generated/compile.h \
  generated/utsrelease.h \
+ linux/aperture.h \
  linux/efi.h \
  linux/kconfig.h \
  linux/platform/tegra/mc_utils.h \
@@ -281,6 +283,7 @@ LG_HEADER_PRESENCE_TESTS = \
  linux/sched/task.h \
  linux/sched/task_stack.h \
  linux/reservation.h \
+ linux/device/class.h \
  xen/ioemu.h \
  linux/fence.h \
  linux/dma-fence.h \

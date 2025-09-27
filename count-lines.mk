@@ -8,10 +8,10 @@ count:
 # Include the top-level makefile to get $(LG_KERNEL_MODULES)
 include Makefile
 
-# Set $(src) for the to-be-included gsgpu*.Kbuild files
+# Set $(src) for the to-be-included loonggpu*.Kbuild files
 src := $(CURDIR)
 
-# Include gsgpu*.Kbuild and append the gsgpu*-y objects to ALL_OBJECTS
+# Include loonggpu*.Kbuild and append the loonggpu*-y objects to ALL_OBJECTS
 $(foreach _module, $(LG_KERNEL_MODULES),          \
      $(eval include $(_module)/$(_module).Kbuild) \
  )

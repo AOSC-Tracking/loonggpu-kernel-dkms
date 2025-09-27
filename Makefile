@@ -3,7 +3,7 @@
 #
 
 ###########################################################################
-# Makefile for Loongson Linux GSGPU driver kernel modules
+# Makefile for Loongson Linux LOONGGPU driver kernel modules
 ###########################################################################
 
 # This makefile is read twice: when a user or loongson-installer invokes
@@ -61,7 +61,7 @@ else
     )
   endif
 
-  LG_KERNEL_MODULES ?= $(wildcard gsgpu gsgpu-bridge)
+  LG_KERNEL_MODULES ?= $(wildcard loonggpu loonggpu-bridge)
   LG_KERNEL_MODULES := $(filter-out $(LG_EXCLUDE_KERNEL_MODULES), \
                                     $(LG_KERNEL_MODULES))
   LG_VERBOSE ?=
@@ -75,7 +75,7 @@ else
   KBUILD_PARAMS += LG_KERNEL_SOURCES=$(KERNEL_SOURCES)
   KBUILD_PARAMS += LG_KERNEL_OUTPUT=$(KERNEL_OUTPUT)
   KBUILD_PARAMS += LG_KERNEL_MODULES="$(LG_KERNEL_MODULES)"
-  KBUILD_PARAMS += INSTALL_MOD_DIR=kernel/drivers/gpu/drm/gsgpu/gpu
+  KBUILD_PARAMS += INSTALL_MOD_DIR=kernel/drivers/gpu/drm/loonggpu/gpu
   KBUILD_PARAMS += LG_SPECTRE_V2=$(SPECTRE_V2_RETPOLINE)
 
   .PHONY: modules module clean clean_conftest modules_install

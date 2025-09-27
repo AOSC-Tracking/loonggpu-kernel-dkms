@@ -516,6 +516,25 @@ compile_test() {
             compile_check_conftest "$CODE" "LG_DRM_SCHED_STOP_PRESENT" "" "functions"
         ;;
 
+        ttm_bo_populate)
+            #
+            # Determine if the ttm_bo_populate() function is present.
+            #
+            # commit id: fc5d96670eb2540d2572a14351e82ffe45d5ac11
+            # commit msg: drm/ttm: Move swapped objects off the manager's LRU list
+            # in v6.13-rc1
+            #
+            CODE="
+            #include <drm/ttm/ttm_bo.h>
+            typeof(ttm_bo_populate) conftest_ttm_bo_populate;
+            int conftest_ttm_bo_populate(struct ttm_buffer_object *bo,
+                                         struct ttm_operation_ctx *ctx) {
+                return 0;
+            }"
+
+            compile_check_conftest "$CODE" "LG_TTM_BO_POPULATE" "" "type"
+        ;;
+
         drm_sched_job_cleanup)
             #
             # Determine if the drm_sched_job_cleanup() function is present.
@@ -874,6 +893,57 @@ compile_test() {
             compile_check_conftest "$CODE" "LG_TTM_BUFFER_OBJECT_HAS_BASE" "" "types"
         ;;
 
+        mode_config_has_fb_modifiers)
+            #
+            # Determine if the mode_config has an fb_modifiers_not_supported member.
+            #
+            # Added by commit 2af104290da5e4858e8caefa068827d7392c6a09
+            # ("drm: introduce fb_modifiers_not_supported flag in mode_config")
+            # in vLinux 5.17-rc3.
+            CODE="
+            #include <drm/drm_mode_config.h>
+            int conftest_mode_config_has_fb_modifiers(void) {
+                return offsetof(struct drm_mode_config, fb_modifiers_not_supported);
+            }"
+
+            compile_check_conftest "$CODE" "LG_MODE_CONFIG_HAS_FB_MODIFIERS" "" "types"
+        ;;
+
+        dma_resv_replace_fences)
+            #
+            # Determine if the dma_resv_replace_fences() exist.
+            #
+            # Added by commit 548e7432dc2da475a18077b612e8d55b8ff51891
+            # ("dma-buf: add dma_resv_replace_fences v2")
+            # in v5.18-rc1
+            CODE="
+            #include <linux/dma-resv.h>
+            typeof(dma_resv_replace_fences) conftest_dma_resv_replace_fences;
+            void conftest_dma_resv_replace_fences(struct dma_resv *obj, uint64_t context,
+                                                  struct dma_fence *fence,
+                                                  enum dma_resv_usage usage) {
+                return;
+            }"
+
+            compile_check_conftest "$CODE" "LG_DMA_RESV_REPLACE_FENCES" "" "types"
+        ;;
+
+        kobj_type_has_attr_group)
+            #
+            # Determine if the kobj_type has attribute_group member.
+            #
+            # Added by commit 980c05616e5d554c46176fe08b5601801f2f8192
+            # ("driver core: make sysfs_dev_char_kobj static")
+            # in v6.3-rc5.
+            CODE="
+            #include <linux/kobject.h>
+            int conftest_kobj_type_has_attr_group(void) {
+                return offsetof(struct kobj_type, default_groups);
+            }"
+
+            compile_check_conftest "$CODE" "LG_KOBJ_TYPE_HAS_ATTR_GROUP" "" "types"
+        ;;
+
         ttm_placement_has_busy_placement)
             #
             # Determine if the ttm_placement has an busy_placement member.
@@ -1006,6 +1076,72 @@ compile_test() {
             compile_check_conftest "$CODE" "LG_DRM_BUDDY_FREE_LIST_HAS_FLAGS" "" "types"
         ;;
 
+        zone_managed_pages)
+            #
+            # Determine if zone_managed_pages exist.
+            #
+            # Changed by commit 8b5989f3333717273d02ab87ba8781f72a6783ab
+            # arm: implement the new page table range API") in v5.1
+            #
+            CODE="
+            #include <linux/mmzone.h>
+            typeof(zone_managed_pages) conftest_zone_managed_pages;
+            unsigned long conftest_zone_managed_pages(struct zone *zone) {
+                return 1;
+            }"
+            compile_check_conftest "$CODE" "LG_ZONE_MANAGED_PAGES" "" "types"
+        ;;
+
+        use_mm)
+            #
+            # Determine if use_mm exist.
+            #
+            # Changed by commit 02bf43c7b7f7a19aa59a75f5244f0a3408bace1a
+            # fs.xattr.simple.rework.rbtree.rwlock.v6.2") in v6.2-rc1
+            #
+            CODE="
+            #include <linux/mmu_context.h>
+            typeof(use_mm) conftest_use_mm;
+            void conftest_use_mm(struct mm_struct *mm) {
+                return;
+            }"
+            compile_check_conftest "$CODE" "LG_USE_MM" "" "types"
+        ;;
+
+        vm_flags_set)
+            #
+            # Determine if vm_flags_set exist.
+            #
+            # Changed by commit 8b5989f3333717273d02ab87ba8781f72a6783ab
+            # arm: implement the new page table range API") in v6.5
+            #
+            CODE="
+            #include <linux/mm.h>
+            typeof(vm_flags_set) conftest_vm_flags_set;
+            void conftest_vm_flags_set(struct vm_area_struct *vma,
+                                       vm_flags_t flags) {
+                return;
+            }"
+            compile_check_conftest "$CODE" "LG_VM_FLAGS_SET" "" "types"
+        ;;
+
+
+        sysfs_emit)
+            #
+            # Determine if sysfs_emit exist.
+            #
+            # Changed by commit 8b5989f3333717273d02ab87ba8781f72a6783ab
+            # arm: implement the new page table range API") in v5.1
+            #
+            CODE="
+            #include <linux/sysfs.h>
+            typeof(sysfs_emit) conftest_sysfs_emit;
+            int conftest_sysfs_emit(char *buf, const char *fmt, ...) {
+                return 0;
+            }"
+            compile_check_conftest "$CODE" "LG_SYSFS_EMIT" "" "types"
+        ;;
+
         drm_buddy_block_trim_has_start)
             #
             # Determine if drm_buddy_block_trim has start arg.
@@ -1110,9 +1246,9 @@ compile_test() {
             compile_check_conftest "$CODE" "LG_DRM_CRTC_STATE_HAS_ASYNC_FLIP" "" "types"
         ;;
 
-        drm_mode_config_funcs_has_output_pull_changed)
+        drm_mode_config_funcs_has_output_poll_changed)
             #
-            # Determine if the drm_mode_config_funcs has output_pull_changed member.
+            # Determine if the drm_mode_config_funcs has output_poll_changed member.
             #
             # Added by commit 446d0f4849b101bfc35c0d00835c3e3a4804616d ("
             # drm: Remove struct drm_mode_config_funcs.output_poll_changed
@@ -1120,11 +1256,11 @@ compile_test() {
             #
             CODE="
             #include <drm/drm_mode_config.h>
-            int conftest_drm_mode_config_funcs_has_output_pull_changed(void) {
-                return offsetof(struct drm_mode_config_funcs, output_pull_changed);
+            int conftest_drm_mode_config_funcs_has_output_poll_changed(void) {
+                return offsetof(struct drm_mode_config_funcs, output_poll_changed);
             }"
 
-            compile_check_conftest "$CODE" "LG_DRM_MODE_CFG_FUNC_HAS_OUTPUT_PULL_CHANGED" "" "types"
+            compile_check_conftest "$CODE" "LG_DRM_MODE_CFG_FUNC_HAS_OUTPUT_POLL_CHANGED" "" "types"
         ;;
 
         drm_driver_has_lastclose)
@@ -1561,7 +1697,7 @@ compile_test() {
             # merge offset and base in ttm_bus_placement") in v5.9-rc4
             #
             CODE="
-            #include <drm/ttm/ttm_placement.h>
+            #include <drm/ttm/ttm_bo_api.h>
             int conftest_ttm_bus_placement_has_size(void) {
                 return offsetof(struct ttm_bus_placement, size);
             }"

@@ -1,0 +1,40 @@
+# SPDX-License-Identifier: MIT
+#
+# Virtual device driver configuration
+#
+
+config VDD_LOONGSON
+	bool "VDD kernel driver for LOONGSON GPU devices"
+	depends on DRM_LOONGGPU && (LOONGARCH)
+	default y
+	select MMU_NOTIFIER
+	select DRM_LOONGGPU_USERPTR
+	help
+	  Enable this if you want to use VDD features on LOONGSON GPU devices.
+
+config VDD_LOONGSON_SVM
+	bool "Enable HMM-based shared virtual memory manager"
+	depends on VDD_LOONGSON && DEVICE_PRIVATE
+	default y
+	select HMM_MIRROR
+	select MMU_NOTIFIER
+	help
+	  Enable this to use unified memory and managed memory in HIP. This
+	  memory manager supports two modes of operation. One based on
+	  preemptions and one based on page faults. To enable page fault
+	  based memory management on most LG200 GPUs, set the module
+	  parameter loonggpu.noretry=0.
+
+config VDD_LOONGSON_P2P
+	bool "VDD kernel driver support for peer-to-peer for LOONGSON GPU devices"
+	depends on VDD_LOONGSON && PCI_P2PDMA && DMABUF_MOVE_NOTIFY
+	help
+	  Enable peer-to-peer (P2P) communication between LOONGSON GPUs over
+	  the PCIe bus. This can improve performance of multi-GPU compute
+	  applications and libraries by enabling GPUs to access data directly
+	  in peer GPUs' memory without intermediate copies in system memory.
+
+	  This P2P feature is only enabled on compatible chipsets, and between
+	  GPUs with large memory BARs that expose the entire VRAM in PCIe bus
+	  address space within the physical address limits of the GPUs.
+
