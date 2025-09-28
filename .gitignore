@@ -6,3 +6,7 @@
 *.symvers
 *.order
 conftest
+
+# analysis output from clang
+/.cache
+compile_commands.json
