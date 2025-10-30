@@ -9,8 +9,10 @@
 include $(src)/gsgpu/gsgpu-sources.Kbuild
 include $(src)/gsgpu-bridge/gsgpu-bridge.Kbuild
 
+ifndef CONFIG_PAGE_SIZE_4KB
 GSGPU_OBJECTS = $(patsubst %.c,%.o,$(GSGPU_SOURCES))
 GSGPU_BRIDGE_OBJECTS = $(patsubst %.c,%.o,$(GSGPU_BRIDGE_SOURCES))
+endif
 
 obj-m += loonggpu.o
 loonggpu-y := $(GSGPU_OBJECTS)
