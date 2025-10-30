@@ -10,9 +10,11 @@ include $(src)/loonggpu/loonggpu-sources.Kbuild
 include $(src)/loonggpu-bridge/loonggpu-bridge.Kbuild
 include $(src)/lgkcd/lgkcd.Kbuild
 
+ifndef CONFIG_PAGE_SIZE_4KB
 LOONGGPU_OBJECTS = $(patsubst %.c,%.o,$(LOONGGPU_SOURCES))
 LOONGGPU_BRIDGE_OBJECTS = $(patsubst %.c,%.o,$(LOONGGPU_BRIDGE_SOURCES))
 LGKCD_OBJECTS = $(patsubst %.c,%.o,$(LGKCD_SOURCES))
+endif
 
 obj-m += loonggpu.o
 loonggpu-y := $(LOONGGPU_OBJECTS)
