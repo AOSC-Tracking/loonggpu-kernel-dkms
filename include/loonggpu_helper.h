@@ -1062,6 +1062,8 @@ static inline void lg_ttm_unmap_and_unpopulate_pages(struct loonggpu_device *ade
 #if defined(LG_DRM_TTM_TTM_PAGE_ALLOC_H_PRESENT)
 	ttm_unmap_and_unpopulate_pages(adev->dev, ttm);
 #else
+	for (pgoff_t i = 0; i < ttm->num_pages; i++)
+		ttm->pages[i]->mapping = NULL;
 	ttm_pool_free(&adev->mman.bdev.pool, ttm);
 #endif
 }
