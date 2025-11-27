@@ -5,7 +5,7 @@
 
 config VDD_LOONGSON
 	bool "VDD kernel driver for LOONGSON GPU devices"
-	depends on DRM_LOONGGPU && (LOONGARCH)
+	depends on DRM_LOONGGPU && (LOONGARCH) && BROKEN
 	default y
 	select MMU_NOTIFIER
 	select DRM_LOONGGPU_USERPTR

@@ -11,7 +11,7 @@ enum loonggpu_mn_type {
 	LOONGGPU_MN_TYPE_VDD,
 };
 
-#if defined(CONFIG_MMU_NOTIFIER)
+#if 0 // MMU_NOTIFIER
 void loonggpu_mn_lock(struct loonggpu_mn *mn);
 void loonggpu_mn_unlock(struct loonggpu_mn *mn);
 struct loonggpu_mn *loonggpu_mn_get(struct loonggpu_device *adev,

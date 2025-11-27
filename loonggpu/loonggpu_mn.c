@@ -1,4 +1,4 @@
-#ifdef CONFIG_MMU_NOTIFIER
+#if 0 // MMU_NOTIFIER
 #include <linux/firmware.h>
 #include <linux/module.h>
 #include <linux/mmu_notifier.h>
