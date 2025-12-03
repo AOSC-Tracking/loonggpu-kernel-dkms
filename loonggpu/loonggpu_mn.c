@@ -1,3 +1,4 @@
+#ifdef CONFIG_MMU_NOTIFIER
 #include <linux/firmware.h>
 #include <linux/module.h>
 #include <linux/mmu_notifier.h>
@@ -512,3 +513,4 @@ void loonggpu_mn_unregister(struct loonggpu_bo *bo)
 	mutex_unlock(&adev->mn_lock);
 }
 
+#endif

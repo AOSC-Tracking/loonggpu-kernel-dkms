@@ -1061,11 +1061,13 @@ static void kcd_process_notifier_release_internal(struct kcd_process *p)
 	mm = p->mm;
 	p->mm = NULL;
 
+#ifdef CONFIG_MMU_NOTIFIER
 #if defined(LG_MMU_NOTIFIER_UNREGISTER_NO_RELEASE)
 	mmu_notifier_unregister_no_release(&p->mmu_notifier, mm);
 	mmu_notifier_call_srcu(&p->rcu, &kcd_process_destroy_delayed);
 #else
 	mmu_notifier_put(&p->mmu_notifier);
+#endif
 #endif
 }
 
@@ -1232,11 +1234,13 @@ static struct kcd_process *create_process(const struct task_struct *thread)
 	 */
 	kref_get(&process->ref);
 
+#ifdef CONFIG_MMU_NOTIFIER
 	/* Must be last, have to use release destruction after this */
 	process->mmu_notifier.ops = &kcd_process_mmu_notifier_ops;
 	err = mmu_notifier_register(&process->mmu_notifier, process->mm);
 	if (err)
 		goto err_register_notifier;
+#endif
 
 	kcd_unref_process(process);
 	get_task_struct(process->lead_thread);
