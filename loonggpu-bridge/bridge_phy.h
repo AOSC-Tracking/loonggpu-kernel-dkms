@@ -7,6 +7,7 @@
 #include <linux/pwm.h>
 #include <linux/regmap.h>
 #include <linux/hdmi.h>
+#include <linux/version.h>
 #include <drm/drm_edid.h>
 #include <drm/drm_bridge.h>
 #include <drm/drm_connector.h>
@@ -165,7 +166,7 @@ struct bridge_phy_cfg_funcs {
 			     const struct drm_display_mode *mode,
 			     const struct drm_display_mode *adj_mode);
 	enum drm_mode_status (*mode_valid)(struct drm_connector *connector,
-					   struct drm_display_mode *mode);
+					   const struct drm_display_mode *mode);
 };
 
 struct bridge_phy_misc_funcs {

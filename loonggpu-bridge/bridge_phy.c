@@ -99,7 +99,7 @@ static int bridge_phy_connector_get_modes(struct drm_connector *connector)
 	return count;
 }
 
-static bool is_resolution_valid(struct panel_resource *panel_resource, struct drm_display_mode *mode)
+static bool is_resolution_valid(struct panel_resource *panel_resource, const struct drm_display_mode *mode)
 {
 	u32 vrefresh = 0;
 	u32 index;

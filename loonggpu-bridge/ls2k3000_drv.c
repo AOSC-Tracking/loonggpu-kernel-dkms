@@ -153,7 +153,7 @@ static struct bridge_phy_hpd_funcs ls2k3000_hpd_funcs = {
 };
 
 static enum drm_mode_status ls2k3000_mode_valid(struct drm_connector *connector,
-					      struct drm_display_mode *mode)
+					        const struct drm_display_mode *mode)
 {
 	if (mode->hdisplay > 4096 ||
 	    mode->vdisplay > 2160 ||
