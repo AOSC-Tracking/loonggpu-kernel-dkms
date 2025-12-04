@@ -130,7 +130,7 @@ static bool is_resolution_valid(struct panel_resource *panel_resource, const str
 
 static enum drm_mode_status
 bridge_phy_connector_mode_valid(struct drm_connector *connector,
-				struct drm_display_mode *mode)
+				MODE_VALID_CONST struct drm_display_mode *mode)
 {
 	struct loonggpu_device *adev = connector->dev->dev_private;
 	struct loonggpu_bridge_phy *phy =
@@ -307,7 +307,16 @@ void bridge_phy_mode_set(struct loonggpu_bridge_phy *phy,
 	__bridge_phy_mode_set(phy, mode, adj_mode);
 }
 
-static int bridge_phy_attach (lg_bridge_phy_attach_args)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 16, 0)
+#define lg_bridge_phy_attach_args_1 \
+	struct drm_bridge *bridge, \
+	struct drm_encoder *encoder, \
+	enum drm_bridge_attach_flags flags
+#else
+#define lg_bridge_phy_attach_args_1 lg_bridge_phy_attach_args
+#endif
+
+static int bridge_phy_attach (lg_bridge_phy_attach_args_1)
 {
 	struct loonggpu_bridge_phy *phy = to_bridge_phy(bridge);
 	struct loonggpu_connector *lconnector;

@@ -21,6 +21,12 @@
 #define to_bridge_phy(drm_bridge)                                            \
 	container_of(drm_bridge, struct loonggpu_bridge_phy, bridge)
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 15, 0)
+#define MODE_VALID_CONST const
+#else
+#define MODE_VALID_CONST
+#endif
+
 struct loonggpu_bridge_phy;
 
 struct loonggpu_dc_bridge {
