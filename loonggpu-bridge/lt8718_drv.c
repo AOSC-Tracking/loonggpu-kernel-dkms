@@ -624,7 +624,7 @@ static int lt8718_video_output(struct loonggpu_bridge_phy *phy)
 }
 
 static enum drm_mode_status lt8718_mode_valid(struct drm_connector *connector,
-					      struct drm_display_mode *mode)
+					      const struct drm_display_mode *mode)
 {
         if (mode->hdisplay == 1680 && mode->vdisplay == 1050)
             return MODE_BAD;

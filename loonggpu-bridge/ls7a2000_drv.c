@@ -100,7 +100,7 @@ static struct bridge_phy_hpd_funcs ls7a2000_hpd_funcs = {
 };
 
 static enum drm_mode_status ls7a2000_mode_valid(struct drm_connector *connector,
-					      struct drm_display_mode *mode)
+					        const struct drm_display_mode *mode)
 {
 	if (mode->hdisplay > 4096 ||
 			mode->hdisplay == 1680 ||

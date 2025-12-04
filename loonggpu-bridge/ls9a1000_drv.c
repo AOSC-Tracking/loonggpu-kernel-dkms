@@ -98,7 +98,7 @@ static struct bridge_phy_ddc_funcs ls9a1000_ddc_funcs = {
 };
 
 static enum drm_mode_status ls9a1000_mode_valid(struct drm_connector *connector,
-					      struct drm_display_mode *mode)
+					      const struct drm_display_mode *mode)
 {
 	if (mode->hdisplay > 640 || mode->vdisplay > 480)
 		return MODE_BAD;
