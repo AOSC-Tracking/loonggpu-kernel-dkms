@@ -759,10 +759,12 @@ struct loonggpu_bridge_phy *bridge_phy_alloc(struct loonggpu_dc_bridge *dc_bridg
 	struct connector_resource *connector_res =
 			dc_bridge->adev->dc->link_info[index].connector;
 
-	bridge_phy = kzalloc(sizeof(*bridge_phy), GFP_KERNEL);
+	bridge_phy = devm_drm_bridge_alloc(dc_bridge->adev->dev,
+					   struct loonggpu_bridge_phy,
+					   bridge, &bridge_funcs);
 	if (IS_ERR(bridge_phy)) {
 		DRM_ERROR("Failed to alloc loonggpu bridge phy!\n");
-		return NULL;
+		return bridge_phy;
 	}
 
 	bridge_phy->display_pipe_index = dc_bridge->display_pipe_index;
