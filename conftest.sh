@@ -1112,22 +1112,6 @@ compile_test() {
             compile_check_conftest "$CODE" "LG_DRM_SCHED_JOB_INIT_HAS_CREDITS" "" "types"
         ;;
 
-        drm_crtc_state_has_async_flip)
-            #
-            # Determine if the drm_crtc_state has an async_flip member.
-            #
-            # Added by commit 4d85f45c73a2 ("drm/atomic: Rename
-            # crtc_state->pageflip_flags to async_flip") in v5.4-rc1.
-            #
-            CODE="
-            #include <drm/drm_crtc.h>
-            int conftest_drm_crtc_state_has_async_flip(void) {
-                return offsetof(struct drm_crtc_state, async_flip);
-            }"
-
-            compile_check_conftest "$CODE" "LG_DRM_CRTC_STATE_HAS_ASYNC_FLIP" "" "types"
-        ;;
-
         drm_mode_config_funcs_has_output_pull_changed)
             #
             # Determine if the drm_mode_config_funcs has output_pull_changed member.

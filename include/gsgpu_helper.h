@@ -242,11 +242,7 @@ static inline void lg_ttm_validate_buffer_set_shared(struct ttm_validate_buffer 
  */
 static inline bool lg_drm_crtc_state_async_flip(struct drm_crtc_state *state)
 {
-#if defined(LG_DRM_CRTC_STATE_HAS_ASYNC_FLIP)
 	return state->async_flip;
-#else
-	return (state->pageflip_flags & DRM_MODE_PAGE_FLIP_ASYNC);
-#endif
 }
 
 /*

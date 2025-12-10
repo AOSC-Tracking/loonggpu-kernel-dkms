@@ -109,7 +109,6 @@ LG_CONFTEST_TYPE_COMPILE_TESTS += drm_hdmi_avi_infoframe_from_display_mode_const
 LG_CONFTEST_TYPE_COMPILE_TESTS += ttm_buffer_object_has_base
 LG_CONFTEST_TYPE_COMPILE_TESTS += drm_driver_has_gem_prime_res_obj
 LG_CONFTEST_TYPE_COMPILE_TESTS += ttm_validate_buffer_has_num_shared
-LG_CONFTEST_TYPE_COMPILE_TESTS += drm_crtc_state_has_async_flip
 LG_CONFTEST_TYPE_COMPILE_TESTS += drm_driver_gem_prime_export_has_dev_arg
 LG_CONFTEST_TYPE_COMPILE_TESTS += loongson_screen_state
 LG_CONFTEST_TYPE_COMPILE_TESTS += drm_connector_for_each_possible_encoder
