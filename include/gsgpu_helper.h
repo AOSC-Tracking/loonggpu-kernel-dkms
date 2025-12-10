@@ -316,19 +316,8 @@ static inline int lg_drm_bridge_attach(struct drm_encoder *encoder,
 					struct drm_bridge *previous,
 					int flags)
 {
-#if defined(LG_DRM_BRIDGE_ATTACH_HAS_FLAGS_ARG)
 	return drm_bridge_attach(encoder, bridge, previous, (enum drm_bridge_attach_flags)flags);
-#else
-	return drm_bridge_attach(encoder, bridge, previous);
-#endif
 }
-
-
-#if defined(LG_DRM_BRIDGE_ATTACH_HAS_FLAGS_ARG)
-#define lg_bridge_phy_attach_args struct drm_bridge *bridge, enum drm_bridge_attach_flags flags
-#else
-#define lg_bridge_phy_attach_args struct drm_bridge *bridge
-#endif
 
 #if defined(LG_DRM_CRTC_HELPER_FUNCS_HAS_GET_SCANOUT_POSITION)
 #define lg_get_scanout_position_setting(func) .get_scanout_position = func

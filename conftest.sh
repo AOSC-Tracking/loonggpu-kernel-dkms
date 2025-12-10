@@ -1221,24 +1221,6 @@ compile_test() {
             compile_check_conftest "$CODE" "LG_DRM_CONNECTOR_FOR_EACH_POSSIBLE_ENCODER_HAS_I" "" "types"
         ;;
 
-        drm_bridge_attach)
-            #
-            # Determine if the drm_bridge_attach() function has the flags argument.
-            #
-            # Changed by commit a25b988ff83f3ca0d8f5acf855fb1717c1c61a69 ("drm/bridge:
-            # Extend bridge API to disable connector creation") in v5.6-rc3.
-            #
-            CODE="
-            #include <drm/drm_bridge.h>
-            #include <drm/drm_encoder.h>
-            int conftest_drm_bridge_attach(struct drm_encoder *encoder, struct drm_bridge *bridge,
-                                           struct drm_bridge *previous,
-                                           enum drm_bridge_attach_flags flags) {
-                return drm_bridge_attach(encoder, bridge, previous, flags);
-            }"
-            compile_check_conftest "$CODE" "LG_DRM_BRIDGE_ATTACH_HAS_FLAGS_ARG" "" "types"
-        ;;
-
         drm_sched_priority)
             #
             # Determine if drm_sched_priority structure contains the DRM_SCHED_PRIORITY_COUNT.

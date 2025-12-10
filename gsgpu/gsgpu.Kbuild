@@ -112,7 +112,6 @@ LG_CONFTEST_TYPE_COMPILE_TESTS += ttm_validate_buffer_has_num_shared
 LG_CONFTEST_TYPE_COMPILE_TESTS += drm_driver_gem_prime_export_has_dev_arg
 LG_CONFTEST_TYPE_COMPILE_TESTS += loongson_screen_state
 LG_CONFTEST_TYPE_COMPILE_TESTS += drm_connector_for_each_possible_encoder
-LG_CONFTEST_TYPE_COMPILE_TESTS += drm_bridge_attach
 LG_CONFTEST_TYPE_COMPILE_TESTS += drm_sched_priority
 LG_CONFTEST_TYPE_COMPILE_TESTS += drm_sched_priority_has_min
 LG_CONFTEST_TYPE_COMPILE_TESTS += drm_sched_entity_init

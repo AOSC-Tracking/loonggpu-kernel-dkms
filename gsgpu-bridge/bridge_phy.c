@@ -176,15 +176,17 @@ void bridge_phy_mode_set(struct gsgpu_bridge_phy *phy,
 }
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 16, 0)
-#define lg_bridge_phy_attach_args_1 \
+#define lg_bridge_phy_attach_args \
 	struct drm_bridge *bridge, \
 	struct drm_encoder *encoder, \
 	enum drm_bridge_attach_flags flags
 #else
-#define lg_bridge_phy_attach_args_1 lg_bridge_phy_attach_args
+#define lg_bridge_phy_attach_args \
+	struct drm_bridge *bridge, \
+	enum drm_bridge_attach_flags flags
 #endif
 
-static int bridge_phy_attach (lg_bridge_phy_attach_args_1)
+static int bridge_phy_attach (lg_bridge_phy_attach_args)
 {
 	struct gsgpu_bridge_phy *phy = to_bridge_phy(bridge);
 	struct gsgpu_connector *lconnector;
