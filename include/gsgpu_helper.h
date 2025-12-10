@@ -102,7 +102,16 @@ static inline int lg_gsgpu_ttm_bo_device_init(struct gsgpu_device *adev,
 					#endif
 					     )
 {
-#if defined(LG_DRM_TTM_TTM_DEVICE_H_PRESENT)
+#ifdef TTM_ALLOCATION_POOL_USE_DMA_ALLOC
+	return ttm_device_init(&adev->mman.bdev,
+				driver, adev->dev,
+				adev->ddev->anon_inode->i_mapping,
+				adev->ddev->vma_offset_manager,
+				(adev->need_swiotlb ?
+				 TTM_ALLOCATION_POOL_USE_DMA_ALLOC : 0) |
+				(dma_addressing_limited(adev->dev) ?
+				 TTM_ALLOCATION_POOL_USE_DMA32 : 0));
+#elif defined(LG_DRM_TTM_TTM_DEVICE_H_PRESENT)
 	return ttm_device_init(&adev->mman.bdev,
 				driver, adev->dev,
 				adev->ddev->anon_inode->i_mapping,
