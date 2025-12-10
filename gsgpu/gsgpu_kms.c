@@ -6,6 +6,7 @@
 #include <linux/slab.h>
 #include <linux/pm_runtime.h>
 #include <linux/pci.h>
+#include <linux/version.h>
 #include <drm/drm_debugfs.h>
 #include "gsgpu_gtt_mgr_helper.h"
 
@@ -534,6 +535,7 @@ static int gsgpu_info_ioctl(struct drm_device *dev, void *data, struct drm_file 
 }
 
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 12, 0)
 /*
  * Outdated mess for old drm with Xorg being in charge (void function now).
  */
@@ -549,6 +551,7 @@ void gsgpu_driver_lastclose_kms(struct drm_device *dev)
 	drm_fb_helper_lastclose(dev);
 	vga_switcheroo_process_delayed_switch();
 }
+#endif
 
 /**
  * gsgpu_driver_open_kms - drm callback for open
