@@ -527,7 +527,9 @@ static inline void lg_ttm_bo_unlock_delayed_workqueue(struct loonggpu_device *ad
 
 static inline struct fb_info *lg_drm_fb_helper_alloc_info(struct drm_fb_helper *helper)
 {
-#if defined(LG_DRM_FB_HELPER_ALLOC_INFO)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 19, 0)
+	return helper->info;
+#elif defined(LG_DRM_FB_HELPER_ALLOC_INFO)
 	return drm_fb_helper_alloc_info(helper);
 #else
 	return drm_fb_helper_alloc_fbi(helper);
