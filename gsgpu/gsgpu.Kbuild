@@ -140,7 +140,6 @@ LG_CONFTEST_TYPE_COMPILE_TESTS += dma_resv_usage_bookkeep
 LG_CONFTEST_TYPE_COMPILE_TESTS += drm_plane_atomic_check_has_atomic_state_arg
 LG_CONFTEST_TYPE_COMPILE_TESTS += vga_client_register
 LG_CONFTEST_TYPE_COMPILE_TESTS += fb_info_has_apertures
-LG_CONFTEST_TYPE_COMPILE_TESTS += drm_fb_helper_prepare
 LG_CONFTEST_TYPE_COMPILE_TESTS += drm_mode_config_has_fb_base
 LG_CONFTEST_TYPE_COMPILE_TESTS += pci_set_dma_mask
 LG_CONFTEST_TYPE_COMPILE_TESTS += ttm_device_has_lru_lock

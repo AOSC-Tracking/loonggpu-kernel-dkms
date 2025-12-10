@@ -2031,20 +2031,6 @@ compile_test() {
             compile_check_conftest "$CODE" "LG_FB_INFO_HAS_APERTURES" "" "types"
         ;;
 
-        drm_fb_helper_prepare)
-            #
-            # Determine if the drm_fb_helper_prepare has preferred_bpp argument.
-            #
-            # Added by commit 6c80a93be62d398e1854d95069340b2e60f96166 ("drm/fb-helper:
-            # Initialize fb-helper's preferred BPP in prepare function") in v6.2-rc6
-            CODE="
-            #include <drm/drm_fb_helper.h>
-            void conftest_drm_fb_helper_prepare(void) {
-                drm_fb_helper_prepare(NULL, NULL, 0, NULL);
-            }"
-            compile_check_conftest "$CODE" "LG_DRM_FB_HELPER_PREPARE_HAS_BPP" "" "types"
-        ;;
-
         pwm_free)
             #
             # Determine if pwm_free exist.

@@ -531,11 +531,7 @@ static inline void lg_drm_fb_helper_prepare(struct drm_device *dev, struct drm_f
 						unsigned int bpp,
 						const struct drm_fb_helper_funcs *funcs)
 {
-#if defined(LG_DRM_FB_HELPER_PREPARE_HAS_BPP)
 	drm_fb_helper_prepare(dev, helper, bpp, funcs);
-#else
-	drm_fb_helper_prepare(dev, helper, funcs);
-#endif
 }
 
 static inline void lg_drm_fb_helper_single_add_all_connectors(struct drm_fb_helper *helper)
@@ -548,11 +544,7 @@ static inline void lg_drm_fb_helper_single_add_all_connectors(struct drm_fb_help
 
 static inline void lg_drm_fb_helper_initial_config(struct drm_fb_helper *helper, unsigned int bpp)
 {
-#if defined(LG_DRM_FB_HELPER_PREPARE_HAS_BPP)
 	drm_fb_helper_initial_config(helper);
-#else
-	drm_fb_helper_initial_config(helper, bpp);
-#endif
 }
 
 static inline void lg_pwm_free(struct pwm_device *pwm)
