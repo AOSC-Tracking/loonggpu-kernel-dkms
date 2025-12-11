@@ -1949,28 +1949,6 @@ compile_test() {
             compile_check_conftest "$CODE" "LG_DMA_RESV_USAGE_BOOKKEEP_PRESENT" "" "types"
         ;;
 
-        drm_plane_atomic_check_has_atomic_state_arg)
-            #
-            # Determine if the drm_plane_helper_funcs->atomic_check()
-            # has 'atomic_state' parameter.
-            #
-            # Changed by commit 7c11b99a8e58c0875c4d433c6aea10e9fb93beb1 ("drm/atomic:
-            # Pass the full state to planes atomic_check") in v5.12-rc1
-            #
-            CODE="
-            #include <drm/drm_modeset_helper_vtables.h>
-            #include <drm/drm_plane.h>
-            #include <drm/drm_atomic.h>
-            static const struct drm_plane_helper_funcs *funcs;
-            typeof(*funcs->atomic_check) conftest_drm_plane_atomic_check_has_atomic_state_arg;
-            int conftest_drm_plane_atomic_check_has_atomic_state_arg(
-                    struct drm_plane *plane,
-                    struct drm_atomic_state *state) {
-                return 0;
-            }"
-            compile_check_conftest "$CODE" "LG_ATOMIC_CHECK_HAS_DRM_ATOMIC_STATE" "" "types"
-        ;;
-
         vga_client_register)
             #
             # Determine if the function vga_client_register() has

@@ -105,7 +105,8 @@ static void dc_plane_helper_cleanup_fb(struct drm_plane *plane,
 	gsgpu_bo_unref(&rbo);
 }
 
-static int dc_plane_atomic_check(lg_dc_plane_atomic_check_args)
+static int dc_plane_atomic_check(struct drm_plane *plane,
+				 struct drm_atomic_state *state)
 {
 	return 0;
 }
