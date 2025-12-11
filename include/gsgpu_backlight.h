@@ -34,11 +34,17 @@ struct gsgpu_backlight {
 	void (*power)(struct gsgpu_backlight *ls_bl, bool enable);
 };
 
+static inline void lg_gpio_set_value(int gpio, int val)
+{
 #ifdef LG_GPIO_WORKS
+	gpio_set_value(gpio, val);
+#endif
+}
+
 #define BACKLIGHT_DEFAULT_METHOD_CLOSE(ls_bl)\
 	do { \
 		ls_bl->hw_enabled = false;\
-		gpio_set_value(GPIO_LCD_EN, 0);\
+		lg_gpio_set_value(GPIO_LCD_EN, 0);\
 		msleep(10);\
 		pwm_disable(ls_bl->pwm); \
 	} while (0)
@@ -48,30 +54,24 @@ struct gsgpu_backlight {
 		ls_bl->hw_enabled = false;\
 		BACKLIGHT_DEFAULT_METHOD_CLOSE(ls_bl);\
 		msleep(160);\
-		gpio_set_value(GPIO_LCD_VDD, 0); \
+		lg_gpio_set_value(GPIO_LCD_VDD, 0); \
 	} while (0)
 
 #define BACKLIGHT_DEFAULT_METHOD_OPEN(ls_bl)\
 	do { \
 		pwm_enable(ls_bl->pwm);\
 		msleep(10);\
-		gpio_set_value(GPIO_LCD_EN, 1);\
+		lg_gpio_set_value(GPIO_LCD_EN, 1);\
 		ls_bl->hw_enabled = true; \
 	} while (0)
 
 #define BACKLIGHT_DEFAULT_METHOD_FORCE_OPEN(ls_bl)\
 	do {\
-		gpio_set_value(GPIO_LCD_VDD, 1);\
+		lg_gpio_set_value(GPIO_LCD_VDD, 1);\
 		msleep(160);\
 		BACKLIGHT_DEFAULT_METHOD_OPEN(ls_bl);\
 		ls_bl->hw_enabled = true; \
 	} while (0)
-#else /* LG_GPIO_WORKS */
-#define BACKLIGHT_DEFAULT_METHOD_CLOSE(ls_bl)
-#define BACKLIGHT_DEFAULT_METHOD_FORCE_CLOSE(ls_bl)
-#define BACKLIGHT_DEFAULT_METHOD_OPEN(ls_bl)
-#define BACKLIGHT_DEFAULT_METHOD_FORCE_OPEN(ls_bl)
-#endif
 
 int gsgpu_backlight_register(struct drm_connector *connector);
 int gsgpu_late_register(struct drm_connector *connector);
