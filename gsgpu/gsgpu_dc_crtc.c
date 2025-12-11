@@ -559,9 +559,9 @@ static enum drm_mode_status gsgpu_dc_mode_valid(struct drm_crtc *crtc,
 
 	switch (adev->chip) {
 	case dev_7a2000:
-		if (mode->hdisplay > 4096)
+		if (mode->hdisplay > 1920)
 			return MODE_BAD;
-		if (mode->vdisplay > 2160)
+		if (mode->vdisplay > 1200)
 			return MODE_BAD;
 		if (mode->hdisplay == 1680)
 			return MODE_BAD;
