@@ -1718,8 +1718,7 @@ void gsgpu_ttm_set_buffer_funcs_status(struct gsgpu_device *adev, bool enable)
 		}
 	} else {
 		drm_sched_entity_destroy(&adev->mman.entity);
-		dma_fence_put(man->move);
-		man->move = NULL;
+		ttm_resource_manager_cleanup(man);
 	}
 
 	/* this just adjusts TTM size idea, which sets lpfn to the correct value */
