@@ -624,15 +624,10 @@ static int lt8618_get_edid_block(void *data, u8 *buf, unsigned int block,
 static int lt8618_get_modes(struct loonggpu_bridge_phy *phy,
 			    struct drm_connector *connector)
 {
-	struct edid *edid;
 	unsigned int count;
 
-	edid = drm_do_get_edid(connector, lt8618_get_edid_block, phy);
-	if (edid) {
-		drm_connector_update_edid_property(connector, edid);
-		count = drm_add_edid_modes(connector, edid);
-		kfree(edid);
-	} else {
+	count = drm_edid_connector_add_modes(connector);
+	if (!count) {
 		count = drm_add_modes_noedid(connector, 1920, 1080);
 		drm_set_preferred_mode(connector, 1024, 768);
 		DRM_DEBUG("Update default edid method\n");

@@ -351,17 +351,13 @@ static int it66121_get_edid_block(void *data, u8 *buf, unsigned int block,
 static int it66121_get_modes(struct loonggpu_bridge_phy *phy,
 			     struct drm_connector *connector)
 {
-	struct edid *edid;
-	unsigned int count = 0;
-	edid = drm_do_get_edid(connector, it66121_get_edid_block, phy);
-	if (edid) {
-		drm_connector_update_edid_property(connector, edid);
-		count = drm_add_edid_modes(connector, edid);
-	} else {
+	unsigned int count;
+
+	count = drm_edid_connector_add_modes(connector);
+	if (!count) {
 		count = drm_add_modes_noedid(connector, 1920, 1080);
 		DRM_DEV_INFO(to_dev(phy), "Update default edid method 1080p\n");
 	}
-	kfree(edid);
 	return count;
 }
 
