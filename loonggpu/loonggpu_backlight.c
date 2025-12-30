@@ -487,17 +487,16 @@ int loonggpu_backlight_register(struct drm_connector *connector)
 	struct loonggpu_backlight *ls_bl;
 	struct loonggpu_device *adev = connector->dev->dev_private;
 	struct backlight_resource *bl_res;
-	int ret = 0;
 	bool ls_bl_status = false;
 
 	bl_res = dc_get_vbios_resource(adev->dc->vbios, connector->index,
 			LOONGGPU_RESOURCE_BACKLIGHT);
 	if (!bl_res)
-		return ret;
+		return 0;
 
 	ls_bl = loonggpu_backlight_init(adev, connector->index);
 	if (!ls_bl)
-		return -ENXIO;
+		return 0;
 
 	ls_bl_status = loonggpu_backlight_get_hw_status(ls_bl);
 	if (ls_bl_status) {
@@ -512,5 +511,5 @@ int loonggpu_backlight_register(struct drm_connector *connector)
 		 ls_bl_status ? "on" : "off",
 		 ls_bl->hw_enabled ? "on" : "off");
 
-	return ret;
+	return 0;
 }
