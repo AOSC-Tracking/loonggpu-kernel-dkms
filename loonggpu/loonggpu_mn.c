@@ -85,8 +85,6 @@ static void loonggpu_mn_destroy(struct work_struct *work)
 	mutex_unlock(&adev->mn_lock);
 #if defined(LG_MMU_NOTIFIER_UNREGISTER_NO_RELEASE)
 	mmu_notifier_unregister_no_release(&amn->mn, amn->mm);
-#elif defined(LG_MMU_NOTIFIER_UNREGISTER)
-	mmu_notifier_unregister(&amn->mn, amn->mm);
 #else
 	mmu_notifier_put(&amn->mn);
 #endif
@@ -187,7 +185,7 @@ static void loonggpu_mn_invalidate_node(struct loonggpu_mn_node *node,
 			continue;
 
 		resv = to_dma_resv(bo);
-		r = lg_dma_resv_wait_timeout_rcu(resv, true, false,
+		r = lg_dma_resv_wait_timeout_rcu(resv, LG_DMA_RESV_USAGE_READ, true, false,
 						 MAX_SCHEDULE_TIMEOUT);
 		if (r <= 0)
 			DRM_ERROR("(%ld) failed to wait for user bo\n", r);
@@ -317,9 +315,17 @@ static void loonggpu_mn_invalidate_range_end(struct mmu_notifier *mn,
 }
 #endif
 
+static void loonggpu_mn_free_notifier(struct mmu_notifier *subscription)
+{
+	return;
+}
+
 static const struct mmu_notifier_ops loonggpu_mn_ops[] = {
 	[LOONGGPU_MN_TYPE_GFX] = {
 		.release = loonggpu_mn_release,
+#if defined(LG_MMU_NOTIFIER_OPS_HAS_FREE_NOTIFIER)
+		.free_notifier = loonggpu_mn_free_notifier,
+#endif
 #if !defined(LG_MMU_NOTIFIER_INVALIDATE_RANGE_START_HAS_RANGE_ARG)
 		.invalidate_range_start = loonggpu_mn_invalidate_range_start_gfx,
 		.invalidate_range_end = loonggpu_mn_invalidate_range_end,
@@ -327,6 +333,9 @@ static const struct mmu_notifier_ops loonggpu_mn_ops[] = {
 	},
 	[LOONGGPU_MN_TYPE_VDD] = {
 		.release = loonggpu_mn_release,
+#if defined(LG_MMU_NOTIFIER_OPS_HAS_FREE_NOTIFIER)
+		.free_notifier = loonggpu_mn_free_notifier,
+#endif
 #if !defined(LG_MMU_NOTIFIER_INVALIDATE_RANGE_START_HAS_RANGE_ARG)
 		.invalidate_range_start = loonggpu_mn_invalidate_range_start_vdd,
 		.invalidate_range_end = loonggpu_mn_invalidate_range_end,

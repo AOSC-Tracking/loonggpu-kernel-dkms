@@ -10,7 +10,7 @@
 
 #define DRIVER_NAME		"loonggpu"
 #define DRIVER_DESC		"Loongson LGxx GPU Driver"
-#define DRIVER_DATE		"20250815.00"
+#define DRIVER_DATE		"202501129.00"
 
 long loonggpu_drm_ioctl(struct file *filp,
 		      unsigned int cmd, unsigned long arg);

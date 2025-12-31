@@ -16,9 +16,11 @@ int dc_interface_noaudio_init(struct loonggpu_dc_crtc *crtc)
 		if (crtc->intf[i].connected) {
 			switch (crtc->intf[i].type) {
 			case INTERFACE_HDMI:
-				return dc->hw_ops->hdmi_noaudio_init(crtc, crtc->intf[i].index);
+				dc->hw_ops->hdmi_noaudio_init(crtc, crtc->intf[i].index);
+				break;
 			case INTERFACE_EDP:
-				return dc->hw_ops->dp_noaudio_init(crtc, crtc->intf[i].index);
+				dc->hw_ops->dp_noaudio_init(crtc, crtc->intf[i].index);
+				break;
 			}
 		}
 	}
@@ -34,9 +36,11 @@ int dc_interface_audio_init(struct loonggpu_dc_crtc *crtc)
 		if (crtc->intf[i].connected) {
 			switch (crtc->intf[i].type) {
 			case INTERFACE_HDMI:
-				return dc->hw_ops->hdmi_audio_init(crtc, crtc->intf[i].index);
+				dc->hw_ops->hdmi_audio_init(crtc, crtc->intf[i].index);
+				break;
 			case INTERFACE_EDP:
-				return dc->hw_ops->dp_audio_init(crtc, crtc->intf[i].index);
+				dc->hw_ops->dp_audio_init(crtc, crtc->intf[i].index);
+				break;
 			}
 		}
 	}
@@ -51,10 +55,12 @@ int dc_interface_init(struct loonggpu_dc_crtc *crtc)
 	for (i = 0; i < crtc->interfaces; i++) {
 		switch (crtc->intf[i].type) {
 		case INTERFACE_HDMI:
-			return dc->hw_ops->hdmi_init(crtc, crtc->intf[i].index);
+			dc->hw_ops->hdmi_init(crtc, crtc->intf[i].index);
+			break;
 		case INTERFACE_DP:
 		case INTERFACE_EDP:
-			return dc->hw_ops->dp_init(crtc, crtc->intf[i].index);
+			dc->hw_ops->dp_init(crtc, crtc->intf[i].index);
+			break;
 		}
 	}
 	return 0;
@@ -86,14 +92,14 @@ int dc_interface_resume(struct loonggpu_dc_crtc *crtc)
 	int i;
 
 	for (i = 0; i < crtc->interfaces; i++) {
-		if (crtc->intf[i].connected) {
-			switch (crtc->intf[i].type) {
-			case INTERFACE_HDMI:
-				return dc->hw_ops->hdmi_resume(crtc, crtc->intf[i].index);
-			case INTERFACE_DP:
-			case INTERFACE_EDP:
-				return dc->hw_ops->dp_resume(crtc, crtc->intf[i].index);
-			}
+		switch (crtc->intf[i].type) {
+		case INTERFACE_HDMI:
+			dc->hw_ops->hdmi_resume(crtc, crtc->intf[i].index);
+			break;
+		case INTERFACE_DP:
+		case INTERFACE_EDP:
+			dc->hw_ops->dp_resume(crtc, crtc->intf[i].index);
+			break;
 		}
 	}
 	return 0;
@@ -105,14 +111,14 @@ bool dc_interface_enable(struct loonggpu_dc_crtc *crtc, bool enable)
 	int i;
 
 	for (i = 0; i < crtc->interfaces; i++) {
-		if (crtc->intf[i].connected) {
-			switch (crtc->intf[i].type) {
-			case INTERFACE_HDMI:
-				return dc->hw_ops->hdmi_enable(crtc, crtc->intf[i].index, enable);
-			case INTERFACE_DP:
-			case INTERFACE_EDP:
-				return dc->hw_ops->dp_enable(crtc, crtc->intf[i].index, enable);
-			}
+		switch (crtc->intf[i].type) {
+		case INTERFACE_HDMI:
+			dc->hw_ops->hdmi_enable(crtc, crtc->intf[i].index, enable);
+			break;
+		case INTERFACE_DP:
+		case INTERFACE_EDP:
+			dc->hw_ops->dp_enable(crtc, crtc->intf[i].index, enable);
+			break;
 		}
 	}
 	return 0;

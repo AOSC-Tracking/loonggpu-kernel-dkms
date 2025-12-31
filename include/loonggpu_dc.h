@@ -3,6 +3,7 @@
 
 #include "loonggpu_dc_irq.h"
 #include "loonggpu_dc_i2c.h"
+#include "loonggpu_ih.h"
 #include "loonggpu_dc_interface.h"
 
 #define DC_VER "1.0"
@@ -84,6 +85,7 @@ struct dc_hw_ops {
 	void (*dc_irq_fini)(struct loonggpu_device *adev);
 	int (*dc_i2c_init)(struct loonggpu_device *adev, uint32_t link_index);
 	void (*dc_i2c_resume)(struct loonggpu_device *adev, uint32_t link_index);
+	bool (*dc_hpd_enable)(struct loonggpu_device *adev, uint32_t link, bool enable);
 
 	/* crtc operations */
 	bool (*crtc_enable)(struct loonggpu_dc_crtc *crtc, bool enable);
@@ -112,7 +114,13 @@ struct dc_hw_ops {
 	int (*dp_noaudio_init)(struct loonggpu_dc_crtc *crtc, int intf);
 	int (*dp_resume)(struct loonggpu_dc_crtc *crtc, int intf);
 	void (*dp_suspend)(struct loonggpu_dc_crtc *crtc, int intf);
+	void (*dp_hpd_handler)(struct loonggpu_device *adev, struct loonggpu_iv_entry *entry);
 	void (*dp_pll_set)(struct loonggpu_dc_crtc *crtc, int intf, struct dc_timing_info *timing);
+	void (*first_hpd_detect) (struct loonggpu_dc_crtc *crtc, int intf);
+	bool (*dc_hpd_ack) (struct loonggpu_dc_crtc *crtc);
+	bool (*dc_i2c_ack) (struct loonggpu_dc_crtc *crtc);
+	bool (*dc_crtc_vblank_ack) (struct loonggpu_dc_crtc *crtc);
+	u32 (*dc_vblank_get_counter) (struct loonggpu_device *adev, int crtc_num);
 };
 
 struct loonggpu_dc {
@@ -160,5 +168,5 @@ void handle_cursor_update(struct drm_plane *plane,
 			  struct drm_plane_state *old_plane_state);
 bool dc_cursor_set(struct loonggpu_dc_crtc *crtc, struct dc_cursor_info *cursor);
 bool dc_cursor_move(struct loonggpu_dc_crtc *crtc, struct dc_cursor_move *move);
-
+void dc_set_dma_consistent(struct loonggpu_device *adev);
 #endif

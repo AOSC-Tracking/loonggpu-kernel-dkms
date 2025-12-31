@@ -1308,6 +1308,7 @@ static int loonggpu_vm_bo_split_mapping(struct loonggpu_device *ldev,
 		} else {
 			addr = 0;
 			dma_addr = NULL;
+			max_entries = cursor.size / LOONGGPU_GPU_PAGE_SIZE;
 		}
 
 		last = min(mapping->last, start + max_entries - 1);
@@ -1352,6 +1353,7 @@ static int loonggpu_vm_bo_split_mapping(struct loonggpu_device *ldev,
 		} else {
 			addr = 0;
 			dma_addr = NULL;
+			max_entries = mapping->last - mapping->start + 1;
 		}
 
 		last = min(mapping->last, start + max_entries - 1);

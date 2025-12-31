@@ -1064,8 +1064,6 @@ static void kcd_process_notifier_release_internal(struct kcd_process *p)
 #if defined(LG_MMU_NOTIFIER_UNREGISTER_NO_RELEASE)
 	mmu_notifier_unregister_no_release(&p->mmu_notifier, mm);
 	mmu_notifier_call_srcu(&p->rcu, &kcd_process_destroy_delayed);
-#elif defined(LG_MMU_NOTIFIER_UNREGISTER)
-	mmu_notifier_unregister(&p->mmu_notifier, mm);
 #else
 	mmu_notifier_put(&p->mmu_notifier);
 #endif
@@ -1103,8 +1101,28 @@ static void kcd_process_notifier_release(struct mmu_notifier *mn,
 	kcd_process_notifier_release_internal(p);
 }
 
+#if defined(LG_MMU_NOTIFIER_OPS_HAS_FREE_NOTIFIER)
+static struct mmu_notifier *kcd_process_alloc_notifier(struct mm_struct *mm)
+{
+	int idx = srcu_read_lock(&kcd_processes_srcu);
+	struct kcd_process *p = find_process_by_mm(mm);
+
+	srcu_read_unlock(&kcd_processes_srcu, idx);
+	return p ? &p->mmu_notifier : ERR_PTR(-ESRCH);
+}
+
+static void kcd_process_free_notifier(struct mmu_notifier *mn)
+{
+	kcd_unref_process(container_of(mn, struct kcd_process, mmu_notifier));
+}
+#endif
+
 static const struct mmu_notifier_ops kcd_process_mmu_notifier_ops = {
 	.release = kcd_process_notifier_release,
+#if defined(LG_MMU_NOTIFIER_OPS_HAS_FREE_NOTIFIER)
+	.alloc_notifier = kcd_process_alloc_notifier,
+	.free_notifier = kcd_process_free_notifier,
+#endif
 };
 
 /*

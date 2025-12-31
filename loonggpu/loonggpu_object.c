@@ -755,7 +755,7 @@ int loonggpu_bo_kmap(struct loonggpu_bo *bo, void **ptr)
 		return 0;
 	}
 
-	r = lg_dma_resv_wait_timeout_rcu(resv, false, false, MAX_SCHEDULE_TIMEOUT);
+	r = lg_dma_resv_wait_timeout_rcu(resv, LG_DMA_RESV_USAGE_WRITE, false, false, MAX_SCHEDULE_TIMEOUT);
 	if (r < 0)
 		return r;
 

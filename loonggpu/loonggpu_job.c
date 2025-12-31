@@ -7,6 +7,9 @@
 #include "loonggpu_trace.h"
 #include "loonggpu_helper.h"
 #include "loonggpu_helper.h"
+#if defined(LG_DRM_DRM_BUDDY_H_PRESENT)
+#include <linux/xarray.h>
+#endif
 
 static lg_loonggpu_job_timedout_ret loonggpu_job_timedout(struct drm_sched_job *s_job)
 {
@@ -50,14 +53,9 @@ int loonggpu_job_alloc(struct loonggpu_device *adev, unsigned num_ibs,
 	(*job)->vm_pd_addr = LOONGGPU_BO_INVALID_OFFSET;
 
 #if defined(LG_DRM_DRM_BUDDY_H_PRESENT)
-	if (!(&adev->mman.entity))
-		return 0;
-
-	return lg_drm_sched_job_init(&(*job)->base, &adev->mman.entity, 1,
-				  LOONGGPU_FENCE_OWNER_UNDEFINED);
-#else
-	return 0;
+	xa_init_flags(&(*job)->base.dependencies, XA_FLAGS_ALLOC);
 #endif
+	return 0;
 }
 
 int loonggpu_job_alloc_with_ib(struct loonggpu_device *adev, unsigned size,

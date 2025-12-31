@@ -20,15 +20,13 @@ static void dc_handle_hpd_irq(void *param)
 	struct loonggpu_device *adev = dev->dev_private;
 	enum drm_connector_status old_status;
 
+	/* when driver in resume not process hotplug event */
+	if (adev->dc->cached_state)
+		return;
+
 	mutex_lock(&aconnector->hpd_lock);
 	old_status = connector->status;
 	connector->status = drm_helper_probe_detect(connector, NULL, false);
-
-	if ((adev->vga_hpd_status == connector_status_connected)
-	    && (connector->index == 0))
-		connector->connector_type = DRM_MODE_CONNECTOR_VGA;
-	else
-		connector->connector_type = DRM_MODE_CONNECTOR_HDMIA;
 
 	if (old_status != connector->status)
 		drm_kms_helper_hotplug_event(dev);
@@ -126,18 +124,12 @@ static bool dc_i2c_int_enable(struct loonggpu_dc_crtc *crtc, bool enable)
 	return true;
 }
 
-static bool dc_hpd_enable(struct loonggpu_dc_crtc *crtc, bool enable)
+bool ls7a2000_dc_hpd_enable(struct loonggpu_device *adev, uint32_t link, bool enable)
 {
-	struct loonggpu_device *adev = crtc->dc->adev;
 	struct loonggpu_connector *lconnector;
-	u32 link;
 	u32 int_reg;
 	u32 vga_cfg;
 
-	if (IS_ERR_OR_NULL(crtc))
-		return false;
-
-	link = crtc->resource->base.link;
 	if (link >= DC_DVO_MAXLINK)
 		return false;
 	lconnector = adev->mode_info.connectors[link];
@@ -178,6 +170,39 @@ static bool dc_hpd_enable(struct loonggpu_dc_crtc *crtc, bool enable)
 
 	dc_writel(adev, gdc_reg->global_reg.intr, int_reg);
 	dc_writel(adev, gdc_reg->global_reg.vga_hp_cfg, vga_cfg);
+
+	return true;
+}
+
+bool ls2k3000_dc_hpd_enable(struct loonggpu_device *adev, uint32_t link, bool enable)
+{
+	u32 int_reg;
+
+	if (link >= DC_DVO_MAXLINK)
+		return false;
+
+	int_reg = dc_readl(adev, gdc_reg->global_reg.intr_en);
+
+	switch (link) {
+	case 0:
+		if (enable)
+			int_reg |= 5;
+		else
+			int_reg &= 5;
+
+		break;
+	case 1:
+		if (enable)
+			int_reg |= 10;
+		else
+			int_reg &= 10;
+
+		break;
+	default:
+		return false;
+	}
+
+	dc_writel(adev, gdc_reg->global_reg.intr_en, int_reg);
 
 	return true;
 }
@@ -339,18 +364,20 @@ static void dc_register_hpd_handlers(struct loonggpu_device *adev)
 	struct drm_connector *connector;
 	struct loonggpu_connector *aconnector;
 	struct dc_interrupt_params int_params = {0};
+	int i;
 
 	list_for_each_entry(connector, &dev->mode_config.connector_list, head)	{
 		aconnector = to_loonggpu_connector(connector);
 		int_params.int_context = INTERRUPT_LOW_IRQ_CONTEXT;
 
-		if (DC_IRQ_SOURCE_INVALID != aconnector->irq_source_hpd) {
-			int_params.irq_source = aconnector->irq_source_hpd;
-			dc_irq_register_interrupt(adev, &int_params,
-					dc_handle_hpd_irq,
-					(void *) aconnector);
+		for (i = 0; i < MAX_DC_INTERFACES; i++) {
+			if (DC_IRQ_SOURCE_INVALID != aconnector->irq_source_hpd[i]) {
+				int_params.irq_source = aconnector->irq_source_hpd[i];
+				dc_irq_register_interrupt(adev, &int_params,
+						dc_handle_hpd_irq,
+						(void *) aconnector);
+			}
 		}
-
 		if (DC_IRQ_SOURCE_INVALID != aconnector->irq_source_vga_hpd
 		    && connector->index == 0) {
 			int_params.irq_source = aconnector->irq_source_vga_hpd;
@@ -520,6 +547,12 @@ static enum dc_irq_source dc_interrupt_to_irq_source(u32 src_id)
 	case DC_INT_ID_HPD_VGA:
 		dc_irq_source = DC_IRQ_SOURCE_HPD_VGA;
 		break;
+	case DC_INT_ID_HPD_EDP:
+		dc_irq_source = DC_IRQ_SOURCE_HPD_EDP;
+		break;
+	case DC_INT_ID_HPD_DP:
+		dc_irq_source = DC_IRQ_SOURCE_HPD_DP;
+		break;
 	default:
 		DRM_ERROR("NO support this irq id:%d!\n", src_id);
 		break;
@@ -528,7 +561,7 @@ static enum dc_irq_source dc_interrupt_to_irq_source(u32 src_id)
 	return dc_irq_source;
 }
 
-static bool dc_hpd_ack(struct loonggpu_dc_crtc *crtc)
+bool dc_hpd_ack(struct loonggpu_dc_crtc *crtc)
 {
 	u32 link;
 	u32 value;
@@ -578,7 +611,63 @@ static bool dc_hpd_ack(struct loonggpu_dc_crtc *crtc)
 	return true;
 }
 
-static bool dc_i2c_ack(struct loonggpu_dc_crtc *crtc)
+bool ls7a1000_dc_hpd_ack(struct loonggpu_dc_crtc *crtc)
+{
+	u32 link;
+	u32 value;
+	u32 vga_reg;
+	struct loonggpu_device *adev = crtc->dc->adev;
+
+	if (IS_ERR_OR_NULL(crtc))
+		return false;
+
+	link = crtc->resource->base.link;
+	if (link >= DC_DVO_MAXLINK)
+		return false;
+
+	value = dc_readl(adev, gdc_reg->global_reg.intr);
+
+	if (value & (1 << 15)) {
+		vga_reg = dc_readl(adev, gdc_reg->global_reg.vga_hp_cfg);
+		if ((vga_reg & DC_VGA_HPD_STATUS_MASK) == 1) {
+			adev->vga_hpd_status = connector_status_connected;
+			vga_reg &= ~0x3;
+			vga_reg |= 0x2;
+		} else if ((vga_reg & DC_VGA_HPD_STATUS_MASK) == 2) {
+			adev->vga_hpd_status = connector_status_disconnected;
+			vga_reg &= ~0x3;
+			vga_reg |= 0x1;
+		} else {
+			adev->vga_hpd_status = connector_status_disconnected;
+			dc_writel(adev, gdc_reg->global_reg.vga_hp_cfg, 0x0);
+			DRM_ERROR("Error VGA HPD status\n");
+			return false;
+		}
+		dc_writel(adev, gdc_reg->global_reg.vga_hp_cfg, vga_reg);
+	}
+
+	switch (link) {
+	case 0:
+		/*
+		 * write "0" to clear the interrupt status in 7a1000,
+		 * Bits 0-15 of the reg are the irqs status flags,
+		 * Bits 16-31 of the reg are the irqs enabled status flags.
+		 */
+		value &= ~(1 << 13);
+		value &= ~(1 << 15);
+		break;
+	case 1:
+		value &= ~(1 << 14);
+		break;
+	}
+
+	dc_writel(adev, gdc_reg->global_reg.intr, value);
+
+	return true;
+}
+
+
+bool dc_i2c_ack(struct loonggpu_dc_crtc *crtc)
 {
 	u32 link;
 	u32 value;
@@ -607,7 +696,36 @@ static bool dc_i2c_ack(struct loonggpu_dc_crtc *crtc)
 	return true;
 }
 
-static bool dc_crtc_vblank_ack(struct loonggpu_dc_crtc *crtc)
+bool ls7a1000_dc_i2c_ack(struct loonggpu_dc_crtc *crtc)
+{
+	u32 link;
+	u32 value;
+	struct loonggpu_device *adev = crtc->dc->adev;
+
+	if (IS_ERR_OR_NULL(crtc))
+		return false;
+
+	link = crtc->resource->base.link;
+	if (link >= DC_DVO_MAXLINK)
+		return false;
+
+	value = dc_readl(adev, gdc_reg->global_reg.intr);
+
+	switch (link) {
+	case 0:
+		value &= ~(1 << 11);
+		break;
+	case 1:
+		value &= ~(1 << 12);
+		break;
+	}
+
+	dc_writel(adev, gdc_reg->global_reg.intr, value);
+
+	return true;
+}
+
+bool dc_crtc_vblank_ack(struct loonggpu_dc_crtc *crtc)
 {
 	u32 link;
 	u32 value;
@@ -636,6 +754,35 @@ static bool dc_crtc_vblank_ack(struct loonggpu_dc_crtc *crtc)
 	return true;
 }
 
+bool ls7a1000_dc_crtc_vblank_ack(struct loonggpu_dc_crtc *crtc)
+{
+	u32 link;
+	u32 value;
+	struct loonggpu_device *adev = crtc->dc->adev;
+
+	if (IS_ERR_OR_NULL(crtc))
+		return false;
+
+	link = crtc->resource->base.link;
+	if (link >= DC_DVO_MAXLINK)
+		return false;
+
+	value = dc_readl(adev, gdc_reg->global_reg.intr);
+
+	switch (link) {
+	case 0:
+		value &= ~(1 << 2);
+		break;
+	case 1:
+		value &= ~(1 << 0);
+		break;
+	}
+
+	dc_writel(adev, gdc_reg->global_reg.intr, value);
+
+	return true;
+}
+
 static bool dc_submit_interrupt_ack(struct loonggpu_dc *dc, enum dc_irq_source src)
 {
 	bool ret = false;
@@ -646,28 +793,31 @@ static bool dc_submit_interrupt_ack(struct loonggpu_dc *dc, enum dc_irq_source s
 	switch (src) {
 	case DC_IRQ_SOURCE_VSYNC0:
 		if (dc->link_info)
-			ret = dc_crtc_vblank_ack(dc->link_info[0].crtc);
+			ret = dc->hw_ops->dc_crtc_vblank_ack(dc->link_info[0].crtc);
 		break;
 	case DC_IRQ_SOURCE_VSYNC1:
 		if (dc->link_info)
-			ret = dc_crtc_vblank_ack(dc->link_info[1].crtc);
+			ret = dc->hw_ops->dc_crtc_vblank_ack(dc->link_info[1].crtc);
 		break;
 	case DC_IRQ_SOURCE_I2C0:
 		if (dc->link_info)
-			ret = dc_i2c_ack(dc->link_info[0].crtc);
+			ret = dc->hw_ops->dc_i2c_ack(dc->link_info[0].crtc);
 		break;
 	case DC_IRQ_SOURCE_I2C1:
 		if (dc->link_info)
-			ret = dc_i2c_ack(dc->link_info[1].crtc);
+			ret = dc->hw_ops->dc_i2c_ack(dc->link_info[1].crtc);
 		break;
 	case DC_IRQ_SOURCE_HPD_HDMI0:
 	case DC_IRQ_SOURCE_HPD_HDMI1:
 		if (dc->link_info)
-			ret = dc_hpd_ack(dc->link_info[0].crtc);
+			ret = dc->hw_ops->dc_hpd_ack(dc->link_info[0].crtc);
 		break;
 	case DC_IRQ_SOURCE_HPD_VGA:
 		if (dc->link_info)
-			ret = dc_hpd_ack(dc->link_info[1].crtc);
+			ret = dc->hw_ops->dc_hpd_ack(dc->link_info[1].crtc);
+		break;
+	case DC_IRQ_SOURCE_HPD_EDP:
+	case DC_IRQ_SOURCE_HPD_DP:
 		break;
 	default:
 		DRM_ERROR("%s Can not support this irq %d \n", __func__, src);
@@ -723,19 +873,35 @@ static bool dc_interrupt_enable(struct loonggpu_dc *dc, enum dc_irq_source src, 
 	case DC_IRQ_SOURCE_HPD_HDMI0:
 	case DC_IRQ_SOURCE_HPD_VGA:
 		if (dc->link_info)
-			ret = dc_hpd_enable(dc->link_info[0].crtc, enable);
+			ret = dc->hw_ops->dc_hpd_enable(dc->adev, 0, enable);
 		break;
 	case DC_IRQ_SOURCE_HPD_HDMI1:
 		if (dc->link_info)
-			ret = dc_hpd_enable(dc->link_info[1].crtc, enable);
+			ret = dc->hw_ops->dc_hpd_enable(dc->adev, 1, enable);
 		break;
 	case DC_IRQ_SOURCE_HPD_HDMI0_NULL:
 		if (dc->link_info)
-			ret = dc_hpd_enable(dc->link_info[0].crtc, false);
+			ret = dc->hw_ops->dc_hpd_enable(dc->adev, 0, false);
 		break;
 	case DC_IRQ_SOURCE_HPD_HDMI1_NULL:
 		if (dc->link_info)
-			ret = dc_hpd_enable(dc->link_info[1].crtc, false);
+			ret = dc->hw_ops->dc_hpd_enable(dc->adev, 1, false);
+		break;
+	case DC_IRQ_SOURCE_HPD_EDP:
+		if (dc->link_info)
+			ret = dc->hw_ops->dc_hpd_enable(dc->adev, 0, enable);
+		break;
+	case DC_IRQ_SOURCE_HPD_DP:
+		if (dc->link_info)
+			ret = dc->hw_ops->dc_hpd_enable(dc->adev, 1, enable);
+		break;
+	case DC_IRQ_SOURCE_HPD_EDP_NULL:
+		if (dc->link_info)
+			ret = dc->hw_ops->dc_hpd_enable(dc->adev, 0, false);
+		break;
+	case DC_IRQ_SOURCE_HPD_DP_NULL:
+		if (dc->link_info)
+			ret = dc->hw_ops->dc_hpd_enable(dc->adev, 1, false);
 		break;
 	case DC_IRQ_SOURCE_INVALID:
 		break;
@@ -835,10 +1001,14 @@ static void dc_hpd_init(struct loonggpu_device *adev)
 	struct drm_device *dev = adev->ddev;
 	struct drm_connector *connector;
 	struct loonggpu_connector *aconnector;
+	int i;
 
 	list_for_each_entry(connector, &dev->mode_config.connector_list, head) {
 		aconnector = to_loonggpu_connector(connector);
-		dc_interrupt_enable(adev->dc, aconnector->irq_source_hpd, true);
+		for (i = 0; i < MAX_DC_INTERFACES; i++) {
+			if (DC_IRQ_SOURCE_INVALID != aconnector->irq_source_hpd[i])
+				dc_interrupt_enable(adev->dc, aconnector->irq_source_hpd[i], true);
+		}
 	}
 
 	adev->vga_hpd_status = connector_status_unknown;
@@ -851,10 +1021,14 @@ static void dc_hpd_disable(struct loonggpu_device *adev)
 	struct drm_device *dev = adev->ddev;
 	struct drm_connector *connector;
 	struct loonggpu_connector *aconnector;
+	int i;
 
 	list_for_each_entry(connector, &dev->mode_config.connector_list, head) {
 		aconnector = to_loonggpu_connector(connector);
-		dc_interrupt_enable(adev->dc, aconnector->irq_source_hpd, false);
+		for (i = 0; i < MAX_DC_INTERFACES; i++) {
+			if (DC_IRQ_SOURCE_INVALID != aconnector->irq_source_hpd[i])
+				dc_interrupt_enable(adev->dc, aconnector->irq_source_hpd[i], false);
+		}
 	}
 	adev->vga_hpd_status = connector_status_unknown;
 
@@ -888,7 +1062,7 @@ static int dc_register_irq_handlers(struct loonggpu_device *adev)
 	dc_register_i2c_handlers(adev);
 
 	/* HPD */
-	for (i = DC_INT_ID_HPD_HDMI0; i <= DC_INT_ID_HPD_VGA; i++) {
+	for (i = DC_INT_ID_HPD_HDMI0; i <= DC_INT_ID_HPD_DP; i++) {
 		r = loonggpu_irq_add_id(adev, client_id, i, &adev->hpd_irq);
 		if (r) {
 			DRM_ERROR("Failed to add hpd irq id %d!\n", i);
@@ -902,16 +1076,17 @@ static int dc_register_irq_handlers(struct loonggpu_device *adev)
 
 static irqreturn_t loonggpu_dc_irq_handler(int irq, void *arg)
 {
-	u32 int_reg;
-	unsigned long base;
-	struct loonggpu_iv_entry entry;
 	struct loonggpu_device *adev = (struct loonggpu_device *)arg;
+	struct loonggpu_dc *dc = adev->dc;
+	struct loonggpu_iv_entry entry;
+	unsigned long base;
+	u32 int_reg;
 	int i = 1;
 
 	base = (unsigned long)(adev->loongson_dc_rmmio_base);
-
 	int_reg = dc_readl(adev, gdc_reg->global_reg.intr);
 	dc_writel(adev, gdc_reg->global_reg.intr, int_reg);
+
 	entry.client_id = SOC15_IH_CLIENTID_DCE;
 
 	int_reg &= 0xffff;
@@ -929,6 +1104,9 @@ static irqreturn_t loonggpu_dc_irq_handler(int irq, void *arg)
 		i++;
 	}
 
+	if (dc->hw_ops->dp_hpd_handler)
+		dc->hw_ops->dp_hpd_handler(adev, &entry);
+
 	return IRQ_HANDLED;
 }
 
@@ -938,6 +1116,7 @@ static int loonggpu_dc_irq_init(struct loonggpu_device *adev)
 	struct pci_dev *loongson_dc = adev->loongson_dc;
 
 	adev->ddev->max_vblank_count = 0x00ffffff;
+
 	if (loongson_dc) {
 		u32 dc_irq = loongson_dc->irq;
 		r = request_irq(dc_irq, loonggpu_dc_irq_handler, 0,

@@ -91,12 +91,12 @@ lg_dma_resv_trylock(lg_dma_resv_t *obj)
 }
 
 static inline long
-lg_dma_resv_wait_timeout_rcu(lg_dma_resv_t *obj, bool wait_all,
+lg_dma_resv_wait_timeout_rcu(lg_dma_resv_t *obj, int wait_flag, bool wait_all,
 			     bool intr, unsigned long timeout)
 {
 #if defined(LG_LINUX_DMA_RESV_H_PRESENT)
 #if defined(LG_DMA_RESV_WAIT_TIMEOUT)
-	return dma_resv_wait_timeout(obj, wait_all, intr, timeout);
+	return dma_resv_wait_timeout(obj, (enum dma_resv_usage)wait_flag, intr, timeout);
 #else
 	return dma_resv_wait_timeout_rcu(obj, wait_all, intr, timeout);
 #endif

@@ -63,5 +63,7 @@ void ls2k3000_dp_suspend(struct loonggpu_dc_crtc *crtc, int intf);
 int ls2k3000_dp_resume(struct loonggpu_dc_crtc *crtc, int intf);
 bool ls2k3000_dp_enable(struct loonggpu_dc_crtc *crtc, int intf, bool enable);
 void ls2k3000_dp_pll_set(struct loonggpu_dc_crtc *crtc, int intf, struct dc_timing_info *timing);
+void l2k3000_dp_first_hdp_detect(struct loonggpu_dc_crtc *crtc, int intf);
+void l2k3000_hpd_irq_handler(struct loonggpu_device *adev, struct loonggpu_iv_entry *entry);
 
 #endif /* __LOONGGPU_DP_H__ */

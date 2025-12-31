@@ -272,6 +272,10 @@ int loonggpu_lgkcd_alloc_gtt_mem(struct loonggpu_device *adev, size_t size,
 	*gpu_addr = loonggpu_bo_gpu_offset(bo);
 	*cpu_ptr = cpu_ptr_tmp;
 
+#if !defined(LG_DRM_DRIVER_HAS_GEM_FREE)
+	lg_gbo_to_gem_obj(bo).funcs = &loonggpu_gem_object_funcs;
+#endif
+
 	loonggpu_bo_unreserve(bo);
 
 	return 0;
@@ -331,7 +335,7 @@ void loonggpu_lgkcd_get_local_mem_info(struct loonggpu_device *adev,
 			mem_info->local_mem_size_private);
 
 	/* TODO */
-	mem_info->mem_clk_max = 2400;
+	mem_info->mem_clk_max = adev->clock.default_mclk / 100;
 }
 
 uint64_t loonggpu_lgkcd_get_gpu_clock_counter(struct loonggpu_device *adev)
@@ -343,8 +347,7 @@ uint64_t loonggpu_lgkcd_get_gpu_clock_counter(struct loonggpu_device *adev)
 
 uint32_t loonggpu_lgkcd_get_max_engine_clock_in_mhz(struct loonggpu_device *adev)
 {
-	/* TODO */
-	return 600;
+	return adev->clock.default_sclk / 100;
 }
 
 void loonggpu_lgkcd_get_cu_info(struct loonggpu_device *adev, struct kcd_cu_info *cu_info)

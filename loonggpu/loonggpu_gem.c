@@ -86,7 +86,7 @@ void loonggpu_gem_object_free(struct drm_gem_object *gobj)
 }
 
 #if !defined(LG_DRM_DRIVER_HAS_GEM_FREE)
-static const struct drm_gem_object_funcs loonggpu_gem_object_funcs = {
+const struct drm_gem_object_funcs loonggpu_gem_object_funcs = {
 	.free = loonggpu_gem_object_free,
 	.open = loonggpu_gem_object_open,
 	.close = loonggpu_gem_object_close,
@@ -498,7 +498,7 @@ int loonggpu_gem_wait_idle_ioctl(struct drm_device *dev, void *data,
 	}
 	robj = gem_to_loonggpu_bo(gobj);
 	resv = to_dma_resv(robj);
-	ret = lg_dma_resv_wait_timeout_rcu(resv, true, true, timeout);
+	ret = lg_dma_resv_wait_timeout_rcu(resv, LG_DMA_RESV_USAGE_READ, true, true, timeout);
 
 	/* ret == 0 means not signaled,
 	 * ret > 0 means signaled

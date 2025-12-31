@@ -125,32 +125,30 @@ loonggpu_gem_prime_import_sg_table(struct drm_device *dev,
 {
 	lg_dma_resv_t *resv = attach->dmabuf->resv;
 	struct loonggpu_device *adev = dev->dev_private;
+	struct drm_gem_object *gobj;
 	struct loonggpu_bo *bo;
-	struct loonggpu_bo_param bp;
 	int ret;
 
-	memset(&bp, 0, sizeof(bp));
-	bp.size = attach->dmabuf->size;
-	bp.byte_align = PAGE_SIZE;
-	bp.domain = LOONGGPU_GEM_DOMAIN_CPU;
-	bp.flags = 0;
-	bp.type = ttm_bo_type_sg;
-	bp.resv = resv;
 	ww_mutex_lock(&resv->lock, NULL);
-	ret = loonggpu_bo_create(adev, &bp, &bo);
+
+	ret = loonggpu_gem_object_create(adev, attach->dmabuf->size,
+						PAGE_SIZE, LOONGGPU_GEM_DOMAIN_CPU, 0,
+						ttm_bo_type_sg, resv, &gobj);
 	if (ret)
 		goto error;
 
+	bo = gem_to_loonggpu_bo(gobj);
 	bo->tbo.sg = sg;
 	bo->tbo.ttm->sg = sg;
 	bo->allowed_domains = LOONGGPU_GEM_DOMAIN_GTT;
 	bo->preferred_domains = LOONGGPU_GEM_DOMAIN_GTT;
+
 	if (attach->dmabuf->ops != &loonggpu_dmabuf_ops)
 		bo->prime_shared_count = 1;
 
 	ww_mutex_unlock(&resv->lock);
-	return &lg_gbo_to_gem_obj(bo);
 
+	return gobj;
 error:
 	ww_mutex_unlock(&resv->lock);
 	return ERR_PTR(ret);

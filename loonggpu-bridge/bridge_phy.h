@@ -148,7 +148,7 @@ struct bridge_phy_cfg_funcs {
 	int (*video_output_cfg)(struct loonggpu_bridge_phy *phy);
 	int (*video_output_timing)(struct loonggpu_bridge_phy *phy,
 				   const struct drm_display_mode *mode);
-	int (*hdmi_output_mode)(struct loonggpu_bridge_phy *phy);
+	int (*hdmi_output_mode)(struct loonggpu_bridge_phy *phy, int mode);
 	int (*hdmi_audio)(struct loonggpu_bridge_phy *phy);
 	int (*hdmi_csc)(struct loonggpu_bridge_phy *phy);
 	int (*hdmi_hdcp_init)(struct loonggpu_bridge_phy *phy);
@@ -253,7 +253,9 @@ int bridge_phy_ncs8805_init(struct loonggpu_dc_bridge *dc_bridge);
 int bridge_phy_ncs8805_remove(struct loonggpu_dc_bridge *phy);
 int bridge_phy_lt8718_init(struct loonggpu_dc_bridge *dc_bridge);
 int bridge_phy_ls7a2000_init(struct loonggpu_dc_bridge *dc_bridge);
+int bridge_phy_ls7a1000_init(struct loonggpu_dc_bridge *dc_bridge);
 int internal_bridge_ls7a2000_register(struct loonggpu_dc_bridge *dc_bridge);
+int internal_bridge_ls7a1000_register(struct loonggpu_dc_bridge *dc_bridge);
 int bridge_phy_ls2k2000_init(struct loonggpu_dc_bridge *dc_bridge);
 int internal_bridge_ls2k2000_register(struct loonggpu_dc_bridge *dc_bridge);
 int bridge_phy_ls2k3000_init(struct loonggpu_dc_bridge *dc_bridge);
@@ -272,4 +274,10 @@ void bridge_phy_reg_update_bits(struct loonggpu_bridge_phy *phy, unsigned int re
 				unsigned int mask, unsigned int val);
 int bridge_phy_reg_dump(struct loonggpu_bridge_phy *phy, size_t start,
 			size_t count);
+int bridge_phy_lt8618_init(struct loonggpu_dc_bridge *dc_bridge);
+int bridge_phy_lt8618_remove(struct loonggpu_bridge_phy *phy);
+int bridge_phy_it66121_init(struct loonggpu_dc_bridge *dc_bridge);
+int bridge_phy_it66121_remove(struct loonggpu_bridge_phy *phy);
+int bridge_phy_ms7210_init(struct loonggpu_dc_bridge *dc_bridge);
+int bridge_phy_ms7210_remove(struct loonggpu_bridge_phy *phy);
 #endif /* __BRIDGE_PHY_H__ */

@@ -4,6 +4,7 @@
 #include "loonggpu_dc_dp.h"
 #include "loonggpu_dc_crtc.h"
 #include "loonggpu_dc_reg.h"
+#include "loonggpu_dc_resource.h"
 #include "loonggpu_helper.h"
 
 static const dp_bandwidth_entry_t bw_table[] = {
@@ -781,16 +782,19 @@ static int dp_aux_init(struct loonggpu_device *adev, int intf)
 void ls2k3000_dp_pll_set(struct loonggpu_dc_crtc *crtc, int intf, struct dc_timing_info *timing)
 {
 	struct loonggpu_device *adev = crtc->dc->adev;
-	dp_feature_t dp_param;
 	dp_feature_t recheck_dp_param;
+	dp_feature_t dp_param;
+	u32 link_cfg0;
 	bool ret;
 
-	dp_aux_init(adev, intf);
 	ret = dp_check_bandwidth(timing->clock, &dp_param);
 	if (!ret)
 		return;
 
-	dp_phy_init(adev, dp_param, intf, 0x7, 0);
+	link_cfg0 = dc_readl(adev, gdc_reg->dp_reg[intf].link_cfg0);
+	link_cfg0 &= ~0x1;
+	dc_writel(adev, gdc_reg->dp_reg[intf].link_cfg0, link_cfg0);
+	dc_writel(adev, gdc_reg->crtc_reg[intf].cfg, 0);
 
 	dp_recheck_bandwidth(adev, timing->clock, &recheck_dp_param, intf);
 	dp_phy_init(adev, recheck_dp_param, intf, 0, 0);
@@ -802,6 +806,36 @@ void ls2k3000_dp_pll_set(struct loonggpu_dc_crtc *crtc, int intf, struct dc_timi
 
 bool ls2k3000_dp_enable(struct loonggpu_dc_crtc *crtc, int intf, bool enable)
 {
+	struct loonggpu_device *adev = crtc->dc->adev;
+        aux_msg_t aux_data;
+        u32 ret;
+
+	if (!crtc->intf[intf].connected)
+		return false;
+
+	if ((enable && crtc->intf[intf].enabled) ||
+		(!enable && !crtc->intf[intf].enabled))
+		return true;
+
+	if (enable) {
+		aux_data.addr = 0x600;
+		aux_data.size = 0;
+		aux_data.data_low = 0x1;
+		aux_data.data_high = 0;
+		ret = aux_config(adev,  WRITE, aux_data, intf);
+		if (!ret)
+			crtc->intf[intf].enabled = true;
+	} else {
+		aux_data.addr = 0x600;
+		aux_data.size = 0;
+		aux_data.data_low = 2;
+		aux_data.data_high = 0;
+		ret = aux_config(adev,  WRITE, aux_data, intf);
+		if (!ret)
+			crtc->intf[intf].enabled = false;
+	}
+
+	DRM_INFO("SWITCH DISPLAY THROUGH AUX: %d-%d\n", enable, ret);
 	return true;
 }
 
@@ -811,6 +845,59 @@ void ls2k3000_dp_suspend(struct loonggpu_dc_crtc *crtc, int intf)
 
 int ls2k3000_dp_resume(struct loonggpu_dc_crtc *crtc, int intf)
 {
+	struct loonggpu_device *adev = crtc->dc->adev;
+	struct loonggpu_dc *dc = adev->dc;
+
+	dc->hw_ops->first_hpd_detect(crtc, intf);
+	return 0;
+}
+
+int ls2k3000_dp_aux_detect_status(struct loonggpu_dc_crtc *crtc, int intf)
+{
+	struct loonggpu_device *adev = crtc->dc->adev;
+	struct connector_resource *connector_res;
+	unsigned int detect_flag = 1;
+	aux_msg_t aux_data;
+	int i;
+
+	connector_res = adev->dc->link_info[intf].connector;
+	if (connector_res) {
+		/**
+		" When the hotplug mode is set to interrupt mode, the initial hotplug status during first boot cannot be
+		* retrieved via interrupt when only a DP display is connected. Therefore, the first hotplug connection status
+		* is probed via aux. Additionally, when both DP and EDP are connected simultaneously, the initial connection
+		* status for both EDP and DP cannot be obtained through interrupts either, necessitating AUX probing for their
+		* first connection states as well. However, when the hotplug mode is configured to FORCE_ON, AUX probing for
+		* hotplug status is not required.
+		*/
+		if (connector_res->hotplug != FORCE_ON) {
+			aux_data.addr = 0;
+			aux_data.size = 5;
+			aux_data.data_low = 0;
+			aux_data.data_high = 0;
+			detect_flag = aux_config(adev, READ, aux_data, intf);
+
+			for (i = 0; i < crtc->interfaces; i++) {
+				switch (crtc->intf[i].type) {
+				case INTERFACE_DP:
+					if (!detect_flag) {
+						adev->dp_status[1] = 0x2;
+					} else {
+						adev->dp_status[1] = 0x8;
+					}
+					break;
+				case INTERFACE_EDP:
+					if (!detect_flag) {
+						adev->dp_status[0] = 0x1;
+					} else {
+						adev->dp_status[0] = 0x4;
+					}
+					break;
+				}
+			}
+		}
+	}
+
 	return 0;
 }
 
@@ -818,7 +905,139 @@ int ls2k3000_dp_init(struct loonggpu_dc_crtc *crtc, int intf)
 {
 	struct loonggpu_device *adev = crtc->dc->adev;
 
-	return dp_aux_init(adev, intf);
+	dp_aux_init(adev, intf);
+	return ls2k3000_dp_aux_detect_status(crtc, intf);
+}
+
+void l2k3000_hpd_irq_handler(struct loonggpu_device *adev, struct loonggpu_iv_entry *entry)
+{
+	u32 int_reg1 = 0;
+
+	if (gdc_reg->global_reg.intr_1) {
+		int_reg1 = dc_readl(adev, gdc_reg->global_reg.intr_1);
+		if (int_reg1)
+			dc_writel(adev, gdc_reg->global_reg.intr_1, int_reg1);
+	}
+
+	int_reg1 &= 0xffff;
+	switch (int_reg1) {
+	case LS2K3000_EDP_IN:
+	case LS2K3000_EDP_OUT:
+		adev->dp_status[0] = int_reg1;
+		entry->src_id = DC_INT_ID_HPD_EDP;
+		loonggpu_irq_dispatch(adev, entry);
+		break;
+	case LS2K3000_DP_IN:
+	case LS2K3000_DP_OUT:
+		adev->dp_status[1] = int_reg1;
+		entry->src_id = DC_INT_ID_HPD_DP;
+		loonggpu_irq_dispatch(adev, entry);
+		break;
+	case LS2K3000_EDP_IN_DP_IN:
+		/*
+		* When both EDP and DP displays are plugged in simultaneously, their hotplug interrupts
+		* are asserted together. The value read from the interrupt status register 1 is 0x3, so
+		* the corresponding hotplug events need to be serviced separately.
+		**/
+		adev->dp_status[0] = LS2K3000_EDP_IN;
+		entry->src_id = DC_INT_ID_HPD_EDP;
+		loonggpu_irq_dispatch(adev, entry);
+
+		adev->dp_status[1] = LS2K3000_DP_IN;
+		entry->src_id = DC_INT_ID_HPD_DP;
+		loonggpu_irq_dispatch(adev, entry);
+		break;
+	case LS2K3000_EDP_OUT_DP_IN:
+		/*
+		* When EDP unplug and DP plug-in events occur simultaneously, their hotplug interrupts
+		* are asserted together. The value read from interrupt status register 1 is 0x6, requiring
+		* separate handling of the corresponding hotplug events.
+		*/
+		adev->dp_status[0] = LS2K3000_EDP_OUT;
+		entry->src_id = DC_INT_ID_HPD_EDP;
+		loonggpu_irq_dispatch(adev, entry);
+
+		adev->dp_status[1] = LS2K3000_DP_IN;
+		entry->src_id = DC_INT_ID_HPD_DP;
+		loonggpu_irq_dispatch(adev, entry);
+		break;
+	case LS2K3000_EDP_IN_DP_OUT:
+		/*
+		* When EDP plug-in and DP unplug events occur simultaneously, their hotplug interrupts
+		* are asserted together. The value read from interrupt status register 1 is 0x9, requiring
+		* separate handling of the corresponding hotplug events.
+		*/
+		adev->dp_status[0] = LS2K3000_EDP_IN;
+		entry->src_id = DC_INT_ID_HPD_EDP;
+		loonggpu_irq_dispatch(adev, entry);
+
+		adev->dp_status[1] = LS2K3000_DP_OUT;
+		entry->src_id = DC_INT_ID_HPD_DP;
+		loonggpu_irq_dispatch(adev, entry);
+		break;
+	case LS2K3000_EDP_OUT_DP_OUT:
+		/*
+		* When both EDP and DP displays are unplugged simultaneously, their hotplug interrupts
+		* are asserted together. The value read from interrupt status register 1 is 0xc, so
+		* the corresponding hotplug events need to be serviced separately.
+		**/
+		adev->dp_status[0] = LS2K3000_EDP_OUT;
+		entry->src_id = DC_INT_ID_HPD_EDP;
+		loonggpu_irq_dispatch(adev, entry);
+
+		adev->dp_status[1] = LS2K3000_DP_OUT;
+		entry->src_id = DC_INT_ID_HPD_DP;
+		loonggpu_irq_dispatch(adev, entry);
+		break;
+	default:
+		break;
+	}
+}
+
+void l2k3000_dp_first_hdp_detect(struct loonggpu_dc_crtc *crtc, int intf)
+{
+	struct loonggpu_device *adev = crtc->dc->adev;
+	dp_feature_t dp_param;
+	aux_msg_t aux_msg;
+
+	/*
+	* When entering S3 or S4 states with no EDP or DP connected, the enable bits of the aux_channel0and
+	* link_cfg0registers are cleared. Therefore, prior to wake-up, a dp_aux_initoperation must be performed
+	* to ensure the aux_channel0register is enabled for correct EDID reading and AUX connection state probing.
+	*/
+	dp_aux_init(adev, intf);
+	dp_param.dp_phy_rate = DP_PHY_1P62G;
+	dp_param.dp_phy_xlane = DP_PHY_X4;
+	dp_param.dp_link_rate = DP_LINK_1P62G;
+	dp_param.dp_link_xlane = DP_LINK_X4;
+	dp_param.dp_pixclk = 148500;
+
+	/*
+	* The AUX functionality depends on the EDP/DP PHY. Therefore, the EDP/DP PHY must be
+	* initialized prior to probing the link status via AUX
+	*/
+	dp_phy_init(adev, dp_param, intf, 0x7, 0);
+
+	/*
+	* Prior to entering S3 or S4 states, if no EDP/DP display is connected, a power off and on
+	* cycle must be performed via the AUX channel. Otherwise, certain displays may fail to report
+	* the correct connection status
+	*/
+	aux_msg.addr = 0x600;
+	aux_msg.size = 0;
+	aux_msg.data_low = 0x2;
+	aux_msg.data_high = 0;
+	aux_config(adev,  WRITE, aux_msg, intf);
+	udelay(10000);
+
+	aux_msg.addr = 0x600;
+	aux_msg.size = 0;
+	aux_msg.data_low = 0x1;
+	aux_msg.data_high = 0;
+	aux_config(adev,  WRITE, aux_msg, intf);
+	udelay(10000);
+
+	ls2k3000_dp_aux_detect_status(crtc, intf);
 }
 
 int ls2k3000_dp_audio_init(struct loonggpu_dc_crtc *crtc, int intf)

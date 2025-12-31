@@ -9,3 +9,7 @@ LOONGGPU_BRIDGE_SOURCES += loonggpu-bridge/lt8718_drv.c
 LOONGGPU_BRIDGE_SOURCES += loonggpu-bridge/ls7a2000_drv.c
 LOONGGPU_BRIDGE_SOURCES += loonggpu-bridge/ls2k2000_drv.c
 LOONGGPU_BRIDGE_SOURCES += loonggpu-bridge/ls2k3000_drv.c
+LOONGGPU_BRIDGE_SOURCES += loonggpu-bridge/ls7a1000_drv.c
+LOONGGPU_BRIDGE_SOURCES += loonggpu-bridge/lt8618_drv.c
+LOONGGPU_BRIDGE_SOURCES += loonggpu-bridge/it66121_drv.c
+LOONGGPU_BRIDGE_SOURCES += loonggpu-bridge/ms7210_drv.c

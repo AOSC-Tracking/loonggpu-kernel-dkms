@@ -12,6 +12,7 @@
 
 #include "loonggpu_irq.h"
 #include "loonggpu_dc_irq.h"
+#include "loonggpu_dc_interface.h"
 
 struct loonggpu_bo;
 struct loonggpu_device;
@@ -124,7 +125,7 @@ struct loonggpu_connector {
 	int pixel_clock_mhz;
 	struct mutex hpd_lock;
 	enum dc_irq_source irq_source_i2c;
-	enum dc_irq_source irq_source_hpd;
+	enum dc_irq_source irq_source_hpd[MAX_DC_INTERFACES];
 	enum dc_irq_source irq_source_vga_hpd;
 };
 

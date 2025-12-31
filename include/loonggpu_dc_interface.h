@@ -13,6 +13,7 @@ struct dc_interface {
 	u32 type;
 	u32 index;
 	bool connected;
+	bool enabled;
 };
 
 #include "loonggpu_dc_crtc.h"

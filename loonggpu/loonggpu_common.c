@@ -124,6 +124,8 @@ static const struct loonggpu_asic_funcs loonggpu_asic_funcs = {
 
 static void config_gpu_uart(struct loonggpu_device *adev)
 {
+	if (!loonggpu_gpu_uart)
+		return;
 
 	switch(adev->chip) {
 	case dev_7a2000:

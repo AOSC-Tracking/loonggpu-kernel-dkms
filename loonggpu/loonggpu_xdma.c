@@ -1303,7 +1303,7 @@ bo_free:
 	return r;
 }
 
-static const struct loonggpu_buffer_funcs xdma_buffer_funcs = {
+static struct loonggpu_buffer_funcs xdma_buffer_funcs = {
 	.copy_max_bytes = 0x3fffc0, /* not 0x3fffff due to HW limitation */
 	.copy_num_dw = 9,
 	.emit_copy_buffer = xdma_emit_copy_buffer,
@@ -1315,13 +1315,27 @@ static const struct loonggpu_buffer_funcs xdma_buffer_funcs = {
 
 static void xdma_set_buffer_funcs(struct loonggpu_device *adev)
 {
+	switch (adev->family_type)
+	{
+	case CHIP_LG100:
+		break;
+	case CHIP_LG200:
+	case CHIP_LG210:
+		xdma_buffer_funcs.copy_num_dw = 10;
+		xdma_buffer_funcs.fill_num_dw = 10;
+		break;
+	default:
+		DRM_ERROR("%s Illegal Family type %d\n", __FUNCTION__, adev->family_type);
+		break;
+	}
+
 	if (adev->mman.buffer_funcs == NULL) {
 		adev->mman.buffer_funcs = &xdma_buffer_funcs;
 		adev->mman.buffer_funcs_ring = &adev->xdma.instance[0].ring;
 	}
 }
 
-static const struct loonggpu_vm_pte_funcs xdma_vm_pte_funcs = {
+static struct loonggpu_vm_pte_funcs xdma_vm_pte_funcs = {
 	.copy_pte_num_dw = 9,
 	.copy_pte = xdma_vm_copy_pte,
 
@@ -1332,6 +1346,20 @@ static const struct loonggpu_vm_pte_funcs xdma_vm_pte_funcs = {
 static void xdma_set_vm_pte_funcs(struct loonggpu_device *adev)
 {
 	unsigned i;
+
+	switch (adev->family_type)
+	{
+	case CHIP_LG100:
+		break;
+	case CHIP_LG200:
+	case CHIP_LG210:
+		xdma_vm_pte_funcs.copy_pte_num_dw = 10;
+		xdma_vm_pte_funcs.set_pte_pde_num_dw = 10;
+		break;
+	default:
+		DRM_ERROR("%s Illegal Family type %d\n", __FUNCTION__, adev->family_type);
+		break;
+	}
 
 	if (adev->vm_manager.vm_pte_funcs == NULL) {
 		adev->vm_manager.vm_pte_funcs = &xdma_vm_pte_funcs;

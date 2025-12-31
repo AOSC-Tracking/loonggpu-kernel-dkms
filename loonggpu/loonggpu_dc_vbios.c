@@ -1340,6 +1340,9 @@ bool check_vbios_info(void)
 	if (!pdev)
 		pdev = pci_get_device(0x0014, 0x7A35, NULL);
 
+	if (!pdev)
+		pdev = pci_get_device(0x0014, 0x7A15, NULL);
+
 	if (!pdev) {
 		pdev = pci_get_device(0x0014, 0x7A46, NULL);
 		if (!pdev)
@@ -1453,6 +1456,9 @@ sysconf:
 		case ENCODER_CHIP_ID_LVDS_LT8619:
 		case ENCODER_CHIP_ID_EDP_NCS8805:
 		case ENCODER_CHIP_ID_DP_LT8718:
+		case ENCODER_CHIP_ID_HDMI_LT8618:
+		case ENCODER_CHIP_ID_HDMI_IT66121:
+		case ENCODER_CHIP_ID_HDMI_MS7210:
 			support = true;
 			break;
 		default:

@@ -54,6 +54,7 @@ int loonggpu_virtual_apu = 0;
 int loonggpu_support = 1;
 int loonggpu_panel_cfg_clk_pol = -1;
 int loonggpu_panel_cfg_de_pol = -1;
+int loonggpu_gpu_uart = 0;
 
 /**
  * DOC: panel_cfg_clk_pol (int)
@@ -337,6 +338,13 @@ MODULE_PARM_DESC(noretry,
 	"Disable retry faults (0 = retry enabled, 1 = retry disabled, -1 auto (default))");
 module_param_named(noretry, loonggpu_noretry, int, 0644);
 
+/**
+ * DOC: gpu_uart (int)
+ * Debug GPU UART (0 = disabled, 1 = enabled). The default is 0 (Disabled).
+ */
+MODULE_PARM_DESC(gpu_uart, "Debug GPU UART (0 = disabled (default), 1 = enabled)");
+module_param_named(gpu_uart, loonggpu_gpu_uart, int, 0644);
+
 static const struct pci_device_id pciidlist[] = {
 	{0x0014, 0x7A25, PCI_ANY_ID, PCI_ANY_ID, 0, 0, CHIP_LG100},
 	{0x0014, 0x7A35, PCI_ANY_ID, PCI_ANY_ID, 0, 0, CHIP_LG200},
@@ -485,6 +493,7 @@ long loonggpu_drm_ioctl(struct file *filp,
 static struct pci_device_id loongson_vga_pci_devices[] = {
 	{PCI_DEVICE(PCI_VENDOR_ID_LOONGSON, 0x7a36)},
 	{PCI_DEVICE(PCI_VENDOR_ID_LOONGSON, 0x7a46)},
+	{PCI_DEVICE(PCI_VENDOR_ID_LOONGSON, 0x7a06)},
 	{0x0014, 0x9a10, PCI_ANY_ID, PCI_ANY_ID, 0, 0, CHIP_LG210},
 	{0, 0, 0, 0, 0, 0, 0},
 };
@@ -551,6 +560,10 @@ void *loonggpu_get_vram_info(struct device *dev, unsigned long *size)
 	return (void *)el1->integer.value;
 }
 
+
+resource_size_t g_vram_base = 0;
+resource_size_t g_vram_size = 0;
+
 /**
  * loongson_vga_pci_register -- add pci device
  *
@@ -569,6 +582,7 @@ static int loongson_vga_pci_register(struct pci_dev *pdev,
 	void __iomem *dc_rmmio;
 	struct drm_device *dev;
 	int retry = 0;
+	struct pci_dev *gpu_pdev;
 
 	ret = pci_enable_device(pdev);
 	if (ret)
@@ -591,6 +605,11 @@ static int loongson_vga_pci_register(struct pci_dev *pdev,
 		gdc_reg = &ls7a2000_dc_reg;
 	} else if (pdev->device == 0x7a46) {
 		gdc_reg = &ls2k3000_dc_reg;
+	} else if (pdev->device == 0x7a06) {
+		gdc_reg = &ls7a1000_dc_reg;
+		gpu_pdev = pci_get_device(0x0014, 0x7A15, NULL);
+		g_vram_base = pci_resource_start(gpu_pdev, 2);
+		g_vram_size = pci_resource_len(gpu_pdev, 2);
 	}
 
 	if (pdev->device != 0x9a10) {

@@ -19,10 +19,10 @@ cal_freq(unsigned int pixclock_khz, struct pixel_clock *pll_config)
 	unsigned long a, b, c;
 	unsigned long min = 50;
 
-	for (pstdiv = 1; pstdiv < 64; pstdiv++) {
+	for (pstdiv = 63; pstdiv >= 1; pstdiv--) {
 		a = (unsigned long)pixclock_khz * pstdiv;
-		for (frefc = 3; frefc < 6; frefc++) {
-			for (loopc = 24; loopc < 161; loopc++) {
+		for (frefc = 5; frefc >= 3; frefc--) {
+			for (loopc = 160; loopc >= 24; loopc--) {
 				if ((loopc < 12 * frefc) ||
 				    (loopc > 32 * frefc))
 					continue;
@@ -144,18 +144,11 @@ bool ls7a2000_dc_pll_set(struct loonggpu_dc_crtc *crtc, struct dc_timing_info *t
 
 bool ls2k3000_dc_pll_set(struct loonggpu_dc_crtc *crtc, struct dc_timing_info *timing)
 {
-	struct loonggpu_device *adev = crtc->dc->adev;
-	u32 link_cfg0;
 	u32 link;
 
 	link = crtc->resource->base.link;
 	if (link >= DC_DVO_MAXLINK)
 		return false;
-
-	link_cfg0 = dc_readl(adev, gdc_reg->dp_reg[link].link_cfg0);
-	link_cfg0 &= ~0x1;
-	dc_writel(adev, gdc_reg->dp_reg[link].link_cfg0, link_cfg0);
-	dc_writel(adev, gdc_reg->crtc_reg[link].cfg, 0);
 
 	dc_interface_pll_set(crtc, timing);
 	return true;
@@ -398,11 +391,8 @@ u32 dc_vblank_get_counter(struct loonggpu_device *adev, int crtc_num)
 {
 	if (crtc_num >= adev->mode_info.num_crtc)
 		return 0;
-	else {
-		return dc_readl(adev, gdc_reg->crtc_reg[crtc_num].vsync_counter);
-	}
 
-	return 0;
+	return adev->dc->hw_ops->dc_vblank_get_counter(adev, crtc_num);
 }
 
 int dc_crtc_get_scanoutpos(struct loonggpu_device *adev, int crtc_num,
@@ -615,7 +605,8 @@ int loonggpu_dc_crtc_init(struct loonggpu_device *adev,
 		goto fail;
 
 	res = drm_crtc_init_with_planes(adev->ddev, &acrtc->base, plane,
-			&cursor_plane->base, &loonggpu_dc_crtc_funcs, NULL);
+		&cursor_plane->base, &loonggpu_dc_crtc_funcs, NULL);
+
 	if (!res)
 		acrtc->crtc_id = crtc_index;
 	else {

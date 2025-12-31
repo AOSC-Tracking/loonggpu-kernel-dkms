@@ -75,6 +75,10 @@ struct loonggpu_bo {
 	struct kgd_mem                  *kcd_bo;
 };
 
+#if !defined(LG_DRM_DRIVER_HAS_GEM_FREE)
+extern const struct drm_gem_object_funcs loonggpu_gem_object_funcs;
+#endif
+
 static inline struct loonggpu_bo *ttm_to_loonggpu_bo(struct ttm_buffer_object *tbo)
 {
 	return container_of(tbo, struct loonggpu_bo, tbo);

@@ -6,6 +6,13 @@
 #include "loonggpu_dc_reg.h"
 #include "loonggpu_helper.h"
 
+void ls7a1000_hdmi_i2c_set(struct loonggpu_dc_crtc *crtc, int intf, bool use_gpio_i2c)
+{
+	/* 7a1000 has no hdmi interface */
+	return;
+}
+
+
 void ls7a2000_hdmi_i2c_set(struct loonggpu_dc_crtc *crtc, int intf, bool use_gpio_i2c)
 {
 	u32 value;
@@ -99,13 +106,15 @@ int ls7a2000_hdmi_resume(struct loonggpu_dc_crtc *crtc, int intf)
 {
 	struct loonggpu_device *adev = crtc->dc->adev;
 
-	dc_writel(adev, gdc_reg->hdmi_reg_v1[intf].ctrl, crtc->hdmi_ctrl[intf]);
-	if (crtc->hdmi_ctrl[intf] & HDMI_CTRL_AUDIO_ENABLE) {
-		dc_writel(adev, gdc_reg->hdmi_reg_v1[intf].zoneidle, 0x00400040);
-		dc_writel(adev, gdc_reg->hdmi_reg_v1[intf].audio_ncfg, 6272);
-		dc_writel(adev, gdc_reg->hdmi_reg_v1[intf].audio_ctscfg, 0x80000000);
-		dc_writel(adev, gdc_reg->hdmi_reg_v1[intf].audio_infoframe, 0x15);
-		dc_writel(adev, gdc_reg->hdmi_reg_v1[intf].audio_sample, 0x1);
+	if (crtc->intf[intf].connected) {
+		dc_writel(adev, gdc_reg->hdmi_reg_v1[intf].ctrl, crtc->hdmi_ctrl[intf]);
+		if (crtc->hdmi_ctrl[intf] & HDMI_CTRL_AUDIO_ENABLE) {
+			dc_writel(adev, gdc_reg->hdmi_reg_v1[intf].zoneidle, 0x00400040);
+			dc_writel(adev, gdc_reg->hdmi_reg_v1[intf].audio_ncfg, 6272);
+			dc_writel(adev, gdc_reg->hdmi_reg_v1[intf].audio_ctscfg, 0x80000000);
+			dc_writel(adev, gdc_reg->hdmi_reg_v1[intf].audio_infoframe, 0x15);
+			dc_writel(adev, gdc_reg->hdmi_reg_v1[intf].audio_sample, 0x1);
+		}
 	}
 
 	return 0;
@@ -115,7 +124,7 @@ int ls7a2000_hdmi_init(struct loonggpu_dc_crtc *crtc, int intf)
 {
 	struct loonggpu_device *adev = crtc->dc->adev;
 
-	dc_writel(adev, gdc_reg->hdmi_reg_v1[intf].ctrl, 0x280);
+	dc_writel(adev, gdc_reg->hdmi_reg_v1[intf].ctrl, 0x282);
 	dc_writel(adev, gdc_reg->hdmi_reg_v1[intf].phy_ctrl, 0xf02);
 	dc_writel(adev, gdc_reg->hdmi_reg_v1[intf].zoneidle, 0x00400040);
 
@@ -139,7 +148,7 @@ int ls7a2000_hdmi_audio_init(struct loonggpu_dc_crtc *crtc, int intf)
 	struct loonggpu_device *adev = crtc->dc->adev;
 
 	val = dc_readl(adev, gdc_reg->hdmi_reg_v1[intf].ctrl);
-	if ((val & 0x2) && (val & 0x4))
+	if (val & 0x4)
 		return 0;
 
 	/* enable hdmi audio, but don't touch EN bit which will be
@@ -447,26 +456,24 @@ bool ls2k3000_hdmi_enable(struct loonggpu_dc_crtc *crtc, int intf, bool enable)
 
 	dc_global_reg_config(adev, dc_global_reg_save, 1);
 
+	hdmi_ctrl = dc_readl(adev, gdc_reg->hdmi_reg_v2[intf].ctrl);
 	phy_cfg0 = dc_readl(adev, gdc_reg->hdmi_reg_v2[intf].phy_cfg0);
-	if (enable && (phy_cfg0 & (0x1 << 29)))
+
+	if (enable && (phy_cfg0 & (0x1 << 29)) && (hdmi_ctrl & HDMI_CTRL_ENABLE))
 		goto out;
 
-	if (!enable && (!(phy_cfg0 & (0x1 << 29))))
+	if (!enable && (!(phy_cfg0 & (0x1 << 29))) && (!(hdmi_ctrl & HDMI_CTRL_ENABLE)))
 		goto out;
 
 	if (enable) {
 		phy_cfg0 |= (0x1 << 29);
-		hdmi_ctrl = dc_readl(adev, gdc_reg->hdmi_reg_v2[intf].ctrl);
-                /* fixme: the hdmi ctrl reg bit 0 do not work, but it can workaround purple border issue. */
-		hdmi_ctrl &= ~HDMI_CTRL_ENABLE;
-		dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].ctrl, hdmi_ctrl);
+		hdmi_ctrl |= HDMI_CTRL_ENABLE;
 	} else {
-		hdmi_ctrl = dc_readl(adev, gdc_reg->hdmi_reg_v2[intf].ctrl);
 		hdmi_ctrl &= ~HDMI_CTRL_ENABLE;
-		dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].ctrl, hdmi_ctrl);
 		phy_cfg0 &= ~(0x1 << 29);
 	}
 
+	dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].ctrl, hdmi_ctrl);
 	dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].phy_cfg0, phy_cfg0);
 
 out:
@@ -484,14 +491,15 @@ void ls2k3000_hdmi_suspend(struct loonggpu_dc_crtc *crtc, int intf)
 int ls2k3000_hdmi_resume(struct loonggpu_dc_crtc *crtc, int intf)
 {
 	struct loonggpu_device *adev = crtc->dc->adev;
-
-	dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].ctrl, crtc->hdmi_ctrl[intf]);
-	if (crtc->hdmi_ctrl[intf] & HDMI_CTRL_AUDIO_ENABLE) {
-		dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].zoneidle, 0x00400040);
-		dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].audio_ncfg, 6272);
-		dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].audio_ctscfg, 0x80000000);
-		dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].audio_infoframe, 0x15);
-		dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].audio_sample, 0x1);
+	if (crtc->intf[intf].connected) {
+		dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].ctrl, crtc->hdmi_ctrl[intf]);
+		if (crtc->hdmi_ctrl[intf] & HDMI_CTRL_AUDIO_ENABLE) {
+			dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].zoneidle, 0x00400040);
+			dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].audio_ncfg, 6272);
+			dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].audio_ctscfg, 0x80000000);
+			dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].audio_infoframe, 0x15);
+			dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].audio_sample, 0x1);
+		}
 	}
 
 	return 0;
@@ -501,7 +509,7 @@ int ls2k3000_hdmi_init(struct loonggpu_dc_crtc *crtc, int intf)
 {
 	struct loonggpu_device *adev = crtc->dc->adev;
 
-	dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].ctrl, 0x388);
+	dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].ctrl, 0x382);
 	dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].zoneidle, 0x00400040);
 	return 0;
 }
@@ -512,7 +520,7 @@ int ls2k3000_hdmi_audio_init(struct loonggpu_dc_crtc *crtc, int intf)
 	u32 val;
 
 	val = dc_readl(adev, gdc_reg->hdmi_reg_v2[intf].ctrl);
-	if ((val & 0x2) && (val & 0x4))
+	if (val & 0x4)
 		return 0;
 
 	/* enable hdmi audio, but don't touch EN bit which will be
@@ -545,7 +553,7 @@ int ls2k3000_hdmi_noaudio_init(struct loonggpu_dc_crtc *crtc, int intf)
 	struct loonggpu_device *adev = crtc->dc->adev;
 
 	val = dc_readl(adev, gdc_reg->hdmi_reg_v2[intf].ctrl);
-	dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].ctrl, 0x388 | (val & 1));
+	dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].ctrl, 0x382 | (val & 1));
 
 	return 0;
 }

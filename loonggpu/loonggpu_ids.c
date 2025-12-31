@@ -133,7 +133,7 @@ fallback:
 	/* Not enough memory for the delayed delete, as last resort
 	 * block for all the fences to complete.
 	 */
-	lg_dma_resv_wait_timeout_rcu(resv, true, false, MAX_SCHEDULE_TIMEOUT);
+	lg_dma_resv_wait_timeout_rcu(resv, LG_DMA_RESV_USAGE_READ, true, false, MAX_SCHEDULE_TIMEOUT);
 	loonggpu_pasid_free(pasid);
 }
 

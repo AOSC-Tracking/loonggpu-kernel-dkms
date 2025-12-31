@@ -173,6 +173,42 @@ static int gfx_gpu_get_cu_info(struct loonggpu_device *adev)
 	return 0;
 }
 
+static uint32_t gfx_compute_clock_common(struct loonggpu_device *adev,
+					 uint32_t reg, uint32_t ch)
+{
+	uint64_t tmp, pll_div_ref, pll_loopc, pll_div_out;
+	uint32_t clk;
+	void __iomem *io_base = adev->io_base;
+
+	if (io_base == NULL)
+		return 0;
+
+	if (adev->family_type != CHIP_LG200)
+		return 0;
+
+	tmp = readq(io_base + reg);
+	mb();
+
+	pll_div_ref = (tmp >> 32) & 0x7f;
+	pll_loopc = (tmp >> 21) & 0x1ff;
+	pll_div_out = (tmp >> (7 * ch)) & 0x7f;
+
+	clk = 100 * pll_loopc / pll_div_ref / pll_div_out;
+
+	/* return all clocks in 100KHz */
+	return clk * 100;
+}
+
+static uint32_t gfx_get_mem_clock(struct loonggpu_device *adev)
+{
+	return gfx_compute_clock_common(adev, 0x490, 1) * 2;
+}
+
+static uint32_t gfx_get_engine_clock(struct loonggpu_device *adev)
+{
+	return gfx_compute_clock_common(adev, 0x4a0, 0);
+}
+
 static int gfx_gpu_early_init(struct loonggpu_device *adev)
 {
 	u32 gb_addr_config;
@@ -227,6 +263,9 @@ static int gfx_gpu_early_init(struct loonggpu_device *adev)
 	adev->gfx.mec.num_mec = 1;
 	adev->gfx.mec.num_pipe_per_mec = 1;
 	adev->gfx.mec.num_queue_per_pipe = 8;
+
+	adev->clock.default_sclk = gfx_get_engine_clock(adev);
+	adev->clock.default_mclk = gfx_get_mem_clock(adev);
 
 	return 0;
 }
@@ -479,7 +518,12 @@ static uint64_t gfx_get_gpu_clock_counter(struct loonggpu_device *adev)
 
 	mutex_lock(&adev->gfx.gpu_clock_mutex);
 
-	DRM_DEBUG("%s Not impelet\n", __func__);
+	if (adev->family_type == CHIP_LG200) {
+		clock = RREG32(LOONGGPU_LG2XX_TIME_COUNT_LO);
+		clock |= (uint64_t)RREG32(LOONGGPU_LG2XX_TIME_COUNT_HI) << 32;
+	}
+	else
+		DRM_DEBUG("%s Not impelet\n", __func__);
 
 	mutex_unlock(&adev->gfx.gpu_clock_mutex);
 	return clock;

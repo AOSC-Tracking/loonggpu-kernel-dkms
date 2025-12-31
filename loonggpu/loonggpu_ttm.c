@@ -1269,6 +1269,14 @@ static struct ttm_tt *loonggpu_ttm_tt_create(struct ttm_buffer_object *bo,
 		gtt->is_share_sg = true;
 	}
 #endif
+
+#if defined(TTM_TT_FLAG_EXTERNAL)
+	if (page_flags & TTM_TT_FLAG_EXTERNAL) {
+		page_flags &= ~TTM_TT_FLAG_EXTERNAL;
+		gtt->is_share_sg = true;
+	}
+#endif
+
 	/* allocate space for the uninitialized page entries */
 	if (lg_ttm_sg_tt_init(&gtt->ttm, abo->flags, bo, page_flags)) {
 		kfree(gtt);
@@ -1293,6 +1301,10 @@ static int loonggpu_ttm_tt_populate(lg_ttm_tt_populate_arg,
 #if defined(TTM_PAGE_FLAG_SG)
 	slave = !!(ttm->page_flags & TTM_PAGE_FLAG_SG);
 #endif
+
+#if defined(TTM_TT_FLAG_EXTERNAL)
+	slave = !!(ttm->page_flags & TTM_TT_FLAG_EXTERNAL);
+#endif
 	/* user pages are bound by loonggpu_ttm_tt_pin_userptr() */
 	if (gtt && gtt->userptr) {
 		ttm->sg = kzalloc(sizeof(struct sg_table), GFP_KERNEL);
@@ -1301,6 +1313,10 @@ static int loonggpu_ttm_tt_populate(lg_ttm_tt_populate_arg,
 
 #if defined(TTM_PAGE_FLAG_SG)
 		ttm->page_flags |= TTM_PAGE_FLAG_SG;
+#endif
+
+#if defined(TTM_TT_FLAG_EXTERNAL)
+		ttm->page_flags |= TTM_TT_FLAG_EXTERNAL;
 #endif
 		lg_ttm_set_state_unbound(ttm);
 		lg_ttm_tt_set_populated(ttm);
@@ -1342,11 +1358,20 @@ static void loonggpu_ttm_tt_unpopulate(lg_ttm_tt_populate_arg)
 #if defined(TTM_PAGE_FLAG_SG)
 	slave = !!(ttm->page_flags & TTM_PAGE_FLAG_SG);
 #endif
+
+#if defined(TTM_TT_FLAG_EXTERNAL)
+	slave = !!(ttm->page_flags & TTM_TT_FLAG_EXTERNAL);
+#endif
+
 	if (gtt && gtt->userptr) {
 		loonggpu_ttm_tt_set_user_pages(ttm, NULL);
 		kfree(ttm->sg);
 #if defined(TTM_PAGE_FLAG_SG)
 		ttm->page_flags &= ~TTM_PAGE_FLAG_SG;
+#endif
+
+#if defined(TTM_TT_FLAG_EXTERNAL)
+		ttm->page_flags &= ~TTM_TT_FLAG_EXTERNAL;
 #endif
 		return;
 	}

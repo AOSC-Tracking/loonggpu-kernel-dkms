@@ -1341,6 +1341,9 @@ int loonggpu_device_init(struct loonggpu_device *adev,
 		} else if (adev->loongson_dc->device == 0x7a46) {
 			adev->chip = dev_2k3000;
 			DRM_INFO("Set 2K3000 device in loonggpu driver\n");
+		} else if (adev->loongson_dc->device == 0x7a06) {
+			adev->chip = dev_7a1000;
+			DRM_INFO("Set 7A1000 device in loonggpu driver\n");
 		}
 	} else
 		DRM_INFO("Set 9A1000 device in loonggpu driver\n");

@@ -1097,6 +1097,29 @@ static inline int lg_pwm_apply_state(struct pwm_device *pwm,
 #endif
 }
 
+static struct pwm_lookup loongson_pwm_lookup;
+
+static void init_loongson_pwm_lookup(int pwm_id, const char *dev_name)
+{
+	char provider[20];
+
+	sprintf(provider, "LOON0006:0%d", pwm_id);
+
+	loongson_pwm_lookup.provider = provider;
+	loongson_pwm_lookup.index = 0;
+	loongson_pwm_lookup.dev_id = dev_name;
+	loongson_pwm_lookup.con_id = NULL;
+	loongson_pwm_lookup.period = 0;
+	loongson_pwm_lookup.polarity = PWM_POLARITY_NORMAL;
+	loongson_pwm_lookup.module = "pwm-loongson";
+}
+
+static inline void lg_pwm_add_table(struct pwm_lookup *table, size_t num)
+{
+	if (LG_IS_EXPORT_SYMBOL_GPL_pwm_add_table == 1)
+		pwm_add_table(table, num);
+}
+
 static inline struct pwm_device *lg_pwm_request(struct device *dev,
 						const char *pwm_name,
 						int pwm, const char *lable)
@@ -1104,7 +1127,9 @@ static inline struct pwm_device *lg_pwm_request(struct device *dev,
 #if defined(LG_PWM_REQUEST)
 	return pwm_request(pwm, lable);
 #else
-	return pwm_get(dev, pwm_name);
+	init_loongson_pwm_lookup(pwm, dev_name(dev));
+	lg_pwm_add_table(&loongson_pwm_lookup, 1);
+	return pwm_get(dev, NULL);
 #endif
 }
 

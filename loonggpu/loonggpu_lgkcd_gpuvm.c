@@ -299,7 +299,7 @@ create_dmamap_sg_bo(struct loonggpu_device *adev,
 	if (ret)
 		return ret;
 
-	ret = loonggpu_gem_object_create(adev, mem->bo->gem_base.size, 1,
+	ret = loonggpu_gem_object_create(adev, lg_gbo_to_gem_obj(mem->bo).size, 1,
 			LOONGGPU_GEM_DOMAIN_CPU, LOONGGPU_GEM_CREATE_PREEMPTIBLE,
 			ttm_bo_type_sg, lg_tbo_to_resv(&mem->bo->tbo), &gem_obj);
 
@@ -840,7 +840,7 @@ static int kcd_mem_export_dmabuf(struct kgd_mem *mem)
 #if defined(LG_DRM_DRIVER_GEM_PRIME_EXPORT_HAS_DEV_ARG)
 			adev_to_drm(loonggpu_ttm_adev(mem->bo->tbo.bdev)),
 #endif
-			&mem->bo->gem_base,
+			&lg_gbo_to_gem_obj(mem->bo),
 			mem->alloc_flags & KCD_IOC_ALLOC_MEM_FLAGS_WRITABLE ?
 				DRM_RDWR : 0);
 		if (IS_ERR(ret))
@@ -889,7 +889,7 @@ static int kcd_mem_attach(struct loonggpu_device *adev, struct kgd_mem *mem,
 		struct loonggpu_vm *vm)
 {
 	struct loonggpu_device *bo_adev = loonggpu_ttm_adev(mem->bo->tbo.bdev);
-	unsigned long bo_size = mem->bo->gem_base.size;
+	unsigned long bo_size = lg_gbo_to_gem_obj(mem->bo).size;
 	struct loonggpu_bo *pd = vm->root.base.bo;
 	uint64_t va = mem->va;
 	struct kcd_mem_attachment *attachment[2] = {NULL, NULL};
@@ -918,12 +918,12 @@ static int kcd_mem_attach(struct loonggpu_device *adev, struct kgd_mem *mem,
 			*/
 		attachment[i]->type = KCD_MEM_ATT_SHARED;
 		bo[i] = mem->bo;
-		drm_gem_object_get(&bo[i]->gem_base);
+		drm_gem_object_get(&lg_gbo_to_gem_obj(bo[i]));
 	} else if (i > 0) {
 		/* Multiple mappings on the same GPU share the BO */
 		attachment[i]->type = KCD_MEM_ATT_SHARED;
 		bo[i] = bo[0];
-		drm_gem_object_get(&bo[i]->gem_base);
+		drm_gem_object_get(&lg_gbo_to_gem_obj(bo[i]));
 	} else if (loonggpu_ttm_tt_get_usermm(mem->bo->tbo.ttm)) {
 		/* Create an SG BO to DMA-map userptrs on other GPUs */
 		attachment[i]->type = KCD_MEM_ATT_USERPTR;
@@ -1020,7 +1020,7 @@ unwind:
 		list_del(&attachment[i]->list);
 	}
 	if (bo[i])
-		lg_drm_gem_object_put(&bo[i]->gem_base);
+		lg_drm_gem_object_put(&lg_gbo_to_gem_obj(bo[i]));
 	kfree(attachment[i]);
 	return ret;
 }
@@ -1032,7 +1032,7 @@ static void kcd_mem_detach(struct kcd_mem_attachment *attachment)
 	pr_debug("\t remove VA 0x%llx in entry %p\n",
 			attachment->va, attachment);
 	loonggpu_vm_bo_rmv(attachment->adev, attachment->bo_va);
-	lg_drm_gem_object_put(&bo->gem_base);
+	lg_drm_gem_object_put(&lg_gbo_to_gem_obj(bo));
 	list_del(&attachment->list);
 	kfree(attachment);
 }
@@ -1835,6 +1835,12 @@ int loonggpu_lgkcd_gpuvm_alloc_memory_of_gpu(
 		goto err_bo_create;
 	}
 
+	ret = drm_vma_node_allow(&lg_gbo_to_gem_obj(bo).vma_node, drm_priv);
+	if (ret) {
+		pr_debug("Failed to allow vma node access. ret %d\n", ret);
+		goto err_node_allow;
+	}
+
 	if (bo_type == ttm_bo_type_sg) {
 		bo->tbo.sg = sg;
 		bo->tbo.ttm->sg = sg;
@@ -1848,7 +1854,9 @@ int loonggpu_lgkcd_gpuvm_alloc_memory_of_gpu(
 	(*mem)->domain = domain;
 	(*mem)->mapped_to_gpu_memory = 0;
 	(*mem)->process_info = avm->process_info;
-
+#if !defined(LG_DRM_DRIVER_HAS_GEM_FREE)
+	lg_gbo_to_gem_obj(bo).funcs = &loonggpu_gem_object_funcs;
+#endif
 	add_kgd_mem_to_kcd_bo_list(*mem, avm->process_info, user_addr);
 
 	if (user_addr) {
@@ -1874,7 +1882,9 @@ int loonggpu_lgkcd_gpuvm_alloc_memory_of_gpu(
 err_pin_bo:
 allocate_init_user_pages_failed:
 	remove_kgd_mem_from_kcd_bo_list(*mem, avm->process_info);
-	lg_drm_gem_object_put(&bo->gem_base);
+	drm_vma_node_revoke(&lg_gbo_to_gem_obj(bo).vma_node, drm_priv);
+err_node_allow:
+	lg_drm_gem_object_put(&lg_gbo_to_gem_obj(bo));
 	/* Don't unreserve system mem limit twice */
 	goto err_out;
 err_bo_create:
@@ -1891,7 +1901,7 @@ int loonggpu_lgkcd_gpuvm_free_memory_of_gpu(
 		uint64_t *size)
 {
 	struct lgkcd_process_info *process_info = mem->process_info;
-	unsigned long bo_size = mem->bo->gem_base.size;
+	unsigned long bo_size = lg_gbo_to_gem_obj(mem->bo).size;
 	bool use_release_notifier = (mem->bo->kcd_bo == mem);
 	struct kcd_mem_attachment *entry, *tmp;
 	struct bo_vm_reservation_context ctx;
@@ -1986,12 +1996,13 @@ int loonggpu_lgkcd_gpuvm_free_memory_of_gpu(
 
 	/* Unreference the ipc_obj if applicable */
 	kcd_ipc_obj_put(&mem->ipc_obj);
+	drm_vma_node_revoke(&lg_gbo_to_gem_obj(mem->bo).vma_node, drm_priv);
 
 	if (mem->dmabuf)
 		dma_buf_put(mem->dmabuf);
 
 	/* Free the BO*/
-	lg_drm_gem_object_put(&mem->bo->gem_base);
+	lg_drm_gem_object_put(&lg_gbo_to_gem_obj(mem->bo));
 
 	if (!use_release_notifier)
 		kfree(mem);
@@ -2037,7 +2048,7 @@ int loonggpu_lgkcd_gpuvm_map_memory_to_gpu(
 	mutex_lock(&mem->lock);
 
 	domain = mem->domain;
-	bo_size = bo->gem_base.size;
+	bo_size = lg_gbo_to_gem_obj(bo).size;
 
 	pr_debug("Map VA 0x%llx - 0x%llx to vm %p domain %s\n",
 			mem->va,
@@ -2127,7 +2138,7 @@ int loonggpu_lgkcd_gpuvm_unmap_memory_from_gpu(
 {
 	struct loonggpu_vm *avm = drm_priv_to_vm(drm_priv);
 	struct lgkcd_process_info *process_info = avm->process_info;
-	unsigned long bo_size = mem->bo->gem_base.size;
+	unsigned long bo_size = lg_gbo_to_gem_obj(mem->bo).size;
 	struct kcd_mem_attachment *entry;
 	struct bo_vm_reservation_context ctx;
 	int ret;

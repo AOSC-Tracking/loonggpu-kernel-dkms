@@ -54,18 +54,18 @@ static void ls2k2000_hpd_init(struct loonggpu_bridge_phy *phy, struct loonggpu_c
 	if (has_ext_encoder) {
 		if (lconnector->connector_id == 0) {
 			lconnector->irq_source_i2c = DC_IRQ_SOURCE_I2C0;
-			lconnector->irq_source_hpd = DC_IRQ_SOURCE_HPD_HDMI0_NULL;
+			lconnector->irq_source_hpd[0] = DC_IRQ_SOURCE_HPD_HDMI0_NULL;
 		} else if (lconnector->connector_id == 1) {
 			lconnector->irq_source_i2c = DC_IRQ_SOURCE_I2C1;
-			lconnector->irq_source_hpd = DC_IRQ_SOURCE_HPD_HDMI1_NULL;
+			lconnector->irq_source_hpd[0] = DC_IRQ_SOURCE_HPD_HDMI1_NULL;
 		}
 	} else {
 		if (lconnector->connector_id == 0) {
 			lconnector->irq_source_i2c = DC_IRQ_SOURCE_I2C0;
-			lconnector->irq_source_hpd = DC_IRQ_SOURCE_HPD_HDMI0;
+			lconnector->irq_source_hpd[0] = DC_IRQ_SOURCE_HPD_HDMI0;
 		} else if (lconnector->connector_id == 1) {
 			lconnector->irq_source_i2c = DC_IRQ_SOURCE_I2C1;
-			lconnector->irq_source_hpd = DC_IRQ_SOURCE_HPD_HDMI1_NULL;
+			lconnector->irq_source_hpd[0] = DC_IRQ_SOURCE_HPD_HDMI1_NULL;
 		}
 	}
 

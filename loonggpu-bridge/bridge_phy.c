@@ -453,6 +453,12 @@ static char *get_encoder_chip_name(int encoder_obj)
 		return "edp";
 	case ENCODER_CHIP_ID_INTERNAL_DP:
 		return "dp";
+	case ENCODER_CHIP_ID_HDMI_LT8618:
+		return "lt8618";
+	case ENCODER_CHIP_ID_HDMI_IT66121:
+		return "it66121";
+	case ENCODER_CHIP_ID_HDMI_MS7210:
+		return "ms7210";
 	default:
 		DRM_WARN("No ext encoder chip 0x%x.\n", encoder_obj);
 		return "Unknown";
@@ -662,6 +668,8 @@ static int bridge_phy_internal_init(struct loonggpu_dc_bridge *dc_bridge)
 		return bridge_phy_ls2k2000_init(dc_bridge);
 	case dev_2k3000:
 		return bridge_phy_ls2k3000_init(dc_bridge);
+	case dev_7a1000:
+		return bridge_phy_ls7a1000_init(dc_bridge);
 	default:
 		DRM_DEBUG_DRIVER("No matching chip! Skip internal bridge phy init\n");
 		break;
@@ -689,6 +697,15 @@ static int bridge_phy_encoder_obj_select(struct loonggpu_dc_bridge *dc_bridge)
 		break;
 	case ENCODER_CHIP_ID_DP_LT8718:
 		ret = bridge_phy_lt8718_init(dc_bridge);
+		break;
+	case ENCODER_CHIP_ID_HDMI_LT8618:
+		ret = bridge_phy_lt8618_init(dc_bridge);
+		break;
+	case ENCODER_CHIP_ID_HDMI_IT66121:
+		ret = bridge_phy_it66121_init(dc_bridge);
+		break;
+	case ENCODER_CHIP_ID_HDMI_MS7210:
+		ret = bridge_phy_ms7210_init(dc_bridge);
 		break;
 	case ENCODER_CHIP_ID_INTERNAL_DVO:
 	case ENCODER_CHIP_ID_INTERNAL_HDMI:
@@ -794,6 +811,9 @@ struct loonggpu_dc_bridge
 		case ENCODER_CHIP_ID_EDP_LT6711:
 		case ENCODER_CHIP_ID_LVDS_LT8619:
 		case ENCODER_CHIP_ID_DP_LT8718:
+		case ENCODER_CHIP_ID_HDMI_IT66121:
+		case ENCODER_CHIP_ID_HDMI_LT8618:
+		case ENCODER_CHIP_ID_HDMI_MS7210:
 			dc->link_info[link].encoder->has_ext_encoder = true;
 			break;
 		default:
@@ -824,6 +844,8 @@ static int bridge_phy_internal_register(struct loonggpu_dc_bridge *dc_bridge)
 		return internal_bridge_ls2k2000_register(dc_bridge);
 	case dev_2k3000:
 		return internal_bridge_ls2k3000_register(dc_bridge);
+	case dev_7a1000:
+		return internal_bridge_ls7a1000_register(dc_bridge);
 	default:
 		DRM_DEBUG_DRIVER("No matching chip! Skip internal bridge phy register\n");
 		break;

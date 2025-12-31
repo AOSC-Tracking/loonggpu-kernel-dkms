@@ -34,7 +34,9 @@ typedef void *irq_handler_idx;
 #define DC_INT_ID_HPD_HDMI0 14
 #define DC_INT_ID_HPD_HDMI1 15
 #define DC_INT_ID_HPD_VGA 16
-#define DC_INT_ID_MAX 17
+#define DC_INT_ID_HPD_EDP 17
+#define DC_INT_ID_HPD_DP 18
+#define DC_INT_ID_MAX 19
 
 enum dc_irq_source {
 	DC_IRQ_SOURCE_INVALID = 0,
@@ -51,7 +53,69 @@ enum dc_irq_source {
 
 	DC_IRQ_SOURCE_HPD_HDMI0_NULL,
 	DC_IRQ_SOURCE_HPD_HDMI1_NULL,
+
+	DC_IRQ_SOURCE_HPD_EDP,
+	DC_IRQ_SOURCE_HPD_DP,
+	DC_IRQ_SOURCE_HPD_EDP_NULL,
+	DC_IRQ_SOURCE_HPD_DP_NULL,
 	DC_IRQ_SOURCES_NUMBER
+};
+
+/**
+ * @dp_hpd_irq_type:
+ *
+ *   - LS2K3000_EDP_DP_HPD_NULL: No hotplug interrupt occurred for both EDP and DP.
+ *
+ *   - LS2K3000_EDP_IN: EDP hpd interrupt asserted for plug-in event.
+ *
+ *   - LS2K3000_DP_IN: DP hpd interrupt asserted for plug-in event.
+ *
+ *   - LS2K3000_EDP_IN_DP_IN: EDP and DP simultaneous insertion hpd interrupt asserted.
+ *
+ *   - LS2K3000_EDP_OUT: EDP hpd interrupt asserted for removal.
+ *
+ *   - LS2K3000_EDP_ERR: EDP hpd interrupt asserted for simultaneous plug-in and unplug event.
+ *
+ *   - LS2K3000_EDP_OUT_DP_IN: EDP hpd interrupt and DP hpd interrupt asserted simultaneously
+ *     for unplug and plug-in events respectively.
+ *
+ *   - LS2K3000_EDP_ERR_DP_IN: EDP hpd interrupt asserted for both plug-in and unplug events, and
+ *     DP hpd interrupt asserted for plug-in event.
+ *
+ *   - LS2K3000_DP_OUT: DP hpd interrupt asserted for unplug event.
+ *
+ *   - LS2K3000_EDP_IN_DP_OUT: EDP plug-in and DP unplug hpd interrupts triggered simultaneously.
+ *
+ *   - LS2K3000_DP_ERR: DP hpd interrupt asserted for simultaneous plug-in and unplug events.
+ *
+ *   - LS2K3000_EDP_IN_DP_ERR: EDP plug-in and DP plug-in/unplug hpd interrupts triggered simultaneously.
+ *
+ *   - LS2K3000_EDP_OUT_DP_OUT: EDP and DP unplug hpd interrupts triggered concurrently.
+ *
+ *   - LS2K3000_EDP_ERR_DP_OUT: EDP hpd interrupt asserted for both plug-in and unplug events, and
+ *     DP hpd interrupt asserted for unplug-event.
+ *
+ *   - LS2K3000_EDP_OUT_DP_ERR: EDP unplug and DP plug-in/unplug hpd interrupts triggered simultaneously.
+ *
+ *   - LS2K3000_EDP_ERR_DP_ERR: EDP plug-in/unplug and DP plug-in/unplug hpd interrupts triggered simultaneously.
+ */
+enum dp_hpd_irq_type {
+	LS2K3000_EDP_DP_HPD_NULL,
+	LS2K3000_EDP_IN,
+	LS2K3000_DP_IN,
+	LS2K3000_EDP_IN_DP_IN,
+	LS2K3000_EDP_OUT,
+	LS2K3000_EDP_ERR,
+	LS2K3000_EDP_OUT_DP_IN,
+	LS2K3000_EDP_ERR_DP_IN,
+	LS2K3000_DP_OUT,
+	LS2K3000_EDP_IN_DP_OUT,
+	LS2K3000_DP_ERR,
+	LS2K3000_EDP_IN_DP_ERR,
+	LS2K3000_EDP_OUT_DP_OUT,
+	LS2K3000_EDP_ERR_DP_OUT,
+	LS2K3000_EDP_OUT_DP_ERR,
+	LS2K3000_EDP_ERR_DP_ERR,
 };
 
 enum irq_type {
@@ -85,5 +149,12 @@ int dc_irq_sw_init(struct loonggpu_device *adev);
 int dc_irq_hw_init(struct loonggpu_device *adev);
 int dc_irq_hw_uninit(struct loonggpu_device *adev);
 void dc_irq_fini(struct loonggpu_device *adev);
-
+bool dc_hpd_ack(struct loonggpu_dc_crtc *crtc);
+bool ls7a1000_dc_hpd_ack(struct loonggpu_dc_crtc *crtc);
+bool dc_i2c_ack(struct loonggpu_dc_crtc *crtc);
+bool ls7a1000_dc_i2c_ack(struct loonggpu_dc_crtc *crtc);
+bool dc_crtc_vblank_ack(struct loonggpu_dc_crtc *crtc);
+bool ls7a1000_dc_crtc_vblank_ack(struct loonggpu_dc_crtc *crtc);
+bool ls7a2000_dc_hpd_enable(struct loonggpu_device *adev, uint32_t link, bool enable);
+bool ls2k3000_dc_hpd_enable(struct loonggpu_device *adev, uint32_t link, bool enable);
 #endif /* __LOONGGPU_DM_IRQ_H__ */

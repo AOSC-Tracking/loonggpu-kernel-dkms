@@ -89,6 +89,7 @@ extern int loonggpu_virtual_apu;
 extern int loonggpu_cwsr_enable;
 extern int loonggpu_panel_cfg_clk_pol;
 extern int loonggpu_panel_cfg_de_pol;
+extern int loonggpu_gpu_uart;
 
 #ifdef CONFIG_VDD_LOONGSON
 extern bool no_system_mem_limit;
@@ -143,7 +144,8 @@ extern const char *loonggpu_family_name[];
 enum loonggpu_chip {
 	dev_7a2000,
 	dev_2k2000,
-	dev_2k3000
+	dev_2k3000,
+	dev_7a1000
 };
 
 enum loonggpu_cp_irq {
@@ -520,6 +522,8 @@ void loonggpu_fence_slab_fini(void);
 #define LOONGGPU_LG2XX_CPIPE_CB_WPTR_OFFSET		0x38
 #define LOONGGPU_LG2XX_CPIPE_CB_RPTR_OFFSET		0x3c
 #define LOONGGPU_LG2XX_FW_VERSION_OFFSET			0x40
+#define LOONGGPU_LG2XX_TIME_COUNT_LO			0x90
+#define LOONGGPU_LG2XX_TIME_COUNT_HI			0x94
 
 #define LG2XX_ICMD32_MOP_GPIPE		0x00000001
 	#define LG2XX_ICMD32_SOP_GPIPE_BGQ	0x00000001
@@ -1212,6 +1216,7 @@ struct loonggpu_device {
 
 	/* clock/pll info */
 	struct loonggpu_clock            clock;
+	unsigned int 			dp_status[2];
 
 	/* MC */
 	struct loonggpu_gmc		gmc;

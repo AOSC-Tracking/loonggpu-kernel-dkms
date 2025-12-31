@@ -199,6 +199,7 @@ struct dc_reg {
 extern struct dc_reg *gdc_reg;
 extern struct dc_reg ls7a2000_dc_reg;
 extern struct dc_reg ls2k3000_dc_reg;
+extern struct dc_reg ls7a1000_dc_reg;
 
 #if defined(TO_UNCAC)
 #define LG_TO_UNCAC TO_UNCAC

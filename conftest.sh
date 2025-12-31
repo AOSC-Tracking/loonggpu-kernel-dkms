@@ -481,6 +481,13 @@ compile_test() {
             compile_check_conftest "$CODE" "LG_DRM_DRIVER_PRIME_FLAG_PRESENT" "" "types"
         ;;
 
+        pwm_add_table)
+            #
+            # Determine whether pwm_add_table function is exported in kernel.
+            #
+            export_symbol_gpl_conftest "pwm_add_table"
+        ;;
+
         drm_driver_irq_shared_flag_present)
             #
             # Determine whether driver feature flag DRIVER_IRQ_SHARED is present.
@@ -1485,6 +1492,20 @@ compile_test() {
             compile_check_conftest "$CODE" "LG_DRM_DRIVER_HAS_GET_VBLANK_TIMESTAMP" "" "types"
         ;;
 
+	mmu_notifier_ops_has_free_notifier)
+            #
+            # Determine if mmu_notifier_ops has free_notifier.
+            #
+            # Changed by commit 2c7933f53f6bff7656e3324ca1a04e478bdc57c1 ("mm/mmu_notifiers:
+            # add a get/put scheme for the registration") in v5.3-rc5
+            #
+            CODE="
+            #include <linux/mmu_notifier.h>
+            int conftest_mmu_notifier_ops_has_free_notifier(void) {
+                return offsetof(struct mmu_notifier_ops, free_notifier);
+            }"
+            compile_check_conftest "$CODE" "LG_MMU_NOTIFIER_OPS_HAS_FREE_NOTIFIER" "" "types"
+        ;;
 
 	i2c_new_client_device)
             #

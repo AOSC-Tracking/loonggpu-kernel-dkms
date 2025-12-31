@@ -27,6 +27,8 @@
 #include <drm/drm_dp_mst_helper.h>
 #endif
 
+extern resource_size_t g_vram_base;
+extern resource_size_t g_vram_size;
 struct dc_reg *gdc_reg;
 
 static const struct loonggpu_display_funcs dc_display_funcs = {
@@ -436,6 +438,90 @@ struct dc_reg ls2k3000_dc_reg = {
 		0x4488,	/*DP_PHY_MONITOR_2*/
 	},
 };
+
+/* For 7A1000, it has two DVOs and has no hdmi interface */
+struct dc_reg ls7a1000_dc_reg = {
+	.global_reg = {
+		0x1570, /* DI_INT_REG */
+		0x1BA0, /* DI_HDMI_HOTPLUG_STATUS */
+		0x1BB0, /* DI_VGA_HOTPULG_CFG */
+		0x1F00, /* DI_I2C_ADDR */
+		0x1660, /* DI_GPIO_CFG_OFFSET */
+		0x1650, /* DI_GPIO_IN_OFFSET */
+		0x1650, /* DI_GPIO_OUT_OFFSET */
+	},
+	.crtc_reg[0] = {
+		0x1240, /* DI_CRTC_CFG_REG */
+		0x1260, /* DI_CRTC_FBADDR0_LO_REG */
+		0x1580, /* DI_CRTC_FBADDR1_LO_REG */
+		0x15A0, /* DI_CRTC_FBADDR0_HI_REG */
+		0x15C0, /* DI_CRTC_FBADDR1_HI_REG */
+		0x1280, /* DI_CRTC_STRIDE_REG */
+		0x1300, /* DI_CRTC_FBORIGIN_REG */
+		0x1360, /* DI_CRTC_DITCFG_REG */
+		0x1380, /* DI_CRTC_DITTAB_LO_REG */
+		0x13A0, /* DI_CRTC_DITTAB_HI_REG */
+		0x13C0, /* DI_CRTC_PANELCFG_REG */
+		0x13E0, /* DI_CRTC_PANELTIM_REG */
+		0x1400, /* DI_CRTC_HDISPLAY_REG */
+		0x1420, /* DI_CRTC_HSYNC_REG */
+		0x1480, /* DI_CRTC_VDISPLAY_REG */
+		0x14A0, /* DI_CRTC_VSYNC_REG */
+		0x14E0, /* DI_CRTC_GAMINDEX_REG */
+		0x1500, /* DI_CRTC_GAMDATA_REG */
+		0x1B80, /* DI_CRTC_SYNCDEV_REG */
+		0x14C0, /* DI_CRTC_DISPLAY_POS_REG */
+		0x1B00, /* DI_CRTC_META0_REG_L */
+		0x1B20, /* DI_CRTC_META0_REG_H */
+		0x1B40, /* DI_CRTC_META1_REG_L */
+		0x1B60, /* DI_CRTC_META1_REG_H */
+		0x1A00, /* DI_VSYNC_COUNTER_REG */
+	},
+	.crtc_reg[1] = {
+		0x1250, /* DI_CRTC_CFG_REG */
+		0x1270, /* DI_CRTC_FBADDR0_LO_REG */
+		0x1590, /* DI_CRTC_FBADDR1_LO_REG */
+		0x15B0, /* DI_CRTC_FBADDR0_HI_REG */
+		0x15D0, /* DI_CRTC_FBADDR1_HI_REG */
+		0x1290, /* DI_CRTC_STRIDE_REG */
+		0x1310, /* DI_CRTC_FBORIGIN_REG */
+		0x1370, /* DI_CRTC_DITCFG_REG */
+		0x1390, /* DI_CRTC_DITTAB_LO_REG */
+		0x13B0, /* DI_CRTC_DITTAB_HI_REG */
+		0x13D0, /* DI_CRTC_PANELCFG_REG */
+		0x13F0, /* DI_CRTC_PANELTIM_REG */
+		0x1410, /* DI_CRTC_HDISPLAY_REG */
+		0x1430, /* DI_CRTC_HSYNC_REG */
+		0x1490, /* DI_CRTC_VDISPLAY_REG */
+		0x14B0, /* DI_CRTC_VSYNC_REG */
+		0x14F0, /* DI_CRTC_GAMINDEX_REG */
+		0x1510, /* DI_CRTC_GAMDATA_REG */
+		0x1B90, /* DI_CRTC_SYNCDEV_REG */
+		0x14D0, /* DI_CRTC_DISPLAY_POS_REG */
+		0x1B10, /* DI_CRTC_META0_REG_L */
+		0x1B30, /* DI_CRTC_META0_REG_H */
+		0x1B50, /* DI_CRTC_META1_REG_L */
+		0x1B70, /* DI_CRTC_META1_REG_H */
+		0x1A10, /* DI_VSYNC_COUNTER_REG */
+	},
+	.cursor_reg[0] = {
+		0x1520, /* DI_CURSOR0_CFG_REG */
+		0x1530, /* DI_CURSOR0_LADDR_REG */
+		0x15E0, /* DI_CURSOR0_HADDR_REG */
+		0x1540, /* DI_CURSOR0_POSITION_REG */
+		0x1550, /* DI_CURSOR0_BACK_REG */
+		0x1560, /* DI_CURSOR0_FORE_REG */
+	},
+	.cursor_reg[1] = {
+		0x1670, /* DI_CURSOR1_CFG_REG */
+		0x1680, /* DI_CURSOR1_LADDR_REG */
+		0x16E0, /* DI_CURSOR1_HADDR_REG */
+		0x1690, /* DI_CURSOR1_POSITION_REG */
+		0x16A0, /* DI_CURSOR1_BACK_REG */
+		0x16B0, /* DI_CURSOR1_FORE_REG */
+	},
+};
+
 
 u32 dc_readl(struct loonggpu_device *adev, u32 reg)
 {
@@ -849,7 +935,7 @@ static void loonggpu_dc_do_flip(struct drm_crtc *crtc,
 
 	/* Wait for all fences on this FB */
 	resv = to_dma_resv(abo);
-	WARN_ON(lg_dma_resv_wait_timeout_rcu(resv, true, false,
+	WARN_ON(lg_dma_resv_wait_timeout_rcu(resv, LG_DMA_RESV_USAGE_READ, true, false,
 					     MAX_SCHEDULE_TIMEOUT) < 0);
 
 	loonggpu_bo_unreserve(abo);
@@ -1123,6 +1209,7 @@ static void loonggpu_dc_atomic_commit_tail(struct drm_atomic_state *state)
 
 		if (old_crtc_state->active && !new_crtc_state->active) {
 			if (drm_atomic_crtc_needs_modeset(new_crtc_state)) {
+				dc_crtc->timing->clock = 0;
 				dc->hw_ops->crtc_enable(dc_crtc, false);
 				dc_interface_enable(dc_crtc, false);
 			}
@@ -1191,6 +1278,7 @@ static void loonggpu_dc_atomic_commit_tail(struct drm_atomic_state *state)
 		dc_crtc = adev->dc->link_info[acrtc->crtc_id].crtc;
 
 		if (!new_crtc_state->active) {
+			dc_crtc->timing->clock = 0;
 			dc->hw_ops->crtc_enable(dc_crtc, false);
 			dc_interface_enable(dc_crtc, false);
 		} else {
@@ -1397,6 +1485,14 @@ static void ls7a2000_dc_topology_init(struct loonggpu_dc_crtc *crtc)
 	crtc->interfaces = 1;
 }
 
+static void ls7a1000_dc_topology_init(struct loonggpu_dc_crtc *crtc)
+{
+	crtc->cursor = crtc->resource->base.link;
+	crtc->intf[0].type = INTERFACE_DVO;
+	crtc->intf[0].index = crtc->resource->base.link;
+	crtc->interfaces = 1;
+}
+
 static void ls2k2000_dc_topology_init(struct loonggpu_dc_crtc *crtc)
 {
 	crtc->cursor = crtc->resource->base.link;
@@ -1432,12 +1528,23 @@ static void ls2k3000_dc_topology_init(struct loonggpu_dc_crtc *crtc)
 	}
 }
 
+static u32 loonggpu_dc_vblank_get_counter(struct loonggpu_device *adev, int crtc_num)
+{
+	return dc_readl(adev, gdc_reg->crtc_reg[crtc_num].vsync_counter);
+}
+
+static u32 ls7a1000_dc_vblank_get_counter(struct loonggpu_device *adev, int crtc_num)
+{
+	return drm_crtc_vblank_count(&adev->mode_info.crtcs[crtc_num]->base);
+}
+
 static const struct dc_hw_ops ls7a2000_dc_hw_ops = {
 	.dc_pll_set = ls7a2000_dc_pll_set,
 	.dc_irq_hw_init = dc_irq_hw_init,
 	.dc_irq_hw_uninit = dc_irq_hw_uninit,
 	.dc_irq_fini = dc_irq_fini,
 	.dc_i2c_init = ls7a2000_dc_i2c_init,
+	.dc_hpd_enable = ls7a2000_dc_hpd_enable,
 
 	.crtc_enable = dc_crtc_enable,
 	.crtc_timing_set = dc_crtc_timing_set,
@@ -1453,10 +1560,41 @@ static const struct dc_hw_ops ls7a2000_dc_hw_ops = {
 	.hdmi_resume = ls7a2000_hdmi_resume,
 	.hdmi_suspend = ls7a2000_hdmi_suspend,
 	.hdmi_i2c_set = ls7a2000_hdmi_i2c_set,
+	.dc_hpd_ack = dc_hpd_ack,
+	.dc_i2c_ack = dc_i2c_ack,
+	.dc_crtc_vblank_ack = dc_crtc_vblank_ack,
+	.dc_vblank_get_counter = loonggpu_dc_vblank_get_counter,
+};
+
+static const struct dc_hw_ops ls7a1000_dc_hw_ops = {
+	.dc_pll_set = ls7a2000_dc_pll_set,
+	.dc_irq_hw_init = dc_irq_hw_init,
+	.dc_irq_hw_uninit = dc_irq_hw_uninit,
+	.dc_irq_fini = dc_irq_fini,
+	.dc_i2c_init = ls7a1000_dc_i2c_init,
+	.dc_hpd_enable = ls7a2000_dc_hpd_enable,
+
+	.crtc_enable = dc_crtc_enable,
+	.crtc_timing_set = dc_crtc_timing_set,
+
+	.cursor_move = dc_cursor_move,
+	.cursor_set = dc_cursor_set,
+
+	/* 7a1000 has two DVOs and has no hdmi interface */
+	.hdmi_i2c_set = ls7a1000_hdmi_i2c_set,
+	.dc_hpd_ack = ls7a1000_dc_hpd_ack,
+	.dc_i2c_ack = ls7a1000_dc_i2c_ack,
+	.dc_crtc_vblank_ack = ls7a1000_dc_crtc_vblank_ack,
+	.dc_vblank_get_counter = ls7a1000_dc_vblank_get_counter,
 };
 
 static const struct dc_sw_ops ls7a2000_dc_sw_ops = {
 	.dc_topology_init = ls7a2000_dc_topology_init,
+	.dc_irq_sw_init = dc_irq_sw_init,
+};
+
+static const struct dc_sw_ops ls7a1000_dc_sw_ops = {
+	.dc_topology_init = ls7a1000_dc_topology_init,
 	.dc_irq_sw_init = dc_irq_sw_init,
 };
 
@@ -1466,6 +1604,7 @@ static const struct dc_hw_ops ls2k2000_dc_hw_ops = {
 	.dc_irq_hw_uninit = dc_irq_hw_uninit,
 	.dc_irq_fini = dc_irq_fini,
 	.dc_i2c_init = ls7a2000_dc_i2c_init,
+	.dc_hpd_enable = ls7a2000_dc_hpd_enable,
 
 	.crtc_enable = dc_crtc_enable,
 	.crtc_timing_set = dc_crtc_timing_set,
@@ -1482,6 +1621,10 @@ static const struct dc_hw_ops ls2k2000_dc_hw_ops = {
 	.hdmi_resume = ls7a2000_hdmi_resume,
 	.hdmi_suspend = ls7a2000_hdmi_suspend,
 	.hdmi_i2c_set = ls7a2000_hdmi_i2c_set,
+	.dc_hpd_ack = dc_hpd_ack,
+	.dc_i2c_ack = dc_i2c_ack,
+	.dc_crtc_vblank_ack = dc_crtc_vblank_ack,
+	.dc_vblank_get_counter = loonggpu_dc_vblank_get_counter,
 };
 
 static const struct dc_sw_ops ls2k2000_dc_sw_ops = {
@@ -1496,6 +1639,7 @@ static const struct dc_hw_ops ls2k3000_dc_hw_ops = {
 	.dc_irq_fini = dc_irq_fini,
 	.dc_i2c_init = ls2k3000_dc_i2c_init,
 	.dc_i2c_resume = ls2k3000_dc_i2c_resume,
+	.dc_hpd_enable = ls2k3000_dc_hpd_enable,
 
 	.crtc_enable = dc_crtc_enable,
 	.crtc_timing_set = dc_crtc_timing_set,
@@ -1512,6 +1656,8 @@ static const struct dc_hw_ops ls2k3000_dc_hw_ops = {
 	.hdmi_suspend = ls2k3000_hdmi_suspend,
 	.hdmi_i2c_set = ls2k3000_hdmi_i2c_set,
 
+	.first_hpd_detect = l2k3000_dp_first_hdp_detect,
+	.dp_hpd_handler = l2k3000_hpd_irq_handler,
 	.dp_pll_set = ls2k3000_dp_pll_set,
 	.dp_enable = ls2k3000_dp_enable,
 	.dp_init = ls2k3000_dp_init,
@@ -1519,6 +1665,10 @@ static const struct dc_hw_ops ls2k3000_dc_hw_ops = {
 	.dp_resume = ls2k3000_dp_resume,
 	.dp_noaudio_init = ls2k3000_dp_noaudio_init,
 	.dp_suspend = ls2k3000_dp_suspend,
+	.dc_hpd_ack = dc_hpd_ack,
+	.dc_i2c_ack = dc_i2c_ack,
+	.dc_crtc_vblank_ack = dc_crtc_vblank_ack,
+	.dc_vblank_get_counter = loonggpu_dc_vblank_get_counter,
 };
 
 static const struct dc_sw_ops ls2k3000_dc_sw_ops = {
@@ -1526,7 +1676,7 @@ static const struct dc_sw_ops ls2k3000_dc_sw_ops = {
 	.dc_irq_sw_init = dc_irq_sw_init,
 };
 
-static inline void dc_set_dma_consistent(struct loonggpu_device *adev)
+void dc_set_dma_consistent(struct loonggpu_device *adev)
 {
 	int r;
 	int dma_bits;
@@ -1565,16 +1715,23 @@ static int dc_sw_init(void *handle)
 
 		adev->need_swiotlb = lg_drm_need_swiotlb(adev->gmc.dma_bits);
 
-		adev->gmc.aper_base = (unsigned long)loonggpu_get_vram_info(adev->dev, &size);
-		if (!adev->gmc.aper_base)
-			goto error;
+		if (g_vram_base && g_vram_size) {
+			adev->gmc.aper_base = g_vram_base;
+			adev->gmc.aper_size = g_vram_size;
+			base = adev->gmc.aper_base & 0xffffffffff;
+		} else {
+			adev->gmc.aper_base = (unsigned long)loonggpu_get_vram_info(adev->dev, &size);
+			if (!adev->gmc.aper_base)
+				goto error;
+			base = adev->gmc.aper_base;
+			adev->gmc.aper_size = size;
+		}
+
 		DRM_INFO("VRAM START:%llx!\n", (u64)adev->gmc.aper_base);
 
-		adev->gmc.aper_size = size;
 		adev->gmc.mc_vram_size = adev->gmc.aper_size;
 		adev->gmc.real_vram_size = adev->gmc.aper_size;
 		adev->gmc.visible_vram_size = adev->gmc.aper_size;
-		base = adev->gmc.aper_base;
 
 		loonggpu_device_vram_location(adev, &adev->gmc, base);
 
@@ -1618,7 +1775,9 @@ static int dc_sw_init(void *handle)
 		adev->dc->sw_ops = &ls2k2000_dc_sw_ops;
 	else if (adev->chip == dev_2k3000)
 		adev->dc->sw_ops = &ls2k3000_dc_sw_ops;
-
+	else if (adev->chip == dev_7a1000) {
+		adev->dc->sw_ops = &ls7a1000_dc_sw_ops;
+	}
 	sw_ops = adev->dc->sw_ops;
 	for (i = 0; i < adev->dc->links; i++) {
 		sw_ops->dc_topology_init(adev->dc->link_info[i].crtc);
@@ -1646,12 +1805,20 @@ static int dc_hw_init(void *handle)
 	struct loonggpu_device *adev = (struct loonggpu_device *)handle;
 	int i;
 
+	adev->ddev->mode_config.cursor_width = 64;
+	adev->ddev->mode_config.cursor_height = 64;
+
 	if (adev->chip == dev_7a2000)
 		adev->dc->hw_ops = &ls7a2000_dc_hw_ops;
 	else if (adev->chip == dev_2k2000)
 		adev->dc->hw_ops = &ls2k2000_dc_hw_ops;
 	else if (adev->chip == dev_2k3000)
 		adev->dc->hw_ops = &ls2k3000_dc_hw_ops;
+	else if (adev->chip == dev_7a1000) {
+		adev->dc->hw_ops = &ls7a1000_dc_hw_ops;
+		adev->ddev->mode_config.cursor_width = 32;
+		adev->ddev->mode_config.cursor_height = 32;
+	}
 
 	for (i = 0; i < adev->dc->links; i++) {
 		dc_interface_init(adev->dc->link_info[i].crtc);
@@ -1673,9 +1840,6 @@ static int dc_hw_init(void *handle)
 	}
 
 	loonggpu_display_print_display_setup(adev->ddev);
-
-	adev->ddev->mode_config.cursor_width = 64;
-	adev->ddev->mode_config.cursor_height = 64;
 
 	drm_mode_config_reset(adev->ddev);
 	drm_kms_helper_poll_init(adev->ddev);
@@ -1765,16 +1929,17 @@ static int dc_resume(void *handle)
 		memset(kptr, 0, afb->base.height * afb->base.pitches[0]);
 	}
 
+	for (i = 0; i < dc->links; i++) {
+		dc_crtc = dc->link_info[i].crtc;
+		dc_interface_resume(dc_crtc);
+	}
+
 	drm_atomic_helper_resume(ddev, dc->cached_state);
 
 	dc->cached_state = NULL;
 
 	loonggpu_dc_meta_enable(adev, true);
 	dc_irq_hw_init(adev);
-	for (i = 0; i < dc->links; i++) {
-		dc_crtc = dc->link_info[i].crtc;
-		dc_interface_resume(dc_crtc);
-	}
 	loonggpu_bridge_resume(adev);
 
 	return 0;

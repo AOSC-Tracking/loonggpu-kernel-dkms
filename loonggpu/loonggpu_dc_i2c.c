@@ -419,6 +419,27 @@ out_free:
 	return ret;
 }
 
+int ls7a1000_dc_i2c_init(struct loonggpu_device *adev, uint32_t link_index)
+{
+	int ret;
+	int i2c_addr;
+	struct loonggpu_link_info *link_info = &adev->dc->link_info[link_index];
+
+	i2c_addr = link_info->encoder->resource->chip_addr;
+	if (i2c_addr == 0 || i2c_addr == 0xff)
+		i2c_addr = DDC_ADDR;
+
+	ret = loonggpu_dc_gpio_init(adev, i2c_addr, link_index);
+	if (ret)
+		return ret;
+
+	DRM_INFO("LOONGGPU DC init gpio %d addr 0x%x finish\n",
+		 link_index, i2c_addr);
+
+	return 0;
+}
+
+
 int ls7a2000_dc_i2c_init(struct loonggpu_device *adev, uint32_t link_index)
 {
 	int ret;

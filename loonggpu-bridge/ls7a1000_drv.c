@@ -5,13 +5,12 @@
 #include "loonggpu_dc_reg.h"
 #include "bridge_phy.h"
 
-static enum drm_connector_status ls7a2000_get_connect_status(struct loonggpu_bridge_phy *phy)
+static enum drm_connector_status ls7a1000_get_connect_status(struct loonggpu_bridge_phy *phy)
 {
 	struct drm_connector *connector = phy->connector;
 	struct loonggpu_device *adev = phy->adev;
 	struct loonggpu_dc_crtc *crtc = adev->dc->link_info[phy->connector->index].crtc;
 	enum drm_connector_status status = connector_status_disconnected;
-	u32 reg_val = dc_readl(adev, gdc_reg->global_reg.hdmi_hp_stat);
 
 	if (connector->polled == 0)
 		status = connector_status_connected;
@@ -30,13 +29,7 @@ static enum drm_connector_status ls7a2000_get_connect_status(struct loonggpu_bri
 				if (adev->vga_hpd_status == connector_status_unknown)
 					status = connector_status_unknown;
 
-				if (reg_val & 0x1)
-					status = connector_status_connected;
-				else if (status != adev->vga_hpd_status)
-					status = connector_status_connected;
-				break;
-			case 1:
-				if (reg_val & 0x2)
+				if (status != adev->vga_hpd_status)
 					status = connector_status_connected;
 				break;
 			}
@@ -51,7 +44,7 @@ static enum drm_connector_status ls7a2000_get_connect_status(struct loonggpu_bri
 	return status;
 }
 
-static void ls7a2000_hpd_init(struct loonggpu_bridge_phy *phy, struct loonggpu_connector* lconnector, bool has_ext_encoder)
+static void ls7a1000_hpd_init(struct loonggpu_bridge_phy *phy, struct loonggpu_connector* lconnector, bool has_ext_encoder)
 {
 	struct loonggpu_device *adev = phy->adev;
 	struct connector_resource *connector_res = adev->dc->link_info[lconnector->connector_id].connector;
@@ -94,67 +87,66 @@ static void ls7a2000_hpd_init(struct loonggpu_bridge_phy *phy, struct loonggpu_c
 	}
 }
 
-static struct bridge_phy_hpd_funcs ls7a2000_hpd_funcs = {
-	.hpd_init = ls7a2000_hpd_init,
-	.get_connect_status = ls7a2000_get_connect_status,
+static struct bridge_phy_hpd_funcs ls7a1000_hpd_funcs = {
+	.hpd_init = ls7a1000_hpd_init,
+	.get_connect_status = ls7a1000_get_connect_status,
 };
 
-static enum drm_mode_status ls7a2000_mode_valid(struct drm_connector *connector,
+static enum drm_mode_status ls7a1000_mode_valid(struct drm_connector *connector,
 					      struct drm_display_mode *mode)
 {
-	if (mode->hdisplay > 4096 ||
+	if (mode->hdisplay > 2048 ||
 			mode->hdisplay == 1680 ||
 			mode->hdisplay == 1440 ||
 			mode->hdisplay % 8 ||
-			mode->vdisplay > 2160 ||
+			mode->vdisplay > 2048 ||
 			mode->vdisplay < 480)
 		return MODE_BAD;
 
-	if (mode->clock > 340000)
+	if (mode->clock > 200000)
 		return MODE_CLOCK_HIGH;
 
 	return MODE_OK;
 }
 
-static const struct bridge_phy_cfg_funcs ls7a2000_cfg_funcs = {
-        .mode_valid = ls7a2000_mode_valid,
+static const struct bridge_phy_cfg_funcs ls7a1000_cfg_funcs = {
+        .mode_valid = ls7a1000_mode_valid,
 };
 
-int internal_bridge_ls7a2000_register(struct loonggpu_dc_bridge *dc_bridge)
+int internal_bridge_ls7a1000_register(struct loonggpu_dc_bridge *dc_bridge)
 {
-	struct loonggpu_bridge_phy *ls7a2000_phy;
+	struct loonggpu_bridge_phy *ls7a1000_phy;
 	int index = dc_bridge->display_pipe_index;
 	struct connector_resource *connector_res =
 			dc_bridge->adev->dc->link_info[index].connector;
 
-	ls7a2000_phy = kzalloc(sizeof(*ls7a2000_phy), GFP_KERNEL);
-	if (IS_ERR(ls7a2000_phy)) {
+	ls7a1000_phy = kzalloc(sizeof(*ls7a1000_phy), GFP_KERNEL);
+	if (IS_ERR(ls7a1000_phy)) {
 		DRM_ERROR("Failed to alloc loonggpu bridge phy!\n");
 		return -1;
 	}
 
-	ls7a2000_phy->display_pipe_index = index;
-	ls7a2000_phy->bridge.driver_private = ls7a2000_phy;
-	ls7a2000_phy->adev = dc_bridge->adev;
-	ls7a2000_phy->res = dc_bridge;
-	ls7a2000_phy->li2c = dc_bridge->adev->i2c[index];
-	ls7a2000_phy->connector_type = connector_res->type;
+	ls7a1000_phy->display_pipe_index = index;
+	ls7a1000_phy->bridge.driver_private = ls7a1000_phy;
+	ls7a1000_phy->adev = dc_bridge->adev;
+	ls7a1000_phy->res = dc_bridge;
+	ls7a1000_phy->li2c = dc_bridge->adev->i2c[index];
+	ls7a1000_phy->connector_type = connector_res->type;
 
-	ls7a2000_phy->cfg_funcs = &ls7a2000_cfg_funcs;
-	ls7a2000_phy->hpd_funcs = &ls7a2000_hpd_funcs;
+	ls7a1000_phy->cfg_funcs = &ls7a1000_cfg_funcs;
+	ls7a1000_phy->hpd_funcs = &ls7a1000_hpd_funcs;
 
-	dc_bridge->internal_bp = ls7a2000_phy;
+	dc_bridge->internal_bp = ls7a1000_phy;
 	DRM_DEBUG_DRIVER("internal bridge phy register success!\n");
 
 	return 0;
 }
 
-int bridge_phy_ls7a2000_init(struct loonggpu_dc_bridge *dc_bridge)
+int bridge_phy_ls7a1000_init(struct loonggpu_dc_bridge *dc_bridge)
 {
-	struct loonggpu_bridge_phy *ls7a2000_phy;
+	struct loonggpu_bridge_phy *ls7a1000_phy;
 
-	ls7a2000_phy = bridge_phy_alloc(dc_bridge);
+	ls7a1000_phy = bridge_phy_alloc(dc_bridge);
 
-	return bridge_phy_init(ls7a2000_phy);
+	return bridge_phy_init(ls7a1000_phy);
 }
-
