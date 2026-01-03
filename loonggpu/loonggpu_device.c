@@ -446,11 +446,16 @@ int loonggpu_device_resize_fb_bar(struct loonggpu_device *adev)
 	pci_write_config_word(adev->pdev, PCI_COMMAND,
 			      cmd & ~PCI_COMMAND_MEMORY);
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 19, 0)
+	/* TODO: do we need to preserve some BAR(s) via the 4th parameter?  */
+	r = pci_resize_resource(adev->pdev, 0, rbar_size, 0);
+#else
 	pci_release_resource(adev->pdev, 3);
 
 	pci_release_resource(adev->pdev, 0);
 
 	r = pci_resize_resource(adev->pdev, 0, rbar_size);
+#endif
 	if (r == -ENOSPC)
 		DRM_INFO("Not enough PCI address space for a large BAR.");
 	else if (r && r != -ENOTSUPP)
