@@ -373,7 +373,9 @@ static int bridge_phy_bind(struct loonggpu_bridge_phy *phy)
 {
 	int ret;
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 16, 0)
 	phy->bridge.funcs = &bridge_funcs;
+#endif
 	drm_bridge_add(&phy->bridge);
 	ret = lg_drm_bridge_attach(phy->encoder, &phy->bridge, NULL, 0);
 	if (ret) {
