@@ -81,7 +81,11 @@ void loonggpu_gem_object_free(struct drm_gem_object *gobj)
 
 	if (robj) {
 		loonggpu_mn_unregister(robj);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 19, 0)
+		ttm_bo_fini(&robj->tbo);
+#else
 		ttm_bo_put(&robj->tbo);
+#endif
 	}
 }
 
