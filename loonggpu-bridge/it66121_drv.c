@@ -26,7 +26,7 @@ DEFINE_SIMPLE_REG_SEQ_FUNC(afe_high)
 DEFINE_SIMPLE_REG_SEQ_FUNC(afe_low)
 DEFINE_SIMPLE_REG_SEQ_FUNC(hdmi)
 
-int it66121_hdmi_output_mode(struct loonggpu_bridge_phy *phy, int mode)
+static int it66121_hdmi_output_mode(struct loonggpu_bridge_phy *phy, int mode)
 {
 	if ((enum hdmi_mode)mode == HDMI_MODE_NORMAL) {
 		SIMPLE_REG_SEQ_FUNC(hdmi)(phy);

@@ -852,7 +852,7 @@ int ls2k3000_dp_resume(struct loonggpu_dc_crtc *crtc, int intf)
 	return 0;
 }
 
-int ls2k3000_dp_aux_detect_status(struct loonggpu_dc_crtc *crtc, int intf)
+static int ls2k3000_dp_aux_detect_status(struct loonggpu_dc_crtc *crtc, int intf)
 {
 	struct loonggpu_device *adev = crtc->dc->adev;
 	struct connector_resource *connector_res;
