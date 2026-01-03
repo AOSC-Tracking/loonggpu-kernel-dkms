@@ -773,7 +773,7 @@ struct loonggpu_bridge_phy *bridge_phy_alloc(struct loonggpu_dc_bridge *dc_bridg
 	bridge_phy = devm_kzalloc(dc_bridge->adev->dev, sizeof(*bridge_phy), GFP_KERNEL);
 	if (!bridge_phy) {
 		DRM_ERROR("Failed to alloc loonggpu bridge phy!\n");
-		return bridge_phy;
+		return ERR_PTR(-ENOMEM);
 	}
 #endif
 
