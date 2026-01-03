@@ -89,7 +89,8 @@ build_cflags() {
     BASE_CFLAGS="-O2 -D__KERNEL__ \
 -DKBUILD_BASENAME=\"#conftest$$\" -DKBUILD_MODNAME=\"#conftest$$\" \
 -nostdinc -isystem $ISYSTEM \
--Wno-implicit-function-declaration -Wno-strict-prototypes -std=gnu11"
+-Wno-implicit-function-declaration -Wno-strict-prototypes -std=gnu11 \
+-fms-extensions"
 
     if [ "$OUTPUT" != "$SOURCES" ]; then
         OUTPUT_CFLAGS="-I$OUTPUT/include2 -I$OUTPUT/include"
