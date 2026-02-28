@@ -203,7 +203,6 @@ void loonggpu_fence_process(struct loonggpu_ring *ring)
 {
 	struct loonggpu_fence_driver *drv = &ring->fence_drv;
 	uint32_t seq, last_seq;
-	int r;
 
 	do {
 		last_seq = atomic_read(&ring->fence_drv.last_seq);
@@ -234,14 +233,7 @@ void loonggpu_fence_process(struct loonggpu_ring *ring)
 		if (!fence)
 			continue;
 
-		r = dma_fence_signal(fence);
-		if (!r) {
-		#if defined(DMA_FENCE_TRACE)
-			DMA_FENCE_TRACE(fence, "signaled from irq context\n");
-		#endif
-		} else
-			BUG();
-
+		dma_fence_signal(fence);
 		dma_fence_put(fence);
 	} while (last_seq != seq);
 }
