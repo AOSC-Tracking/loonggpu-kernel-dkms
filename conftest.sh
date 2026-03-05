@@ -542,6 +542,65 @@ compile_test() {
             compile_check_conftest "$CODE" "LG_TTM_BO_POPULATE" "" "type"
         ;;
 
+        hrtimer_init)
+            #
+            # Determine if the hrtimer_init() function is present.
+            #
+            # commit id: 9779489a31d77a7b9cb6f20d2d2caced4e29dbe6
+            # commit msg: hrtimers: Delete hrtimer_init()
+            # in v6.15-rc1
+            #
+            CODE="
+            #include <linux/hrtimer.h>
+            typeof(hrtimer_init) conftest_hrtimer_init;
+            void conftest_hrtimer_init(struct hrtimer *timer, clockid_t which_clock,
+                                      enum hrtimer_mode mode) {
+                return;
+            }"
+
+            compile_check_conftest "$CODE" "LG_HRTIMER_INIT" "" "type"
+        ;;
+
+        drm_do_get_edid)
+            #
+            # Determine if the drm_do_get_edid() function is present.
+            #
+            # commit id: 3dbfbd101a5844f851da9ae6e90f59753c10ff42
+            # drm/edid: remove drm_do_get_edid()
+            # in v6.13
+            #
+            CODE="
+            #include <drm/drm_edid.h>
+            typeof(drm_do_get_edid) conftest_drm_do_get_edid;
+            struct edid *conftest_drm_do_get_edid(struct drm_connector *connector,
+                      int (*get_edid_block) (void *data, u8 *buf, unsigned int block, size_t len),
+                      void *context) {
+                return NULL;
+            }"
+
+            compile_check_conftest "$CODE" "LG_DRM_DO_GET_EDID" "" "type"
+        ;;
+
+        drm_get_format_info_has_pixel_format)
+            #
+            # Determine if the drm_get_format_info() has pixel_format argument.
+            #
+            # commit id: 0e7d5874fb6b80c44be3cfbcf1cf356e81d91232
+            # drm: Pass pixel_format+modifier directly to drm_get_format_info()
+            # in v6.17
+            #
+            CODE="
+            #include <drm/drm_fourcc.h>
+            typeof(drm_get_format_info) conftest_drm_get_format_info;
+            const struct drm_format_info *conftest_drm_get_format_info(struct drm_device *dev,
+                                                             u32 pixel_format, u64 modifier) {
+                return NULL;
+            }"
+
+            compile_check_conftest "$CODE" "LG_DRM_GET_FORMAT_INFO_HAS_PIXEL_FORMAT" "" "type"
+        ;;
+
+
         drm_sched_job_cleanup)
             #
             # Determine if the drm_sched_job_cleanup() function is present.
@@ -900,6 +959,22 @@ compile_test() {
             compile_check_conftest "$CODE" "LG_TTM_BUFFER_OBJECT_HAS_BASE" "" "types"
         ;;
 
+        drm_driver_has_date)
+            #
+            # Determine if the drm_driver has an date member.
+            #
+            # drm: remove driver date from struct drm_driver and all drivers
+            # commit: 7fb8af6798e8d013017e4607505f58d9942fd671
+            # in v6.14
+            CODE="
+            #include <drm/drm_drv.h>
+            int conftest_drm_driver_has_date(void) {
+                return offsetof(struct drm_driver, date);
+            }"
+
+            compile_check_conftest "$CODE" "LG_DRM_DRIVER_HAS_DATE" "" "types"
+        ;;
+
         mode_config_has_fb_modifiers)
             #
             # Determine if the mode_config has an fb_modifiers_not_supported member.
@@ -1099,6 +1174,23 @@ compile_test() {
             compile_check_conftest "$CODE" "LG_ZONE_MANAGED_PAGES" "" "types"
         ;;
 
+        zone_managed_pages_has_const_zone)
+            #
+            # Determine if zone_managed_pages has const zone argument.
+            #
+            # Changed by commit 959b0886256b6896b44633e0e07c5464169087c1
+            # mm: constify zone related test/getter functions") in v6.18
+            #
+            CODE="
+            #include <linux/mmzone.h>
+            typeof(zone_managed_pages) conftest_zone_managed_pages;
+            unsigned long conftest_zone_managed_pages(const struct zone *zone) {
+                return 1;
+            }"
+            compile_check_conftest "$CODE" "LG_ZONE_MANAGED_PAGES_HAS_CONST_ZONE" "" "types"
+        ;;
+
+
         use_mm)
             #
             # Determine if use_mm exist.
@@ -1237,6 +1329,26 @@ compile_test() {
             compile_check_conftest "$CODE" "LG_DRM_SCHED_JOB_INIT_HAS_CREDITS" "" "types"
         ;;
 
+        drm_sched_job_init_has_drm_client_id)
+            #
+            # Determine if drm_sched_job_init has drm_client_id arg.
+            #
+            # Changed by commit 2956554823cedb390b7ec4534afa898176317638
+            # drm/sched: Store the drm client_id in drm_sched_fence") in v6.17
+            #
+            CODE="
+            #include <drm/gpu_scheduler.h>
+            typeof(drm_sched_job_init) conftest_drm_sched_job_init_has_drm_client_id;
+            int conftest_drm_sched_job_init_has_drm_client_id(struct drm_sched_job *job,
+                                                   struct drm_sched_entity *entity,
+                                                   u32 credits, void *owner, uint64_t drm_client_id
+                                                   ) {
+                return 0;
+            }"
+            compile_check_conftest "$CODE" "LG_DRM_SCHED_JOB_INIT_HAS_DRM_CLIENT_ID" "" "types"
+        ;;
+
+
         drm_crtc_state_has_async_flip)
             #
             # Determine if the drm_crtc_state has an async_flip member.
@@ -1253,6 +1365,24 @@ compile_test() {
             compile_check_conftest "$CODE" "LG_DRM_CRTC_STATE_HAS_ASYNC_FLIP" "" "types"
         ;;
 
+        drm_gpu_scheduler_has_num_rqs)
+            #
+            # Determine if the drm_gpu_scheduler has an num_rqs member.
+            #
+            # Added by commit 56e449603f0ac580700621a356d35d5716a62ce5
+            # ("drm/sched: Convert the GPU scheduler to variable number of run-queues)
+            # in v6.15.
+            #
+            CODE="
+            #include <drm/gpu_scheduler.h>
+            int conftest_drm_gpu_scheduler_has_num_rqs(void) {
+                return offsetof(struct drm_gpu_scheduler, num_rqs);
+            }"
+
+            compile_check_conftest "$CODE" "LG_DRM_GPU_SCHEDULER_HAS_NUM_RQS" "" "types"
+        ;;
+
+
         drm_mode_config_funcs_has_output_poll_changed)
             #
             # Determine if the drm_mode_config_funcs has output_poll_changed member.
@@ -1268,6 +1398,29 @@ compile_test() {
             }"
 
             compile_check_conftest "$CODE" "LG_DRM_MODE_CFG_FUNC_HAS_OUTPUT_POLL_CHANGED" "" "types"
+        ;;
+
+        drm_mode_config_funcs_fb_create_has_info)
+            #
+            # Determine if the drm_mode_config_funcs->fb_create has info member.
+            #
+            # Added by commit 81112eaac559ccd451b3dce3bbb64d6b69083961 ("
+            # drm: Pass the format info to .fb_create()
+            # ") in v6.17
+            #
+            CODE="
+            #include <drm/drm_mode_config.h>
+            static const struct drm_mode_config_funcs *ops;
+            typeof(*ops->fb_create) conftest_drm_mode_config_funcs_fb_create_has_info;
+            struct drm_framebuffer *conftest_drm_mode_config_funcs_fb_create_has_info(
+                                             struct drm_device *dev,
+                                             struct drm_file *file_priv,
+                                             const struct drm_format_info *info,
+                                             const struct drm_mode_fb_cmd2 *mode_cmd) {
+                return NULL;
+            }"
+
+            compile_check_conftest "$CODE" "LG_DRM_MODE_CONFIG_FUNCS_FB_CREATE_HAS_INFO" "" "types"
         ;;
 
         drm_driver_has_lastclose)
@@ -1588,6 +1741,24 @@ compile_test() {
                 return NULL;
             }"
             compile_check_conftest "$CODE" "LG_DRM_PRIME_PAGES_TO_SG_HAS_DRM_DEVICE" "" "types"
+        ;;
+
+        drm_sched_init_has_drm_sched_init_args)
+            #
+            # Determine if drm_sched_init function contains the drm_sched_init_args argument.
+            #
+            # Changed by commit 796a9f55a8d1d85387b973df9a06cbf4bc2d6327 ("drm/sched:
+            # Use struct for drm_sched_init() params") in v6.15
+            #
+            CODE="
+            #include <drm/gpu_scheduler.h>
+            typeof(drm_sched_init) conftest_drm_sched_init_has_drm_sched_init_args;
+            int conftest_drm_sched_init_has_drm_sched_init_args(struct drm_gpu_scheduler *sched,
+                                               const struct drm_sched_init_args *args)
+            {
+                return 0;
+            }"
+            compile_check_conftest "$CODE" "LG_DRM_SCHED_INIT_HAS_DRM_SCHED_INIT_ARGS" "" "types"
         ;;
 
         ttm_fbdev_mmap)
@@ -2025,6 +2196,22 @@ compile_test() {
             compile_check_conftest "$CODE" "LG_DRM_SCHED_BACKEND_OPS_TIMEDOUT_JOB_RET_SCHED_STAT" "" "types"
         ;;
 
+        drm_gpu_sched_stat_has_stat_reset)
+            #
+            # Determine if the enum drm_gpu_sched_stat has DRM_GPU_SCHED_STAT_RESET.
+            #
+            # commit 0a5dc1b67ef5c7e851b57764a2aab8cc4341a7b7 ("drm/scheduler:
+            # Rename DRM_GPU_SCHED_STAT_NOMINAL to DRM_GPU_SCHED_STAT_RESET") in v6.17.
+            #
+            CODE="
+            #include <drm/gpu_scheduler.h>
+            enum drm_gpu_sched_stat conftest_drm_gpu_sched_stat_has_stat_reset(void) {
+                return DRM_GPU_SCHED_STAT_RESET;
+            }"
+
+            compile_check_conftest "$CODE" "LG_DRM_GPU_SCHED_STAT_HAS_STAT_RESET" "" "types"
+        ;;
+
         drm_sched_entity_push_job)
             #
             # Determine if drm_sched_entity_push_job function removes entity argument.
@@ -2219,6 +2406,20 @@ compile_test() {
             compile_check_conftest "$CODE" "LG_FB_INFO_HAS_APERTURES" "" "types"
         ;;
 
+        drm_fb_helper_funcs_has_fb_probe)
+            #
+            # Determine if the drm_fb_helper_funcs has fb_probe member.
+            #
+            # Added by commit 41ff0b424d81b7936bc4d96e8957aa7f454c3527 ("drm/fb-helper:
+            # Remove struct drm_fb_helper.fb_probe") in v6.15
+            CODE="
+            #include <drm/drm_fb_helper.h>
+            int conftest_drm_fb_helper_funcs_has_fb_probe(void) {
+                return offsetof(struct drm_fb_helper_funcs, fb_probe);
+            }"
+            compile_check_conftest "$CODE" "LG_DRM_FB_HELPER_FUNCS_HAS_FB_PROBE" "" "types"
+        ;;
+
         drm_fb_helper_prepare)
             #
             # Determine if the drm_fb_helper_prepare has preferred_bpp argument.
@@ -2325,6 +2526,22 @@ compile_test() {
             compile_check_conftest "$CODE" "LG_DMA_RESV_GET_EXCL_PRESENT" "" "types"
         ;;
 
+	del_timer)
+            #
+            # Determine if del_timer() is present.
+            #
+            # treewide: Switch/rename to timer_delete[_sync]()
+            # by commit 8fa7292fee5c5240402371ea89ab285ec856c916 in v6.15
+            #
+            CODE="
+            #include <linux/timer.h>
+            typeof(del_timer) conftest_del_timer;
+            int conftest_del_timer(struct timer_list *timer) {
+                return 0;
+            }"
+            compile_check_conftest "$CODE" "LG_DEL_TIMER" "" "types"
+        ;;
+
         drm_plane_helper_destroy)
             #
             # Determine if drm_plane_helper_destroy exists.
@@ -2374,6 +2591,44 @@ compile_test() {
                 return 0;
             }"
             compile_check_conftest "$CODE" "LG_MAN_FUNC_ALLOC_HAS_RES" "" "types"
+        ;;
+
+        mode_valid_has_const_mode_arg)
+            #
+            # Determine if drm_connector_helper_funcs->mode_valid() has const mode member.
+            #
+            # Changed by commit 26d6fd81916e62d2b0568d9756e5f9c33f0f9b7a ("drm/connector:
+            # make mode_valid take a const struct drm_display_mode") in v6.15
+            #
+            CODE="
+            #include <drm/drm_modeset_helper_vtables.h>
+            struct drm_connector_helper_funcs *func;
+            typeof(*func->mode_valid) conftest_mode_valid_has_const_mode_arg;
+            enum drm_mode_status conftest_mode_valid_has_const_mode_arg(
+                                      struct drm_connector *connector,
+                                      const struct drm_display_mode *mode) {
+                return MODE_OK;
+            }"
+            compile_check_conftest "$CODE" "LG_MODE_VALID_HAS_CONST_MODE_ARG" "" "types"
+        ;;
+
+        drm_bridge_funcs_attach_has_drm_encoder)
+            #
+            # Determine if drm_bridge_funcs->attach() has drm_encoder member.
+            #
+            # Changed by commit 98007a0d56b07605c626c9bdb550b5ae5ce71453 ("drm/bridge:
+            # Add encoder parameter to drm_bridge_funcs.attach") in v6.16
+            #
+            CODE="
+            #include <drm/drm_bridge.h>
+            struct drm_bridge_funcs *func;
+            typeof(*func->attach) conftest_drm_bridge_funcs_attach_has_drm_encoder;
+            int conftest_drm_bridge_funcs_attach_has_drm_encoder(
+                                      struct drm_bridge *bridge, struct drm_encoder *encoder,
+                                      enum drm_bridge_attach_flags flags) {
+                return 0;
+            }"
+            compile_check_conftest "$CODE" "LG_DRM_BRIDGE_FUNCS_ATTACH_HAS_DRM_ENCODER" "" "types"
         ;;
 
     bo_pin_count)

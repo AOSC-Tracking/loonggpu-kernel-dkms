@@ -45,5 +45,6 @@ int ls7a1000_dc_i2c_init(struct loonggpu_device *adev, uint32_t link_index);
 int ls2k3000_dc_i2c_init(struct loonggpu_device *adev, uint32_t link_index);
 void ls2k3000_dc_i2c_resume(struct loonggpu_device *adev, uint32_t link_index);
 void loonggpu_dc_i2c_irq(struct loonggpu_dc_i2c *i2c);
+int ls9a1000_dc_i2c_init(struct loonggpu_device *adev, uint32_t link_index);
 
 #endif /* __DC_I2C_H__ */

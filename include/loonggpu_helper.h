@@ -39,6 +39,7 @@
 #if defined(LG_DRM_DRM_IRQ_H_PRESENT)
 #include <drm/drm_irq.h>
 #endif
+#include <drm/drm_modeset_helper.h>
 
 /*
  * drm_sched_hw_job_reset() was replaced with drm_seched_stop.
@@ -327,8 +328,9 @@ static inline int lg_drm_bridge_attach(struct drm_encoder *encoder,
 #endif
 }
 
-
-#if defined(LG_DRM_BRIDGE_ATTACH_HAS_FLAGS_ARG)
+#if defined(LG_DRM_BRIDGE_FUNCS_ATTACH_HAS_DRM_ENCODER)
+#define lg_bridge_phy_attach_args struct drm_bridge *bridge, struct drm_encoder *encoder, enum drm_bridge_attach_flags flags
+#elif defined(LG_DRM_BRIDGE_ATTACH_HAS_FLAGS_ARG)
 #define lg_bridge_phy_attach_args struct drm_bridge *bridge, enum drm_bridge_attach_flags flags
 #else
 #define lg_bridge_phy_attach_args struct drm_bridge *bridge
@@ -431,7 +433,13 @@ static inline int lg_atomic_read_drm_open_count(struct drm_device *dev)
 
 #if defined(LG_DRM_SCHED_BACKEND_OPS_TIMEDOUT_JOB_RET_SCHED_STAT)
 #define lg_loonggpu_job_timedout_ret enum drm_gpu_sched_stat
+
+#if defined(LG_DRM_GPU_SCHED_STAT_HAS_STAT_RESET)
+#define LG_DRM_GPU_SCHED_STAT_NOMINAL DRM_GPU_SCHED_STAT_RESET
+#else
 #define LG_DRM_GPU_SCHED_STAT_NOMINAL DRM_GPU_SCHED_STAT_NOMINAL
+#endif
+
 #else
 #define lg_loonggpu_job_timedout_ret void
 #define LG_DRM_GPU_SCHED_STAT_NOMINAL
@@ -738,7 +746,9 @@ static inline long lg_get_user_pages(uint64_t userptr, unsigned num_pages,
 static inline struct drm_sched_rq *lg_sched_to_sched_rq(struct drm_gpu_scheduler *sched,
 					enum drm_sched_priority priority)
 {
-#if defined(LG_DRM_SCHED_INIT_HAS_DEVICE_RQ) || defined (LG_DRM_SCHED_INIT_HAS_SUBMIT_WQ)
+#if defined(LG_DRM_SCHED_INIT_HAS_DEVICE_RQ) || \
+    defined (LG_DRM_SCHED_INIT_HAS_SUBMIT_WQ) || \
+    defined(LG_DRM_GPU_SCHEDULER_HAS_NUM_RQS)
 	return sched->sched_rq[priority];
 #else
 	return &sched->sched_rq[priority];
@@ -751,7 +761,21 @@ static inline int lg_drm_sched_init(struct loonggpu_ring *ring,
 				unsigned hang_limit,
 				long timeout, struct loonggpu_device *adev)
 {
-#if defined(LG_DRM_SCHED_INIT_HAS_DEVICE)
+#if defined(LG_DRM_SCHED_INIT_HAS_DRM_SCHED_INIT_ARGS)
+	const struct drm_sched_init_args args = {
+		.ops = ops,
+		.submit_wq = NULL,
+		.num_rqs = DRM_SCHED_PRIORITY_COUNT,
+		.credit_limit = num_hw_submission,
+		.hang_limit = hang_limit,
+		.timeout = timeout,
+		.timeout_wq = NULL,
+		.score = NULL,
+		.name = ring->name,
+		.dev = adev->dev,
+	};
+	return drm_sched_init(&ring->sched, &args);
+#elif defined(LG_DRM_SCHED_INIT_HAS_DEVICE)
 	return drm_sched_init(&ring->sched, ops,
 			   num_hw_submission, hang_limit,
 			   timeout, NULL,
@@ -1172,7 +1196,7 @@ static inline bool lg_ring_sched_thread_avai(struct loonggpu_ring *ring)
 {
 	if (!ring)
 		return false;
-#if defined(LG_DRM_SCHED_INIT_HAS_SUBMIT_WQ)
+#if defined(LG_DRM_SCHED_INIT_HAS_SUBMIT_WQ) || defined(LG_DRM_SCHED_INIT_HAS_DRM_SCHED_INIT_ARGS)
 	if (!drm_sched_wqueue_ready(&ring->sched))
 		return false;
 #else
@@ -1184,7 +1208,7 @@ static inline bool lg_ring_sched_thread_avai(struct loonggpu_ring *ring)
 
 static inline void lg_ring_sched_thread_park(struct loonggpu_ring *ring)
 {
-#if defined(LG_DRM_SCHED_INIT_HAS_SUBMIT_WQ)
+#if defined(LG_DRM_SCHED_INIT_HAS_SUBMIT_WQ) || defined(LG_DRM_SCHED_INIT_HAS_DRM_SCHED_INIT_ARGS)
 	drm_sched_wqueue_stop(&ring->sched);
 #else
 	kthread_park(ring->sched.thread);
@@ -1193,18 +1217,29 @@ static inline void lg_ring_sched_thread_park(struct loonggpu_ring *ring)
 
 static inline void lg_ring_sched_thread_unpark(struct loonggpu_ring *ring)
 {
-#if defined(LG_DRM_SCHED_INIT_HAS_SUBMIT_WQ)
+#if defined(LG_DRM_SCHED_INIT_HAS_SUBMIT_WQ) || defined(LG_DRM_SCHED_INIT_HAS_DRM_SCHED_INIT_ARGS)
 	drm_sched_wqueue_start(&ring->sched);
 #else
 	kthread_unpark(ring->sched.thread);
 #endif
 }
 
+static inline uint64_t lg_drm_file_get_client_id(struct drm_file *filp)
+{
+#if defined(LG_DRM_SCHED_JOB_INIT_HAS_DRM_CLIENT_ID)
+	return filp->client_id;
+#else
+	return 0;
+#endif
+}
+
 static inline int lg_drm_sched_job_init(struct drm_sched_job *job,
 					struct drm_sched_entity *entity,
-					u32 credits, void *owner)
+					u32 credits, void *owner, uint64_t drm_client_id)
 {
-#if defined(LG_DRM_SCHED_JOB_INIT_HAS_CREDITS)
+#if defined(LG_DRM_SCHED_JOB_INIT_HAS_DRM_CLIENT_ID)
+	return drm_sched_job_init(job, entity, credits, owner, drm_client_id);
+#elif defined(LG_DRM_SCHED_JOB_INIT_HAS_CREDITS)
 	return drm_sched_job_init(job, entity, credits, owner);
 #else
 	return drm_sched_job_init(job, entity, owner);
@@ -1280,6 +1315,90 @@ static inline void lg_unuse_mm(struct mm_struct *mm)
 	unuse_mm(mm);
 #else
 	kthread_unuse_mm(mm);
+#endif
+}
+
+#if defined(LG_DRM_DO_GET_EDID)
+static inline struct edid *lg_drm_do_get_edid(struct drm_connector *connector,
+#else
+static inline const struct edid *lg_drm_do_get_edid(struct drm_connector *connector,
+#endif
+					int (*get_edid_block)(void *data, u8 *buf,
+							      unsigned int block, size_t len),
+					void *context)
+{
+#if defined(LG_DRM_DO_GET_EDID)
+	return drm_do_get_edid(connector, get_edid_block, context);
+#else
+	const struct drm_edid *edid;
+	edid = drm_edid_read_custom(connector, get_edid_block, context);
+	return drm_edid_raw(edid);
+#endif
+}
+
+static inline int lg_del_timer(struct timer_list *timer)
+{
+#if defined(LG_DEL_TIMER)
+	return del_timer(timer);
+#else
+	return timer_delete(timer);
+#endif
+}
+
+static inline int lg_del_timer_sync(struct timer_list *timer)
+{
+#if defined(LG_DEL_TIMER)
+	return del_timer_sync(timer);
+#else
+	return timer_delete_sync(timer);
+#endif
+}
+
+#if defined(from_timer)
+#define lg_from_timer(var, callback_timer, timer_fieldname) \
+		from_timer(var, callback_timer, timer_fieldname);
+#else
+#define lg_from_timer(var, callback_timer, timer_fieldname) \
+		timer_container_of(var, callback_timer, timer_fieldname);
+#endif
+
+static inline const struct drm_format_info *lg_drm_get_format_info(struct drm_device *dev,
+						const struct drm_mode_fb_cmd2 *mode_cmd)
+{
+#if defined(LG_DRM_GET_FORMAT_INFO_HAS_PIXEL_FORMAT)
+	return drm_get_format_info(dev, mode_cmd->pixel_format, mode_cmd->modifier[0]);
+#else
+	return drm_get_format_info(dev, mode_cmd);
+#endif
+}
+
+static inline void lg_drm_helper_mode_fill_fb_struct(struct drm_device *dev,
+						struct drm_framebuffer *fb,
+						const struct drm_format_info *info,
+						const struct drm_mode_fb_cmd2 *mode_cmd)
+{
+#if defined(LG_DRM_MODE_CONFIG_FUNCS_FB_CREATE_HAS_INFO)
+	return drm_helper_mode_fill_fb_struct(dev, fb, info, mode_cmd);
+#else
+	return drm_helper_mode_fill_fb_struct(dev, fb, mode_cmd);
+#endif
+}
+
+static inline int lg_ida_simple_get(struct ida *ida, unsigned int bits)
+{
+#if defined(ida_simple_get)
+	return ida_simple_get(ida, 1U << (bits - 1), 1U << bits, GFP_KERNEL);
+#else
+	return ida_alloc_range(ida, 1U << (bits - 1), (1U << bits) - 1, GFP_KERNEL);
+#endif
+}
+
+static inline void lg_ida_simple_remove(struct ida *ida, unsigned int pasid)
+{
+#if defined(ida_simple_remove)
+	return ida_simple_remove(ida, pasid);
+#else
+	return ida_free(ida, pasid);
 #endif
 }
 

@@ -43,6 +43,10 @@
 #define VDD_CAP_DOORBELL_TYPE_TOTALBITS_SHIFT	12
 
 #define VDD_CAP_DOORBELL_TYPE_1_0		0x1
+#define VDD_CAP_TRAP_DEBUG_SUPPORT              0x00008000
+
+/* debug_prop bits in node properties */
+#define VDD_DBG_DISPATCH_INFO_ALWAYS_VALID      0x00000400
 
 /* Heap types in memory properties */
 #define VDD_MEM_HEAP_TYPE_SYSTEM	0

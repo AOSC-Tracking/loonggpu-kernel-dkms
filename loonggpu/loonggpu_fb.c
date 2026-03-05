@@ -102,7 +102,7 @@ static int loonggpufb_create_pinned_object(struct loonggpu_fbdev *rfbdev,
 	int height = mode_cmd->height;
 	u32 cpp;
 
-	info = drm_get_format_info(adev->ddev, mode_cmd);
+	info = lg_drm_get_format_info(adev->ddev, mode_cmd);
 	cpp = info->cpp[0];
 
 	/* need to align pitch with crtc limits */
@@ -164,7 +164,7 @@ out_unref:
 	return ret;
 }
 
-static int loonggpufb_create(struct drm_fb_helper *helper,
+int loonggpufb_create(struct drm_fb_helper *helper,
 			   struct drm_fb_helper_surface_size *sizes)
 {
 	struct loonggpu_fbdev *rfbdev = (struct loonggpu_fbdev *)helper;
@@ -204,8 +204,9 @@ static int loonggpufb_create(struct drm_fb_helper *helper,
 	info->par = rfbdev;
 	info->skip_vt_switch = false;
 
-	ret = loonggpu_display_framebuffer_init(adev->ddev, &rfbdev->rfb,
-					      &mode_cmd, gobj);
+	ret = loonggpu_display_framebuffer_init(adev->ddev, &rfbdev->rfb, &mode_cmd,
+						lg_drm_get_format_info(adev->ddev, &mode_cmd), gobj);
+
 	if (ret) {
 		DRM_ERROR("failed to initialize framebuffer %d\n", ret);
 		goto out;
@@ -279,7 +280,9 @@ static int loonggpu_fbdev_destroy(struct drm_device *dev, struct loonggpu_fbdev 
 }
 
 static const struct drm_fb_helper_funcs loonggpu_fb_helper_funcs = {
+#if defined(LG_DRM_FB_HELPER_FUNCS_HAS_FB_PROBE)
 	.fb_probe = loonggpufb_create,
+#endif
 };
 
 int loonggpu_fbdev_init(struct loonggpu_device *adev)

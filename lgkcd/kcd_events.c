@@ -269,7 +269,8 @@ static void destroy_event(struct kcd_process *p, struct kcd_event *ev)
 	wake_up_all(&ev->wq);
 	spin_unlock(&ev->lock);
 
-	if (ev->type == KCD_EVENT_TYPE_SIGNAL)
+	if (ev->type == KCD_EVENT_TYPE_SIGNAL ||
+	    ev->type == KCD_EVENT_TYPE_DEBUG)
 		p->signal_event_count--;
 
 	idr_remove(&p->event_idr, ev->event_id);
@@ -312,7 +313,8 @@ void kcd_event_free_process(struct kcd_process *p)
 
 static bool event_can_be_gpu_signaled(const struct kcd_event *ev)
 {
-	return ev->type == KCD_EVENT_TYPE_SIGNAL;
+	return ev->type == KCD_EVENT_TYPE_SIGNAL ||
+					ev->type == KCD_EVENT_TYPE_DEBUG;
 }
 
 static bool event_can_be_cpu_signaled(const struct kcd_event *ev)
@@ -414,6 +416,7 @@ int kcd_event_create(struct file *devkcd, struct kcd_process *p,
 
 	switch (event_type) {
 	case KCD_EVENT_TYPE_SIGNAL:
+	case KCD_EVENT_TYPE_DEBUG:
 		ret = create_signal_event(devkcd, p, ev, NULL);
 		if (!ret) {
 			*event_page_offset = KCD_MMAP_TYPE_EVENTS;

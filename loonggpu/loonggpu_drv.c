@@ -36,6 +36,7 @@ int loonggpu_testing;
 int loonggpu_disp_priority;
 int loonggpu_msi = -1;
 int loonggpu_lockup_timeout = 10000;
+int loonggpu_dpm = 0;
 int loonggpu_runtime_pm = -1;
 int loonggpu_vm_size = -1;
 int loonggpu_vm_block_size = -1;
@@ -55,6 +56,7 @@ int loonggpu_support = 1;
 int loonggpu_panel_cfg_clk_pol = -1;
 int loonggpu_panel_cfg_de_pol = -1;
 int loonggpu_gpu_uart = 0;
+int loonggpu_ls7a2000_mode_limit = 0;
 
 /**
  * DOC: panel_cfg_clk_pol (int)
@@ -144,6 +146,13 @@ module_param_named(msi, loonggpu_msi, int, 0444);
  */
 MODULE_PARM_DESC(lockup_timeout, "GPU lockup timeout in ms > 0 (default 10000)");
 module_param_named(lockup_timeout, loonggpu_lockup_timeout, int, 0444);
+
+/**
+ * DOC: dpm (int)
+ * Override for dynamic power management setting (1 = enable, 0 = disable). The default is -1 (auto).
+ */
+MODULE_PARM_DESC(dpm, "DPM support (1 = enable, 0 = disable, -1 = auto)");
+module_param_named(dpm, loonggpu_dpm, int, 0644);
 
 /**
  * DOC: runpm (int)
@@ -344,6 +353,14 @@ module_param_named(noretry, loonggpu_noretry, int, 0644);
  */
 MODULE_PARM_DESC(gpu_uart, "Debug GPU UART (0 = disabled (default), 1 = enabled)");
 module_param_named(gpu_uart, loonggpu_gpu_uart, int, 0644);
+
+/**
+ * DOC: ls7a2000_mode_limit (bool)
+ * Limit the maximum resolution to 1920x1080 for 7A2000.
+ * (0 = disabled, 1 = enabled). The default is 0 (Disabled).
+ */
+MODULE_PARM_DESC(ls7a2000_mode_limit, "Mode limit (0 = disabled (default), 1 = enabled)");
+module_param_named(ls7a2000_mode_limit, loonggpu_ls7a2000_mode_limit, int, 0644);
 
 static const struct pci_device_id pciidlist[] = {
 	{0x0014, 0x7A25, PCI_ANY_ID, PCI_ANY_ID, 0, 0, CHIP_LG100},
@@ -610,7 +627,9 @@ static int loongson_vga_pci_register(struct pci_dev *pdev,
 		gpu_pdev = pci_get_device(0x0014, 0x7A15, NULL);
 		g_vram_base = pci_resource_start(gpu_pdev, 2);
 		g_vram_size = pci_resource_len(gpu_pdev, 2);
-	}
+	} else if (pdev->device == 0x9a10) {
+		gdc_reg = &ls9a1000_dc_reg;
+ 	}
 
 	if (pdev->device != 0x9a10) {
 		loongson_dc_pdev = pdev;
@@ -756,6 +775,9 @@ static struct drm_driver kms_driver = {
 	lg_drm_driver_gem_close_setting(loonggpu_gem_object_close)
 	.dumb_create = loonggpu_mode_dumb_create,
 	.dumb_map_offset = loonggpu_mode_dumb_mmap,
+#if !defined(LG_DRM_FB_HELPER_FUNCS_HAS_FB_PROBE)
+	.fbdev_probe = loonggpufb_create,
+#endif
 	.fops = &loonggpu_driver_kms_fops,
 
 	lg_drm_driver_prime_handle_to_fd_setting(drm_gem_prime_handle_to_fd)
@@ -773,7 +795,9 @@ static struct drm_driver kms_driver = {
 
 	.name = DRIVER_NAME,
 	.desc = DRIVER_DESC,
+#if defined(LG_DRM_DRIVER_HAS_DATE)
 	.date = DRIVER_DATE,
+#endif
 	.major = KMS_DRIVER_MAJOR,
 	.minor = KMS_DRIVER_MINOR,
 	.patchlevel = KMS_DRIVER_PATCHLEVEL,

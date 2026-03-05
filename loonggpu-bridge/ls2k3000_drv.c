@@ -1,3 +1,4 @@
+#include <drm/drm_atomic_helper.h>
 #include "loonggpu.h"
 #include "loonggpu_dc.h"
 #include "loonggpu_dc_vbios.h"
@@ -243,7 +244,7 @@ static bool header_is_ok(struct loonggpu_device *adev, int intf, unsigned int pk
 	return false;
 }
 
-static bool read_edid_form_aux(struct loonggpu_device *adev, int intf, struct drm_connector *connector, unsigned char *edid)
+static bool read_edid_form_aux(struct loonggpu_device *adev, int intf, unsigned char *edid)
 {
 	unsigned char internal_edid[2*EDID_LENGTH] = {0};
 	unsigned char block_num;
@@ -301,44 +302,283 @@ static bool read_edid_form_aux(struct loonggpu_device *adev, int intf, struct dr
 	return true;
 }
 
-static unsigned int dp_read_edid(struct loonggpu_device *adev, int intf, struct drm_connector *connector)
+bool ls2k3000_interface_status_changed(struct drm_connector *connector, struct loonggpu_dc_crtc *crtc)
 {
-	int size = sizeof(u8) * EDID_LENGTH * 2;
+	bool old_hdmi_status = false, current_hdmi_status = false;
+	bool old_edp_status = false, current_edp_status = false;
+	bool old_dp_status = false, current_dp_status = false;
+	bool status_changed = false;
+	int i;
+
+	/*
+	* Retrieve the previous connection status of the display connector
+	*/
+	for (i = 0; i < crtc->interfaces; i++) {
+		switch (crtc->intf[i].type) {
+		case INTERFACE_HDMI:
+			old_hdmi_status = crtc->intf[i].connected;
+			break;
+		case INTERFACE_DP:
+			old_dp_status = crtc->intf[i].connected;
+			break;
+		case INTERFACE_EDP:
+			old_edp_status = crtc->intf[i].connected;
+			break;
+		}
+	}
+
+	/**
+	 * ​​Retrieve the current connection status of the display connector
+	 */
+	drm_helper_probe_detect(connector, NULL, false);
+	for (i = 0; i < crtc->interfaces; i++) {
+		switch (crtc->intf[i].type) {
+		case INTERFACE_HDMI:
+			current_hdmi_status = crtc->intf[i].connected;
+			break;
+		case INTERFACE_DP:
+			current_dp_status = crtc->intf[i].connected;
+			break;
+		case INTERFACE_EDP:
+			current_edp_status = crtc->intf[i].connected;
+			break;
+		}
+	}
+
+    if (connector->index != 0) {
+        status_changed = (old_hdmi_status != current_hdmi_status) ||
+                        (old_dp_status != current_dp_status);
+    } else {
+        status_changed = (old_edp_status != current_edp_status);
+    }
+
+	return status_changed;
+}
+
+/**
+ * process_edp_edid - Process EDID data for an Embedded DisplayPort (eDP) connector
+ * @connector: Pointer to the DRM connector associated with the eDP display
+ * @valid_edid: Pointer to the raw EDID data buffer to be processed
+ *
+ * This function processes the Extended Display Identification Data (EDID) for an eDP panel.
+ * It allocates memory for the EDID structure, copies the provided raw EDID data into it,
+ * updates the connector's EDID property, and adds the supported display modes to the
+ * connector's mode list. The function is typically called during eDP panel initialization
+ * or when handling a hotplug event to process newly read EDID information.
+ *
+ * The caller is responsible for ensuring that the @valid_edid points to a valid EDID block
+ * of at least EDID_LENGTH * 2 bytes. The function handles memory allocation failures gracefully.
+ *
+ * Return: Number of display modes successfully added to the connector. Returns 0 if
+ *         memory allocation for the EDID structure fails.
+ */
+static unsigned int process_edp_edid(struct drm_connector *connector,
+                                        unsigned char *valid_edid)
+{
+	struct edid *edid = kzalloc(EDID_LENGTH * 2, GFP_KERNEL);
+	unsigned long count = 0;
+
+	if (!edid)
+		return 0;
+
+	memcpy(edid, valid_edid, EDID_LENGTH * 2);
+	drm_connector_update_edid_property(connector, edid);
+	count = drm_add_edid_modes(connector, edid);
+	kfree(edid);
+
+	return count;
+}
+
+/**
+ * process_dp_edid - Process and apply EDID data for a DisplayPort connector
+ * @dp_connector: The DRM connector associated with the DisplayPort
+ * @valid_edid: Pointer to the raw EDID data buffer to be processed
+ *
+ * This function processes the Extended Display Identification Data (EDID) for a DisplayPort
+ * display. It allocates memory for the EDID structure, copies the provided raw EDID data
+ * into it, updates the connector's EDID property, adds the supported display modes to the
+ * connector's mode list, and finally applies a filter to retain only unique progressive modes.
+ *
+ * It is typically called during DisplayPort connector initialization or in response to a
+ * hotplug event when new EDID data is available.
+ *
+ * Caller is responsible for freeing the returned EDID structure using kfree().
+ *
+ * Return: A pointer to the newly allocated and processed &struct edid on success.
+ *         Returns %NULL if memory allocation for the EDID structure fails.
+ */
+static struct edid *process_dp_edid(struct drm_connector *dp_connector,
+                                   unsigned char *valid_edid)
+{
+	struct edid *dp_edid = kzalloc(EDID_LENGTH * 2, GFP_KERNEL);
+
+	if (!dp_edid)
+		return NULL;
+
+	memcpy(dp_edid, valid_edid, EDID_LENGTH * 2);
+	drm_connector_update_edid_property(dp_connector, dp_edid);
+	drm_add_edid_modes(dp_connector, dp_edid);
+	filter_unique_progressive_modes(dp_connector);
+
+	return dp_edid;
+}
+
+/**
+ * combine_edid_results - Combine EDID results from HDMI and DP interfaces
+ * @connector: Primary DRM connector object
+ * @dp_connector: DisplayPort connector object
+ * @hdmi_edid: EDID data from HDMI interface, may be NULL
+ * @dp_edid: EDID data from DisplayPort interface, may be NULL
+ * @current_count: Current mode count before combination
+ *
+ * This function merges Extended Display Identification Data (EDID) from both HDMI
+ * and DisplayPort interfaces to determine the optimal set of display modes. It
+ * handles three main scenarios:
+ * 1. Both HDMI and DP EDID are available: shows filtered modes for both connectors
+ *    and returns the intersection of supported modes
+ * 2. Only DP EDID is available: updates the primary connector with DP EDID and
+ *    adds the corresponding modes
+ * 3. Other cases: returns the current mode count without modification
+ *
+ * The intersection logic ensures that only modes supported by both interfaces are
+ * exposed when both connections are active, providing compatibility across
+ * different display technologies.
+ *
+ * Return: Number of display modes after combination. Returns the intersection count
+ *         when both EDIDs are present, DP-only mode count when only DP is available,
+ *         or the original current_count in other cases.
+ */
+static unsigned int combine_edid_results(struct drm_connector *connector,
+                                       struct drm_connector *dp_connector,
+                                       struct edid *hdmi_edid, struct edid *dp_edid,
+                                       unsigned long current_count)
+{
+	if (dp_edid && hdmi_edid) {
+		show_filtered_modes(connector);
+		show_filtered_modes(dp_connector);
+		return drm_connector_edid_intersection(connector, dp_connector);
+	} else if (dp_edid && !hdmi_edid) {
+		drm_connector_update_edid_property(connector, dp_edid);
+		return drm_add_edid_modes(connector, dp_edid);
+	}
+
+	return current_count;
+}
+
+/**
+ * process_display_interfaces - Process EDID data for HDMI and DisplayPort interfaces
+ * @adev: Pointer to the Loongson GPU device structure
+ * @index: Index identifier for the display controller
+ * @connector: Primary DRM connector object (typically for HDMI)
+ * @dc_crtc: Display controller CRTC containing interface configuration
+ * @phy: Physical bridge layer for I2C/auxiliary communication
+ *
+ * This function handles the retrieval and processing of Extended Display Identification Data
+ * (EDID) for both HDMI and DisplayPort interfaces attached to a display controller. It first
+ * attempts to read and process the HDMI EDID if the interface is connected, then attempts to
+ * read the DisplayPort EDID via the AUX channel if that interface is connected. Results from
+ * both interfaces are combined to determine the final set of supported display modes.
+ *
+ * For the DisplayPort interface, a virtual connector is created to manage its modes. The function
+ * ensures proper cleanup of all allocated resources (EDID blocks, virtual connectors) before returning.
+ *
+ * Return: Total number of display modes successfully added and combined for the primary connector.
+ */
+static unsigned int process_display_interfaces(struct loonggpu_device *adev, int index,
+                                              struct drm_connector *connector,
+                                              struct loonggpu_dc_crtc *dc_crtc,
+                                              struct loonggpu_bridge_phy *phy)
+{
+	struct edid *hdmi_edid = NULL, *dp_edid = NULL;
+	struct drm_connector *dp_connector = NULL;
 	unsigned char valid_edid[256];
 	unsigned long count = 0;
-	struct edid *edid;
 
-	if (!read_edid_form_aux(adev, intf, connector, valid_edid)) {
-		DRM_INFO("read edid failed index-%d\n", intf);
-		return 0;
+	/* Process HDMI interface */
+	if (dc_crtc->intf[0].type == INTERFACE_HDMI && dc_crtc->intf[0].connected) {
+		hdmi_edid = drm_get_edid(connector, &phy->li2c->adapter);
+		if (hdmi_edid) {
+			drm_connector_update_edid_property(connector, hdmi_edid);
+			check_hdmi_audio(adev, connector, hdmi_edid);
+			count = drm_add_edid_modes(connector, hdmi_edid);
+			filter_unique_progressive_modes(connector);
+		}
 	}
 
-	edid = kmalloc(size, GFP_KERNEL);
-	if (edid) {
-		memcpy(edid, valid_edid, size);
-		drm_connector_update_edid_property(connector, edid);
-		count = drm_add_edid_modes(connector, edid);
-		kfree(edid);
+	/* Process DisplayPort interface */
+	if (dc_crtc->intf[1].type == INTERFACE_DP && dc_crtc->intf[1].connected) {
+		if (read_edid_form_aux(adev, index, valid_edid)) {
+			dp_connector = create_virtual_connector(adev->ddev);
+			if (!IS_ERR(dp_connector)) {
+				dp_edid = process_dp_edid(dp_connector, valid_edid);
+			}
+		}
 	}
+
+	/* Combine results from both interfaces */
+	count = combine_edid_results(connector, dp_connector, hdmi_edid, dp_edid, count);
+
+	/* Cleanup resources */
+	kfree(hdmi_edid);
+	kfree(dp_edid);
+
+	if (dp_connector && !IS_ERR(dp_connector))
+		destroy_virtual_connector(dp_connector);
 
 	return count;
 }
 
-static int ls2k3000_get_modes(struct loonggpu_bridge_phy *phy,
-                           struct drm_connector *connector)
+/**
+ * ls2k3000_dc_read_edid - Read and process EDID data for Loongson display controller
+ * @adev: Loongson GPU device instance
+ * @index: Display controller index (0 for primary, 1 for secondary)
+ * @connector: DRM connector to populate with display modes
+ * @edid: EDID data buffer
+ *
+ * Return: Number of valid display modes found, or 0 on error.
+ */
+static unsigned int ls2k3000_dc_read_edid(struct loonggpu_device *adev, int index,
+                            struct drm_connector *connector, struct edid *edid)
 {
-	struct loonggpu_device *adev = phy->adev;
-	int index = phy->display_pipe_index;
-	unsigned int count = 0;
+	struct loonggpu_dc_crtc *dc_crtc = adev->dc->link_info[index].crtc;
+	struct loonggpu_bridge_phy *phy = adev->mode_info.encoders[connector->index]->bridge;
+	unsigned char valid_edid[256];
+	unsigned long mode_count = 0;
 
-	count = dp_read_edid(adev, index, connector);
+	/* Primary display: direct AUX read */
+	if (!index) {
+		if (!read_edid_form_aux(adev, index, valid_edid)) {
+			DRM_ERROR("Primary AUX EDID read failed\n");
+			return 0;
+		}
+		return process_edp_edid(connector, valid_edid);
+	}
+
+	/* Secondary display: process HDMI and DP interfaces */
+	mode_count = process_display_interfaces(adev, index, connector, dc_crtc, phy);
+	DRM_DEBUG("EDID processing: %lu modes found\n", mode_count);
+
+	return mode_count;
+}
+
+int ls2k3000_dc_get_mdoes(struct loonggpu_bridge_phy *phy, int used_method, struct drm_connector *connector, struct edid *edid)
+{
+	struct loonggpu_device *adev = connector->dev->dev_private;
+	int count = 0;
+
+	switch (used_method) {
+	case via_i2c:
+	case via_encoder:
+		if (phy->ddc_funcs && phy->ddc_funcs->get_modes) {
+			count = phy->ddc_funcs->get_modes(phy, connector);
+		} else {
+			count = ls2k3000_dc_read_edid(adev, connector->index, connector, edid);
+		}
+		break;
+	}
 
 	return count;
 }
-
-static struct bridge_phy_ddc_funcs ls2k3000_ddc_funcs = {
-       .get_modes = ls2k3000_get_modes,
-};
 
 static const struct bridge_phy_cfg_funcs ls2k3000_cfg_funcs = {
         .mode_valid = ls2k3000_mode_valid,
@@ -366,7 +606,6 @@ int internal_bridge_ls2k3000_register(struct loonggpu_dc_bridge *dc_bridge)
 
 	ls2k3000_phy->cfg_funcs = &ls2k3000_cfg_funcs;
 	ls2k3000_phy->hpd_funcs = &ls2k3000_hpd_funcs;
-	ls2k3000_phy->ddc_funcs = &ls2k3000_ddc_funcs;
 
 	/* TODO:
 	 * Use VBIOS config */

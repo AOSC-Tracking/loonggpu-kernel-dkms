@@ -81,7 +81,7 @@ int loonggpu_dc_encoder_init(struct loonggpu_device *adev, int link_index)
 	struct loonggpu_encoder *lencoder;
 	int res;
 
-	if (link_index >= 2)
+	if (link_index >= 4)
 		return -1;
 
 	lencoder = kzalloc(sizeof(*lencoder), GFP_KERNEL);

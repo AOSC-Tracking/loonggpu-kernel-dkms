@@ -218,6 +218,12 @@ int suspend_queues(struct kcd_process *p,
 int resume_queues(struct kcd_process *p,
 		uint32_t num_queues,
 		uint32_t *usr_queue_id_array);
+void set_queue_snapshot_entry(struct queue *q,
+			      uint64_t exception_clear_mask,
+			      struct kcd_queue_snapshot_entry *qss_entry);
+int debug_lock_and_unmap(struct device_queue_manager *dqm);
+int debug_map_and_unlock(struct device_queue_manager *dqm);
+int debug_refresh_runlist(struct device_queue_manager *dqm);
 
 static inline unsigned int get_sh_mem_bases_32(struct kcd_process_device *pdd)
 {

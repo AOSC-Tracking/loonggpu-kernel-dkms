@@ -228,7 +228,7 @@ static bool lg2xx_ih_func_prescreen_iv(struct loonggpu_device *adev)
 		return true;
 	}
 
-	adev->irq.ih.rptr += 4;;
+	adev->irq.ih.rptr += 4;
 	return false;
 }
 
@@ -284,7 +284,7 @@ static void lg2xx_ih_func_decode_iv(struct loonggpu_device *adev,
 	entry->src_data[1] = dw[3];
 	entry->ring_id = 0;
 
-	adev->irq.ih.rptr += 4;;
+	adev->irq.ih.rptr += 4;
 }
 
 static void ih_func_set_rptr(struct loonggpu_device *adev)

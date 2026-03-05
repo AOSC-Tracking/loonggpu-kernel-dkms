@@ -5,6 +5,7 @@
 #include "loonggpu_dc_irq.h"
 #include "loonggpu_dc_reg.h"
 #include "loonggpu_dc_i2c.h"
+#include "loonggpu_dc_interface.h"
 
 #define DM_IRQ_TABLE_LOCK(adev, flags) \
 	spin_lock_irqsave(&adev->dc->irq_handler_list_table_lock, flags)
@@ -18,18 +19,18 @@ static void dc_handle_hpd_irq(void *param)
 	struct drm_connector *connector = &aconnector->base;
 	struct drm_device *dev = connector->dev;
 	struct loonggpu_device *adev = dev->dev_private;
-	enum drm_connector_status old_status;
+	struct loonggpu_dc_crtc *dc_crtc;
 
 	/* when driver in resume not process hotplug event */
 	if (adev->dc->cached_state)
 		return;
 
+	dc_crtc = adev->dc->link_info[connector->index].crtc;
 	mutex_lock(&aconnector->hpd_lock);
-	old_status = connector->status;
-	connector->status = drm_helper_probe_detect(connector, NULL, false);
 
-	if (old_status != connector->status)
+	if (dc_interface_status_changed(connector, dc_crtc)) {
 		drm_kms_helper_hotplug_event(dev);
+	}
 
 	mutex_unlock(&aconnector->hpd_lock);
 }
@@ -44,7 +45,7 @@ static void dc_handle_i2c_irq(void *param)
 	loonggpu_dc_i2c_irq(i2c);
 }
 
-static void dc_handle_vsync_irq(void *interrupt_params)
+void dc_handle_vsync_irq(void *interrupt_params)
 {
 	struct loonggpu_crtc *loonggpu_crtc = interrupt_params;
 	struct drm_device *dev = loonggpu_crtc->base.dev;

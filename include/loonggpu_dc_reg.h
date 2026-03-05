@@ -2,6 +2,7 @@
 #define __LOONGGPU_DC_REG_H__
 
 #include "loonggpu_dc.h"
+#include "loonggpu_dc_video_reg.h"
 
 struct dc_global_reg {
 	u32 intr;
@@ -105,6 +106,12 @@ struct dc_hdmi_reg_v2 {
 	u32 phy_cfg1;
 	u32 phy_cfg2;
 	u32 phy_mon0;
+	/* 9A1000 add */
+	u32 cfg_hdmi_phy0;
+	u32 cfg_hdmi_phy1;
+	u32 hdmi_phy_rdata0;
+	u32 hdmi_phy_rdata1;
+	u32 irq_hpd;
 };
 
 struct dc_dp_reg {
@@ -149,8 +156,6 @@ struct dc_dp_reg {
        u32 aux_monitor5;
        u32 aux_monitor6;
        u32 aux_monitor7;
-       u32 hpd_status;
-       u32 hpd_enable;
        u32 sdp_cfg0;
        u32 sdp_cfg1;
        u32 sdp_cfg2;
@@ -185,6 +190,10 @@ struct dc_dp_reg {
        u32 phy_monitor0;
        u32 phy_monitor1;
        u32 phy_monitor2;
+	/* 9A1000 add */
+	u32 hpd_status;
+	u32 hpd_enable;
+	u32 dp_hpd;
 };
 
 struct dc_reg {
@@ -194,12 +203,19 @@ struct dc_reg {
 	struct dc_hdmi_reg_v1 hdmi_reg_v1[MAX_DC_INTERFACES];
 	struct dc_hdmi_reg_v2 hdmi_reg_v2[MAX_DC_INTERFACES];
 	struct dc_dp_reg dp_reg[DC_DVO_MAXLINK];
+	struct dc_video_reg video_reg[DC_DVO_MAXLINK];
+	struct dc_vga_reg vga_reg;
+	struct dc_dvo_reg dvo_reg;
+	struct dc_wb_reg wb_reg[DC_DVO_MAXLINK];
+	struct dc_unzip_reg unzip_reg;
+	struct dc_top_reg top_reg;
 };
 
 extern struct dc_reg *gdc_reg;
 extern struct dc_reg ls7a2000_dc_reg;
 extern struct dc_reg ls2k3000_dc_reg;
 extern struct dc_reg ls7a1000_dc_reg;
+extern struct dc_reg ls9a1000_dc_reg;
 
 #if defined(TO_UNCAC)
 #define LG_TO_UNCAC TO_UNCAC

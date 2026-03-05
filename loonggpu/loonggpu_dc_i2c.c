@@ -510,3 +510,13 @@ void ls2k3000_dc_i2c_resume(struct loonggpu_device *adev, uint32_t link_index)
 	value |= (1 << (link_index + 27));
 	dc_writel(adev, gdc_reg->global_reg.intr, value);
 }
+
+int ls9a1000_dc_i2c_init(struct loonggpu_device *adev, uint32_t link_index)
+{
+	//i2c-0 的地址是0x1e002000
+	//i2c-1 的地址是0x1e002100
+	//i2c-2 的地址是0x1e002200
+	//i2c-3 的地址是0x1e002300
+
+	return 0;
+}

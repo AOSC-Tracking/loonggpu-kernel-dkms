@@ -627,7 +627,7 @@ static int lt8618_get_modes(struct loonggpu_bridge_phy *phy,
 	struct edid *edid;
 	unsigned int count;
 
-	edid = drm_do_get_edid(connector, lt8618_get_edid_block, phy);
+	edid = lg_drm_do_get_edid(connector, lt8618_get_edid_block, phy);
 	if (edid) {
 		drm_connector_update_edid_property(connector, edid);
 		count = drm_add_edid_modes(connector, edid);

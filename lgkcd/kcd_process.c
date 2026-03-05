@@ -42,6 +42,7 @@ struct mm_struct;
 #include "kcd_device_queue_manager.h"
 #include "kcd_svm.h"
 #include "kcd_smi_events.h"
+#include "kcd_debug.h"
 
 /*
  * List of struct kcd_process (field kcd_process).
@@ -1060,6 +1061,25 @@ static void kcd_process_notifier_release_internal(struct kcd_process *p)
 	/* Indicate to other users that MM is no longer valid */
 	mm = p->mm;
 	p->mm = NULL;
+	kcd_dbg_trap_disable(p);
+
+	if (atomic_read(&p->debugged_process_count) > 0) {
+		struct kcd_process *target;
+		unsigned int temp;
+		int idx = srcu_read_lock(&kcd_processes_srcu);
+
+		hash_for_each_rcu(kcd_processes_table, temp, target, kcd_processes) {
+			if (target->debugger_process && target->debugger_process == p) {
+				mutex_lock_nested(&target->mutex, 1);
+				kcd_dbg_trap_disable(target);
+				mutex_unlock(&target->mutex);
+				if (atomic_read(&p->debugged_process_count) == 0)
+					break;
+			}
+		}
+
+		srcu_read_unlock(&kcd_processes_srcu, idx);
+	}
 
 #if defined(LG_MMU_NOTIFIER_UNREGISTER_NO_RELEASE)
 	mmu_notifier_unregister_no_release(&p->mmu_notifier, mm);
@@ -1175,6 +1195,35 @@ bool kcd_process_xnack_mode(struct kcd_process *p, bool supported)
 	return true;
 }
 
+void kcd_process_set_trap_handler(struct qcm_process_device *qpd,
+				  uint64_t tba_addr,
+				  uint64_t tma_addr)
+{
+	if (qpd->cwsr_kaddr) {
+		/* KFD trap handler is bound, record as second-level TBA/TMA
+		 * in first-level TMA. First-level trap will jump to second.
+		 */
+		uint64_t *tma =
+			(uint64_t *)(qpd->cwsr_kaddr + KCD_CWSR_TMA_OFFSET);
+		tma[0] = tba_addr;
+		tma[1] = tma_addr;
+	} else {
+		/* No trap handler bound, bind as first-level TBA/TMA. */
+		qpd->tba_addr = tba_addr;
+		qpd->tma_addr = tma_addr;
+	}
+}
+
+void kcd_process_set_trap_debug_flag(struct qcm_process_device *qpd,
+				     bool enabled)
+{
+	if (qpd->cwsr_kaddr) {
+		uint64_t *tma =
+			(uint64_t *)(qpd->cwsr_kaddr + KCD_CWSR_TMA_OFFSET);
+		tma[2] = enabled;
+	}
+}
+
 /*
  * On return the kcd_process is fully operational and will be freed when the
  * mm is released
@@ -1200,6 +1249,11 @@ static struct kcd_process *create_process(const struct task_struct *thread)
 	if (err)
 		goto err_event_init;
 	process->is_32bit_user_mode = in_compat_syscall();
+	process->debug_trap_enabled = false;
+	process->debugger_process = NULL;
+	process->exception_enable_mask = 0;
+	atomic_set(&process->debugged_process_count, 0);
+	sema_init(&process->runtime_enable_sema, 0);
 
 	process->pasid = kcd_pasid_alloc();
 	if (process->pasid == 0) {
@@ -1240,6 +1294,8 @@ static struct kcd_process *create_process(const struct task_struct *thread)
 
 	kcd_unref_process(process);
 	get_task_struct(process->lead_thread);
+
+	INIT_WORK(&process->debug_event_workarea, debug_event_write_work_handler);
 
 	return process;
 
@@ -1312,7 +1368,8 @@ static int kcd_process_device_init_cwsr_dgpu(struct kcd_process_device *pdd)
 {
 	struct kcd_node *dev = pdd->dev;
 	struct qcm_process_device *qpd = &pdd->qpd;
-	uint32_t flags = KCD_IOC_ALLOC_MEM_FLAGS_GTT;
+	uint32_t flags = KCD_IOC_ALLOC_MEM_FLAGS_GTT |
+			KCD_IOC_ALLOC_MEM_FLAGS_EXECUTABLE;
 	struct kgd_mem *mem;
 	void *kaddr;
 	int ret;
@@ -1331,6 +1388,9 @@ static int kcd_process_device_init_cwsr_dgpu(struct kcd_process_device *pdd)
 	qpd->tba_addr = qpd->cwsr_base;
 
 	memcpy(qpd->cwsr_kaddr, dev->kcd->cwsr_isa, dev->kcd->cwsr_isa_size);
+
+	kcd_process_set_trap_debug_flag(&pdd->qpd,
+					pdd->process->debug_trap_enabled);
 
 	qpd->tma_addr = qpd->tba_addr + KCD_CWSR_TMA_OFFSET;
 	pr_debug("set tba :0x%llx, tma:0x%llx, cwsr_kaddr:%p for pqm.\n",

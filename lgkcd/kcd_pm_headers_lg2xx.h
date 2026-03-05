@@ -34,6 +34,9 @@ struct pm_map_process {
 	uint32_t pgd_base_addr_hi;
 	uint32_t tba_lo;
 	uint32_t tba_hi;
+	uint32_t tma_lo;
+	uint32_t tma_hi;
+	uint32_t dbg_flags;
 };
 
 struct pm_map_queues {

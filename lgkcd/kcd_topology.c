@@ -39,6 +39,7 @@
 #include "kcd_svm.h"
 #include "loonggpu_lgkcd.h"
 #include "loonggpu.h"
+#include "kcd_debug.h"
 
 /* topology_device_list - Master list of all topology devices */
 static struct list_head topology_device_list;
@@ -505,6 +506,8 @@ static ssize_t node_show(struct kobject *kobj, struct attribute *attr,
 				      dev->gpu->kcd->fw_version);
 		sysfs_show_32bit_prop(buffer, offs, "capability",
 				      dev->node_props.capability);
+		sysfs_show_64bit_prop(buffer, offs, "debug_prop",
+				      dev->node_props.debug_prop);
 		sysfs_show_32bit_prop(buffer, offs, "sdma_fw_version",
 				      dev->gpu->kcd->sdma_fw_version);
 		sysfs_show_64bit_prop(buffer, offs, "unique_id",
@@ -1811,6 +1814,8 @@ int kcd_topology_add_device(struct kcd_node *gpu)
 			VDD_CAP_DOORBELL_TYPE_TOTALBITS_SHIFT) &
 			VDD_CAP_DOORBELL_TYPE_TOTALBITS_MASK);
 		pr_info("Adding doorbell packet type capability\n");
+		dev->node_props.debug_prop = VDD_DBG_DISPATCH_INFO_ALWAYS_VALID;
+		dev->node_props.capability |= VDD_CAP_TRAP_DEBUG_SUPPORT;
 	default:
 		break;
 	}

@@ -1253,6 +1253,48 @@ static int loonggpu_device_ip_resume(struct loonggpu_device *adev)
 	return r;
 }
 
+/**
+ * loonggpu_device_prepare_dpm - prepare the dpm func
+ *
+ * @adev: loonggpu_device pointer
+ *
+ * get bios gpu dpm suppport state.
+ */
+static int loonggpu_device_prepare_dpm(struct loonggpu_device *adev)
+{
+	uint32_t state;
+
+	state = RREG32(LOONGGPU_LG2XX_DPM_STATE);
+	if ((state & LG2XX_DPM_STATE_READY) == LG2XX_DPM_STATE_READY) {
+		adev->pm.dpm.bios_support = true;
+		DRM_INFO("The current BIOS support the GPU DPM function.\n");
+		DRM_INFO("The GPU DPM function is %s.\n", loonggpu_dpm? "enabled":"disabled");
+		return 0;
+	}
+
+	/* The current BIOS does not support the DPM function */
+	loonggpu_dpm = 0;
+	adev->pm.dpm.bios_support = false;
+	DRM_INFO("The current BIOS not support the GPU DPM function.\n");
+
+	return 0;
+}
+
+static void loonggpu_device_lg2xx_early_init(struct loonggpu_device *adev)
+{
+	uint32_t reg_val = 0;
+
+	/* FIXME fpga ddr4 route workaround and switch ejtag to ec132 */
+	reg_val = loonggpu_mm_rreg(adev, 0x40, LOONGGPU_REGS_NO_KIQ);
+	reg_val = reg_val | 0x10 | 0x001e3c00;
+	loonggpu_mm_wreg(adev, 0x40, reg_val);
+
+	/* enable lg210 ec132 uart gpio */
+	reg_val = loonggpu_mm_rreg(adev, 0x10, LOONGGPU_REGS_NO_KIQ);
+	reg_val = (reg_val&~0xff00) | 0x5500;
+	loonggpu_mm_wreg(adev, 0x10, reg_val);
+}
+
 extern struct pci_dev *loongson_dc_pdev;
 
 /**
@@ -1345,21 +1387,26 @@ int loonggpu_device_init(struct loonggpu_device *adev,
 			adev->chip = dev_7a1000;
 			DRM_INFO("Set 7A1000 device in loonggpu driver\n");
 		}
-	} else
+	} else {
+		adev->chip = dev_9a1000;
 		DRM_INFO("Set 9A1000 device in loonggpu driver\n");
+	}
 
 	if (adev->family_type != CHIP_LG210) {
 		adev->rmmio_base = pci_resource_start(adev->pdev, 0);
 		adev->rmmio_size = pci_resource_len(adev->pdev, 0);
 	} else {
-		adev->rmmio_base = pci_resource_start(adev->pdev, 1);
-		adev->rmmio_size = pci_resource_len(adev->pdev, 1);
+		adev->rmmio_base = pci_resource_start(adev->pdev, 2);
+		adev->rmmio_size = pci_resource_len(adev->pdev, 2);
 	}
 
 	adev->rmmio = ioremap(adev->rmmio_base, adev->rmmio_size);
 
-	if (adev->family_type == CHIP_LG210)
-		adev->rmmio += 0x100000;
+	if (adev->family_type == CHIP_LG210) {
+		loonggpu_device_lg2xx_early_init(adev);
+		adev->rmmio_sc = adev->rmmio;
+		adev->rmmio += LG2XX_EC132_OFFSET;
+	}
 
 	if (adev->rmmio == NULL) {
 		return -ENOMEM;
@@ -1381,8 +1428,23 @@ int loonggpu_device_init(struct loonggpu_device *adev,
 		if (adev->io_base == NULL)
 			return -ENOMEM;
 		DRM_INFO("loonggpu dc io base: 0x%lx\n", (unsigned long)adev->io_base);
-	}
+	} else { /* 9a1000 dc */
+		adev->loongson_dc_rmmio_base = adev->rmmio_base + 0x300000; //9a1000 dc offset
+		adev->loongson_dc_rmmio_size = adev->rmmio_size - 0x300000;
+
+		adev->loongson_dc_rmmio = pci_iomap(adev->pdev, 2, adev->rmmio_size); //注意第二个参数，可能是1
+		if (adev->loongson_dc_rmmio == NULL) {
+			return -ENOMEM;
+		}
+
+		adev->loongson_dc_rmmio += 0x300000;
+		DRM_INFO("gsgpu dc register mmio base: %#llX\n", (uint64_t)adev->loongson_dc_rmmio_base);
+		DRM_INFO("gsgpu dc rmmio: %#llX\n", (uint64_t)adev->loongson_dc_rmmio);
+		DRM_INFO("gsgpu dc register mmio size: %u\n", (unsigned)adev->loongson_dc_rmmio_size);
+ 	}
  
+	if (adev->family_type == CHIP_LG200)
+		loonggpu_device_prepare_dpm(adev);
 
 	/* early init functions */
 	r = loonggpu_device_ip_early_init(adev);
@@ -1543,6 +1605,7 @@ void loonggpu_device_fini(struct loonggpu_device *adev)
 
 	iounmap(adev->rmmio);
 	adev->rmmio = NULL;
+	adev->rmmio_sc = NULL;
 
 	loonggpu_debugfs_regs_cleanup(adev);
 }

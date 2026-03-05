@@ -14,6 +14,8 @@
 #include "loonggpu_dc_encoder.h"
 #include "loonggpu_dc_vbios.h"
 #include "loonggpu_dc_reg.h"
+#include "loonggpu_dc_video.h"
+#include "loonggpu_dc_irq.h"
 #include "loonggpu_dc_hdmi.h"
 #include "loonggpu_dc_dp.h"
 #include "bridge_phy.h"
@@ -30,11 +32,6 @@
 extern resource_size_t g_vram_base;
 extern resource_size_t g_vram_size;
 struct dc_reg *gdc_reg;
-
-static const struct loonggpu_display_funcs dc_display_funcs = {
-	.vblank_get_counter = dc_vblank_get_counter,
-	.page_flip_get_scanoutpos = dc_crtc_get_scanoutpos,
-};
 
 /* DC register offsets definition */
 /* For 7A2000, 2K2000 */
@@ -322,8 +319,6 @@ struct dc_reg ls2k3000_dc_reg = {
 		0x20d4,	/*DP_AUX_MONITOR_5*/
 		0x20d8,	/*DP_AUX_MONITOR_6*/
 		0x20dc, /*DP_AUX_MONITOR_7*/
-		0x2034,	/*DP_HPD_STATUS*/
-		0x2038,	/*DP_HPD_ENABLE*/
 		0x2100,	/*DP_SDP_CFG_0*/
 		0x2104,	/*DP_SDP_CFG_1*/
 		0x2108,	/*DP_SDP_CFG_2*/
@@ -401,8 +396,6 @@ struct dc_reg ls2k3000_dc_reg = {
 		0x24d4,	/*DP_AUX_MONITOR_5*/
 		0x24d8,	/*DP_AUX_MONITOR_6*/
 		0x24dc, /*DP_AUX_MONITOR_7*/
-		0x2434,	/*DP_HPD_STATUS*/
-		0x2438,	/*DP_HPD_ENABLE*/
 		0x2500,	/*DP_SDP_CFG_0*/
 		0x2504,	/*DP_SDP_CFG_1*/
 		0x2508,	/*DP_SDP_CFG_2*/
@@ -522,6 +515,509 @@ struct dc_reg ls7a1000_dc_reg = {
 	},
 };
 
+/* For 9A1000 */
+struct dc_reg ls9a1000_dc_reg = {
+	.video_reg[0] = {
+		0x00, /* VIDEO_CFGINFO_REG */
+		0x04, /* VIDEO_INTINFO_REG */
+		0x08, /* VIDEO_SCRSIZE_REG */
+		0x0C, /* VIDEO_BACKSIZE_REG */
+		0x10, /* VIDEO_ZOOMDX_L_REG */
+		0x14, /* VIDEO_ZOOMDX_H_REG */
+		0x18, /* VIDEO_ZOOMDY_L_REG */
+		0x1c, /* VIDEO_ZOOMDY_H_REG */
+		0x20, /* VIDEO_HSYNC_REG */
+		0x24, /* VIDEO_VSYNC_REG */
+		0x28, /* VIDEO_DISPLAYTOTAL_REG */
+		0x124c, /* VIDEO_COLORKEY_VALUE_REG */
+		0x1250, /* VIDEO_HADJ_REG */
+		0x1254, /* VIDEO_VADJ_REG */
+		0x1258, /* VIDEO_DITHER_REG */
+		0x125c, /* VIDEO_DTH_TABLE0_REG */
+		0x1260, /* VIDEO_DTH_TABLE1_REG */
+		0x1270, /* VIDEO_RGBOUT_REG */
+		0x1274, /* VIDEO_SYNCNT_REG */
+		0x1278, /* VIDEO_URG_LOW_REG */
+		0x127c, /* VIDEO_URG_HIG_REG */
+		0x1264, /* VIDEO_UNZIPMODE_REG */
+		0x24c, /* VIDEO_GAMMATABLE_REG */
+
+		{0x2c, 0x60, 0x94, 0xc8, 0xfc, 0x130, 0x164, 0x198}, /* VIDEO_LAYINFO_REG */
+		{0x30, 0x64, 0x98, 0xcc, 0x100, 0x134, 0x168, 0x19c}, /* VIDEO_LAYDU_REG */
+		{0x34, 0x68, 0x9c, 0xd0, 0x104, 0x138, 0x16c, 0x1a0}, /* VIDEO_LAYDV_REG */
+		{0x38, 0x6c, 0xa0, 0xd4, 0x108, 0x13c, 0x170, 0x1a4}, /* VIDEO_LAYSIZE_REG */
+		{0x3c, 0x70, 0xa4, 0xd8, 0x10c, 0x140, 0x174, 0x1a8}, /* VIDEO_LAYPOINT_REG */
+		{0x40, 0x74, 0xa8, 0xdc, 0x110, 0x144, 0x178, 0x1ac}, /* VIDEO_SAMESIZE_REG */
+		{0x44, 0x78, 0xac, 0xe0, 0x114, 0x148, 0x17c, 0x1b0}, /* VIDEO_SAMOFF_REG */
+		{0x48, 0x7c, 0xb0, 0xe4, 0x118, 0x14c, 0x180, 0x1b4}, /* VIDEO_PICSIZE_REG */
+		{0x4c, 0x80, 0xb4, 0xe8, 0x11c, 0x150, 0x184, 0x1b8}, /* VIDEO_CHNORDER_REG */
+		{0x50, 0x84, 0xb8, 0xec, 0x120, 0x154, 0x188, 0x1bc}, /* VIDEO_CACHEBASE_REG */
+		{0x54, 0x88, 0xbc, 0xf0, 0x124, 0x158, 0x18c, 0x1c0}, /* VIDEO_CACHESIZE_REG */
+		{0x58, 0x8c, 0xc0, 0xf4, 0x128, 0x15c, 0x190, 0x1c4}, /* VIDEO_MEMBASELOW_REG */
+		{0x5c, 0x90, 0xc4, 0xf8, 0x12c, 0x160, 0x194, 0x1c8}, /* VIDEO_MEMBASEHIG_REG */
+		{0x1cc, 0x1dc, 0x1ec, 0x1fc, 0x20c, 0x21c, 0x22c, 0x23c}, /* VIDEO_CACHEBASE_UV_REG */
+		{0x1d0, 0x1e0, 0x1f0, 0x200, 0x210, 0x220, 0x230, 0x240}, /* VIDEO_CACHESIZE_UV_REG */
+		{0x1d4, 0x1e4, 0x1f4, 0x204, 0x214, 0x224, 0x234, 0x244}, /* VIDEO_MEMBASELOW_UV_REG */
+		{0x1d8, 0x1e8, 0x1f8, 0x208, 0x218, 0x228, 0x238, 0x248}, /* VIDEO_MEMBASEHIG_UV_REG */
+	},
+	.video_reg[1] = {
+		0x4000, /* VIDEO_CFGINFO_REG */
+		0x4004, /* VIDEO_INTINFO_REG */
+		0x4008, /* VIDEO_SCRSIZE_REG */
+		0x400C, /* VIDEO_BACKSIZE_REG */
+		0x4010, /* VIDEO_ZOOMDX_L_REG */
+		0x4014, /* VIDEO_ZOOMDX_H_REG */
+		0x4018, /* VIDEO_ZOOMDY_L_REG */
+		0x401c, /* VIDEO_ZOOMDY_H_REG */
+		0x4020, /* VIDEO_HSYNC_REG */
+		0x4024, /* VIDEO_VSYNC_REG */
+		0x4028, /* VIDEO_DISPLAYTOTAL_REG */
+		0x524c, /* VIDEO_COLORKEY_VALUE_REG */
+		0x5250, /* VIDEO_HADJ_REG */
+		0x5254, /* VIDEO_VADJ_REG */
+		0x5258, /* VIDEO_DITHER_REG */
+		0x525c, /* VIDEO_DTH_TABLE0_REG */
+		0x5260, /* VIDEO_DTH_TABLE1_REG */
+		0x5270, /* VIDEO_RGBOUT_REG */
+		0x5274, /* VIDEO_SYNCNT_REG */
+		0x5278, /* VIDEO_URG_LOW_REG */
+		0x527c, /* VIDEO_URG_HIG_REG */
+		0x5264, /* VIDEO_UNZIPMODE_REG */
+		0x424c, /* VIDEO_GAMMATABLE_REG */
+
+		{0x402c, 0x4060, 0x4094, 0x40c8, 0x40fc, 0x4130, 0x4164, 0x4198}, /* VIDEO_LAYINFO_REG */
+		{0x4030, 0x4064, 0x4098, 0x40cc, 0x4100, 0x4134, 0x4168, 0x419c}, /* VIDEO_LAYDU_REG */
+		{0x4034, 0x4068, 0x409c, 0x40d0, 0x4104, 0x4138, 0x416c, 0x41a0}, /* VIDEO_LAYDV_REG */
+		{0x4038, 0x406c, 0x40a0, 0x40d4, 0x4108, 0x413c, 0x4170, 0x41a4}, /* VIDEO_LAYSIZE_REG */
+		{0x403c, 0x4070, 0x40a4, 0x40d8, 0x410c, 0x4140, 0x4174, 0x41a8}, /* VIDEO_LAYPOINT_REG */
+		{0x4040, 0x4074, 0x40a8, 0x40dc, 0x4110, 0x4144, 0x4178, 0x41ac}, /* VIDEO_SAMESIZE_REG */
+		{0x4044, 0x4078, 0x40ac, 0x40e0, 0x4114, 0x4148, 0x417c, 0x41b0}, /* VIDEO_SAMOFF_REG */
+		{0x4048, 0x407c, 0x40b0, 0x40e4, 0x4118, 0x414c, 0x4180, 0x41b4}, /* VIDEO_PICSIZE_REG */
+		{0x404c, 0x4080, 0x40b4, 0x40e8, 0x411c, 0x4150, 0x4184, 0x41b8}, /* VIDEO_CHNORDER_REG */
+		{0x4050, 0x4084, 0x40b8, 0x40ec, 0x4120, 0x4154, 0x4188, 0x41bc}, /* VIDEO_CACHEBASE_REG */
+		{0x4054, 0x4088, 0x40bc, 0x40f0, 0x4124, 0x4158, 0x418c, 0x41c0}, /* VIDEO_CACHESIZE_REG */
+		{0x4058, 0x408c, 0x40c0, 0x40f4, 0x4128, 0x415c, 0x4190, 0x41c4}, /* VIDEO_MEMBASELOW_REG */
+		{0x405c, 0x4090, 0x40c4, 0x40f8, 0x412c, 0x4160, 0x4194, 0x41c8}, /* VIDEO_MEMBASEHIG_REG */
+		{0x41cc, 0x41dc, 0x41ec, 0x41fc, 0x420c, 0x421c, 0x422c, 0x423c}, /* VIDEO_CACHEBASE_UV_REG */
+		{0x41d0, 0x41e0, 0x41f0, 0x4200, 0x4210, 0x4220, 0x4230, 0x4240}, /* VIDEO_CACHESIZE_UV_REG */
+		{0x41d4, 0x41e4, 0x41f4, 0x4204, 0x4214, 0x4224, 0x4234, 0x4244}, /* VIDEO_MEMBASELOW_UV_REG */
+		{0x41d8, 0x41e8, 0x41f8, 0x4208, 0x4218, 0x4228, 0x4238, 0x4248}, /* VIDEO_MEMBASEHIG_UV_REG */
+	},
+	.video_reg[2] = {
+		0x8000, /* VIDEO_CFGINFO_REG */
+		0x8004, /* VIDEO_INTINFO_REG */
+		0x8008, /* VIDEO_SCRSIZE_REG */
+		0x800C, /* VIDEO_BACKSIZE_REG */
+		0x8010, /* VIDEO_ZOOMDX_L_REG */
+		0x8014, /* VIDEO_ZOOMDX_H_REG */
+		0x8018, /* VIDEO_ZOOMDY_L_REG */
+		0x801c, /* VIDEO_ZOOMDY_H_REG */
+		0x8020, /* VIDEO_HSYNC_REG */
+		0x8024, /* VIDEO_VSYNC_REG */
+		0x8028, /* VIDEO_DISPLAYTOTAL_REG */
+		0x924c, /* VIDEO_COLORKEY_VALUE_REG */
+		0x9250, /* VIDEO_HADJ_REG */
+		0x9254, /* VIDEO_VADJ_REG */
+		0x9258, /* VIDEO_DITHER_REG */
+		0x925c, /* VIDEO_DTH_TABLE0_REG */
+		0x9260, /* VIDEO_DTH_TABLE1_REG */
+		0x9270, /* VIDEO_RGBOUT_REG */
+		0x9274, /* VIDEO_SYNCNT_REG */
+		0x9278, /* VIDEO_URG_LOW_REG */
+		0x927c, /* VIDEO_URG_HIG_REG */
+		0x9264, /* VIDEO_UNZIPMODE_REG */
+		0x824c, /* VIDEO_GAMMATABLE_REG */
+
+		{0x802c, 0x8060, 0x8094, 0x80c8, 0x80fc, 0x8130, 0x8164, 0x8198}, /* VIDEO_LAYINFO_REG */
+		{0x8030, 0x8064, 0x8098, 0x80cc, 0x8100, 0x8134, 0x8168, 0x819c}, /* VIDEO_LAYDU_REG */
+		{0x8034, 0x8068, 0x809c, 0x80d0, 0x8104, 0x8138, 0x816c, 0x81a0}, /* VIDEO_LAYDV_REG */
+		{0x8038, 0x806c, 0x80a0, 0x80d4, 0x8108, 0x813c, 0x8170, 0x81a4}, /* VIDEO_LAYSIZE_REG */
+		{0x803c, 0x8070, 0x80a4, 0x80d8, 0x810c, 0x8140, 0x8174, 0x81a8}, /* VIDEO_LAYPOINT_REG */
+		{0x8040, 0x8074, 0x80a8, 0x80dc, 0x8110, 0x8144, 0x8178, 0x81ac}, /* VIDEO_SAMESIZE_REG */
+		{0x8044, 0x8078, 0x80ac, 0x80e0, 0x8114, 0x8148, 0x817c, 0x81b0}, /* VIDEO_SAMOFF_REG */
+		{0x8048, 0x807c, 0x80b0, 0x80e4, 0x8118, 0x814c, 0x8180, 0x81b4}, /* VIDEO_PICSIZE_REG */
+		{0x804c, 0x8080, 0x80b4, 0x80e8, 0x811c, 0x8150, 0x8184, 0x81b8}, /* VIDEO_CHNORDER_REG */
+		{0x8050, 0x8084, 0x80b8, 0x80ec, 0x8120, 0x8154, 0x8188, 0x81bc}, /* VIDEO_CACHEBASE_REG */
+		{0x8054, 0x8088, 0x80bc, 0x80f0, 0x8124, 0x8158, 0x818c, 0x81c0}, /* VIDEO_CACHESIZE_REG */
+		{0x8058, 0x808c, 0x80c0, 0x80f4, 0x8128, 0x815c, 0x8190, 0x81c4}, /* VIDEO_MEMBASELOW_REG */
+		{0x805c, 0x8090, 0x80c4, 0x80f8, 0x812c, 0x8160, 0x8194, 0x81c8}, /* VIDEO_MEMBASEHIG_REG */
+		{0x81cc, 0x81dc, 0x81ec, 0x81fc, 0x820c, 0x821c, 0x822c, 0x823c}, /* VIDEO_CACHEBASE_UV_REG */
+		{0x81d0, 0x81e0, 0x81f0, 0x8200, 0x8210, 0x8220, 0x8230, 0x8240}, /* VIDEO_CACHESIZE_UV_REG */
+		{0x81d4, 0x81e4, 0x81f4, 0x8204, 0x8214, 0x8224, 0x8234, 0x8244}, /* VIDEO_MEMBASELOW_UV_REG */
+		{0x81d8, 0x81e8, 0x81f8, 0x8208, 0x8218, 0x8228, 0x8238, 0x8248}, /* VIDEO_MEMBASEHIG_UV_REG */
+	},
+	.video_reg[3] = {
+		0xc000, /* VIDEO_CFGINFO_REG */
+		0xc004, /* VIDEO_INTINFO_REG */
+		0xc008, /* VIDEO_SCRSIZE_REG */
+		0xc00C, /* VIDEO_BACKSIZE_REG */
+		0xc010, /* VIDEO_ZOOMDX_L_REG */
+		0xc014, /* VIDEO_ZOOMDX_H_REG */
+		0xc018, /* VIDEO_ZOOMDY_L_REG */
+		0xc01c, /* VIDEO_ZOOMDY_H_REG */
+		0xc020, /* VIDEO_HSYNC_REG */
+		0xc024, /* VIDEO_VSYNC_REG */
+		0xc028, /* VIDEO_DISPLAYTOTAL_REG */
+		0xd24c, /* VIDEO_COLORKEY_VALUE_REG */
+		0xd250, /* VIDEO_HADJ_REG */
+		0xd254, /* VIDEO_VADJ_REG */
+		0xd258, /* VIDEO_DITHER_REG */
+		0xd25c, /* VIDEO_DTH_TABLE0_REG */
+		0xd260, /* VIDEO_DTH_TABLE1_REG */
+		0xd270, /* VIDEO_RGBOUT_REG */
+		0xd274, /* VIDEO_SYNCNT_REG */
+		0xd278, /* VIDEO_URG_LOW_REG */
+		0xd27c, /* VIDEO_URG_HIG_REG */
+		0xd264, /* VIDEO_UNZIPMODE_REG */
+		0xc24c, /* VIDEO_GAMMATABLE_REG */
+
+		{0xc02c, 0xc060, 0xc094, 0xc0c8, 0xc0fc, 0xc130, 0xc164, 0xc198}, /* VIDEO_LAYINFO_REG */
+		{0xc030, 0xc064, 0xc098, 0xc0cc, 0xc100, 0xc134, 0xc168, 0xc19c}, /* VIDEO_LAYDU_REG */
+		{0xc034, 0xc068, 0xc09c, 0xc0d0, 0xc104, 0xc138, 0xc16c, 0xc1a0}, /* VIDEO_LAYDV_REG */
+		{0xc038, 0xc06c, 0xc0a0, 0xc0d4, 0xc108, 0xc13c, 0xc170, 0xc1a4}, /* VIDEO_LAYSIZE_REG */
+		{0xc03c, 0xc070, 0xc0a4, 0xc0d8, 0xc10c, 0xc140, 0xc174, 0xc1a8}, /* VIDEO_LAYPOINT_REG */
+		{0xc040, 0xc074, 0xc0a8, 0xc0dc, 0xc110, 0xc144, 0xc178, 0xc1ac}, /* VIDEO_SAMESIZE_REG */
+		{0xc044, 0xc078, 0xc0ac, 0xc0e0, 0xc114, 0xc148, 0xc17c, 0xc1b0}, /* VIDEO_SAMOFF_REG */
+		{0xc048, 0xc07c, 0xc0b0, 0xc0e4, 0xc118, 0xc14c, 0xc180, 0xc1b4}, /* VIDEO_PICSIZE_REG */
+		{0xc04c, 0xc080, 0xc0b4, 0xc0e8, 0xc11c, 0xc150, 0xc184, 0xc1b8}, /* VIDEO_CHNORDER_REG */
+		{0xc050, 0xc084, 0xc0b8, 0xc0ec, 0xc120, 0xc154, 0xc188, 0xc1bc}, /* VIDEO_CACHEBASE_REG */
+		{0xc054, 0xc088, 0xc0bc, 0xc0f0, 0xc124, 0xc158, 0xc18c, 0xc1c0}, /* VIDEO_CACHESIZE_REG */
+		{0xc058, 0xc08c, 0xc0c0, 0xc0f4, 0xc128, 0xc15c, 0xc190, 0xc1c4}, /* VIDEO_MEMBASELOW_REG */
+		{0xc05c, 0xc090, 0xc0c4, 0xc0f8, 0xc12c, 0xc160, 0xc194, 0xc1c8}, /* VIDEO_MEMBASEHIG_REG */
+		{0xc1cc, 0xc1dc, 0xc1ec, 0xc1fc, 0xc20c, 0xc21c, 0xc22c, 0xc23c}, /* VIDEO_CACHEBASE_UV_REG */
+		{0xc1d0, 0xc1e0, 0xc1f0, 0xc200, 0xc210, 0xc220, 0xc230, 0xc240}, /* VIDEO_CACHESIZE_UV_REG */
+		{0xc1d4, 0xc1e4, 0xc1f4, 0xc204, 0xc214, 0xc224, 0xc234, 0xc244}, /* VIDEO_MEMBASELOW_UV_REG */
+		{0xc1d8, 0xc1e8, 0xc1f8, 0xc208, 0xc218, 0xc228, 0xc238, 0xc248}, /* VIDEO_MEMBASEHIG_UV_REG */
+	},
+	.hdmi_reg_v2[0] = {
+		0x10000, /* HDMI_ZONEIDLE_REG */
+		0x10004, /* HDMI_CTRL_REG */
+		0x10008, /* HDMI_AUDIO_BUF_REG */
+		0x1000C, /* HDMI_AUDIO_NCFG_REG */
+		0x10010, /* HDMI_AUDIO_CTSCFG_REG */
+		0x10014, /* HDMI_AUDIO_CTSCALCFG_REG */
+		0x10018, /* HDMI_AUDIO_INFOFRAME_REG */
+		0x1001C, /* HDMI_AUDIO_SAMPLE_REG */
+		0x10020, /* HDMI_TIMING0 */
+		0x10024, /* HDMI_TIMING1 */
+		0x10028, /* HDMI_TIMING2 */
+		0x1002c, /* HDMI_TIMING3 */
+		0x10030, /* HDMI_TIMING4 */
+		0x10034, /* HDMI_INT */
+		0x10038, /* HDMI_INT_EN */
+		0x10040, /* HDMI_AVI_INFOFRAME0 */
+		0x10044, /* HDMI_AVI_INFOFRAME1 */
+		0x10048, /* HDMI_AVI_INFOFRAME2 */
+		0x1004c, /* HDMI_AVI_INFOFRAME3 */
+		0x10050, /* HDMI_AVI_INFOFRAME_CTRL */
+		0x10054, /* HDMI_VENDOR_SPECIFIC_INFOFRAME */
+		0x100b8, /* HDMI_I2C0 */
+		0x100bc, /* HDMI_I2C1 */
+		0x11000, /* HDMI_PHY_CTRL0 */
+		0x11004, /* HDMI_PHY_CTRL1 */
+		0x11008, /* HDMI_PHY_CTRL2 */
+		0x11080, /* HDMI_PHY_MONITOR */
+
+		0x1100c, /* CFG_HDMI_PHY0 */
+		0x11010, /* CFG_HDMI_PHY1 */
+		0x11084, /* HDMI_PHY_R_DATA0 */
+		0x11088, /* HDMI_PHY_R_DATA1 */
+		0x1015c, /* HDMI_HPD_STATUS */
+
+	},
+	.hdmi_reg_v2[1] = {
+		0x14000, /* HDMI_ZONEIDLE_REG */
+		0x14004, /* HDMI_CTRL_REG */
+		0x14008, /* HDMI_AUDIO_BUF_REG */
+		0x1400C, /* HDMI_AUDIO_NCFG_REG */
+		0x14010, /* HDMI_AUDIO_CTSCFG_REG */
+		0x14014, /* HDMI_AUDIO_CTSCALCFG_REG */
+		0x14018, /* HDMI_AUDIO_INFOFRAME_REG */
+		0x1401C, /* HDMI_AUDIO_SAMPLE_REG */
+		0x14020, /* HDMI_TIMING0 */
+		0x14024, /* HDMI_TIMING1 */
+		0x14028, /* HDMI_TIMING2 */
+		0x1402c, /* HDMI_TIMING3 */
+		0x14030, /* HDMI_TIMING4 */
+		0x14034, /* HDMI_INT */
+		0x14038, /* HDMI_INT_EN */
+		0x14040, /* HDMI_AVI_INFOFRAME0 */
+		0x14044, /* HDMI_AVI_INFOFRAME1 */
+		0x14048, /* HDMI_AVI_INFOFRAME2 */
+		0x1404c, /* HDMI_AVI_INFOFRAME3 */
+		0x14050, /* HDMI_AVI_INFOFRAME_CTRL */
+		0x14054, /* HDMI_VENDOR_SPECIFIC_INFOFRAME */
+		0x140b8, /* HDMI_I2C0 */
+		0x140bc, /* HDMI_I2C1 */
+		0x15000, /* HDMI_PHY_CTRL0 */
+		0x15004, /* HDMI_PHY_CTRL1 */
+		0x15008, /* HDMI_PHY_CTRL2 */
+		0x15080, /* HDMI_PHY_MONITOR */
+
+		0x1500c, /* CFG_HDMI_PHY0 */
+		0x15010, /* CFG_HDMI_PHY1 */
+		0x15084, /* HDMI_PHY_R_DATA0 */
+		0x15088, /* HDMI_PHY_R_DATA1 */
+		0x1415c, /* HDMI_HPD_STATUS */
+	},
+	.dp_reg[0] = {
+		0x18000, /* DP_LINK_CFG_0 */
+		0x18004, /* DP_LINK_CFG_1 */
+		0x18008, /* DP_LINK_CFG_2 */
+		0x1800c, /* DP_LINK_CFG_3 */
+		0x18010, /* DP_LINK_CFG_4 */
+		0x18014, /* DP_LINK_CFG_5 */
+		0x18018, /* DP_LINK_CFG_6 */
+		0x18040, /* DP_LINK_MONITOR_0 */
+		0x18044, /* DP_LINK_MONITOR_1 */
+		0x18048, /* DP_LINK_MONITOR_2 */
+		0x1804c, /* DP_LINK_MONITOR_3 */
+		0x18050, /* DP_LINK_MONITOR_4 */
+		0x18054, /* DP_LINK_MONITOR_5 */
+		0x18058, /* DP_LINK_MONITOR_6 */
+		0x1805c, /* DP_LINK_MONITOR_7 */
+		0x18060, /* DP_LINK_MONITOR_8 */
+		0x18064, /* DP_LINK_MONITOR_9 */
+		0x18068, /* DP_LINK_MONITOR_10 */
+		0x1806c, /* DP_LINK_MONITOR_11 */
+		0x18070, /* DP_LINK_MONITOR_12 */
+		0x18074, /* DP_LINK_MONITOR_13 */
+		0x18078, /* DP_LINK_MONITOR_14 */
+		0x1807c, /* DP_LINK_MONITOR_15 */
+		0x18080, /* DP_AUX_CHANNEL_CFG_0 */
+		0x18084, /* DP_AUX_CHANNEL_CFG_1 */
+		0x18088, /* DP_AUX_CHANNEL_CFG_2 */
+		0x1808c, /* DP_AUX_CHANNEL_CFG_3 */
+		0x18090, /* DP_AUX_CHANNEL_CFG_4 */
+		0x18094, /* DP_AUX_CHANNEL_CFG_5 */
+		0x18098, /* DP_AUX_CHANNEL_CFG_6 */
+		0x1809c, /* DP_AUX_CHANNEL_CFG_7 */
+		0x180a0, /* DP_AUX_CHANNEL_CFG_8 */
+		0x180c0, /* DP_AUX_MONITOR_0 */
+		0x180c4, /* DP_AUX_MONITOR_1 */
+		0x180c8, /* DP_AUX_MONITOR_2 */
+		0x180cc, /* DP_AUX_MONITOR_3 */
+		0x180d0, /* DP_AUX_MONITOR_4 */
+		0x180d4, /* DP_AUX_ERR_REASON */ /* DP_AUX_MONITOR_5 */
+		0x180d8, /* DP_AUX_INTER_INFO */ /* DP_AUX_MONITOR_6 */
+		0x180dc, /* DP_AUX_MONITOR_7 */
+		0x18280, /* DP_HPD_STATUS */
+		0x18284, /* DP_HPD_ENABLE */
+		0x18100, /* DP_SDP_CFG0 */
+		0x18104, /* DP_SDP_CFG1 */
+		0x18108, /* DP_SDP_CFG2 */
+		0x1810c, /* DP_SDP_CFG3 */
+		0x18110, /* DP_SDP_CFG4 */
+		0x18114, /* DP_SDP_CFG5 */
+		0x18118, /* DP_SDP_CFG6 */
+		0x1811c, /* DP_SDP_CFG7 */
+		0x18120, /* DP_SDP_CFG8 */
+		0x18124, /* DP_SDP_CFG9 */
+		0x18128, /* DP_SDP_CFG10 */
+		0x1812c, /* DP_SDP_CFG11 */
+		0x18130, /* DP_SDP_CFG12 */
+		0x18134, /* DP_SDP_CFG13 */
+		0x181f4, /* DP_SDP_CFG61 */
+		0x181f8, /* DP_SDP_CFG62 */
+		0x181fc, /* DP_SDP_CFG63 */
+		0x18200, /* DP_SDP_CFG64 */
+		0x18204, /* DP_SDP_CFG65 */
+
+		0x19000, /* DP_PHY_CFG0 */
+		0x19004, /* DP_PHY_CFG1 */
+		0x19008, /* DP_PHY_CFG2 */
+		0x1900c, /* DP_PHY_CFG3 */
+		0x19010, /* DP_PHY_CFG4 */
+		0x19014, /* DP_PHY_CFG5 */
+		0x19018, /* DP_PHY_CFG6 */
+		0x1901c, /* DP_PHY_CFG7 */
+		0x19020, /* DP_PHY_CFG8 */
+		0x19030, /* DP_PHY_CFG12 */
+		0x19080, /* DP_PHY_MON0 */
+		0x19084, /* DP_PHY_MON1 */
+		0x19088, /* DP_PHY_MON2 */
+
+		0x18288, /* DP_HPD */
+	},
+	.dp_reg[1] = {
+		0x1c000, /* DP_LINK_CFG_0 */
+		0x1c004, /* DP_LINK_CFG_1 */
+		0x1c008, /* DP_LINK_CFG_2 */
+		0x1c00c, /* DP_LINK_CFG_3 */
+		0x1c010, /* DP_LINK_CFG_4 */
+		0x1c014, /* DP_LINK_CFG_5 */
+		0x1c018, /* DP_LINK_CFG_6 */
+		0x1c040, /* DP_LINK_MONITOR_0 */
+		0x1c044, /* DP_LINK_MONITOR_1 */
+		0x1c048, /* DP_LINK_MONITOR_2 */
+		0x1c04c, /* DP_LINK_MONITOR_3 */
+		0x1c050, /* DP_LINK_MONITOR_4 */
+		0x1c054, /* DP_LINK_MONITOR_5 */
+		0x1c058, /* DP_LINK_MONITOR_6 */
+		0x1c05c, /* DP_LINK_MONITOR_7 */
+		0x1c060, /* DP_LINK_MONITOR_8 */
+		0x1c064, /* DP_LINK_MONITOR_9 */
+		0x1c068, /* DP_LINK_MONITOR_10 */
+		0x1c06c, /* DP_LINK_MONITOR_11 */
+		0x1c070, /* DP_LINK_MONITOR_12 */
+		0x1c074, /* DP_LINK_MONITOR_13 */
+		0x1c078, /* DP_LINK_MONITOR_14 */
+		0x1c07c, /* DP_LINK_MONITOR_15 */
+		0x1c080, /* DP_AUX_CHANNEL_CFG_0 */
+		0x1c084, /* DP_AUX_CHANNEL_CFG_1 */
+		0x1c088, /* DP_AUX_CHANNEL_CFG_2 */
+		0x1c08c, /* DP_AUX_CHANNEL_CFG_3 */
+		0x1c090, /* DP_AUX_CHANNEL_CFG_4 */
+		0x1c094, /* DP_AUX_CHANNEL_CFG_5 */
+		0x1c098, /* DP_AUX_CHANNEL_CFG_6 */
+		0x1c09c, /* DP_AUX_CHANNEL_CFG_7 */
+		0x1c0a0, /* DP_AUX_CHANNEL_CFG_8 */
+		0x1c0c0, /* DP_AUX_MONITOR_0 */
+		0x1c0c4, /* DP_AUX_MONITOR_1 */
+		0x1c0c8, /* DP_AUX_MONITOR_2 */
+		0x1c0cc, /* DP_AUX_MONITOR_3 */
+		0x1c0d0, /* DP_AUX_MONITOR_4 */
+		0x1c0d4, /* DP_AUX_ERR_REASON */ /* DP_AUX_MONITOR_5 */
+		0x1c0d8, /* DP_AUX_INTER_INFO */ /* DP_AUX_MONITOR_6 */
+		0x1c0dc, /* DP_AUX_MONITOR_7 */
+		0x1c280, /* DP_HPD_STATUS */
+		0x1c284, /* DP_HPD_ENABLE */
+		0x1c100, /* DP_SDP_CFG0 */
+		0x1c104, /* DP_SDP_CFG1 */
+		0x1c108, /* DP_SDP_CFG2 */
+		0x1c10c, /* DP_SDP_CFG3 */
+		0x1c110, /* DP_SDP_CFG4 */
+		0x1c114, /* DP_SDP_CFG5 */
+		0x1c118, /* DP_SDP_CFG6 */
+		0x1c11c, /* DP_SDP_CFG7 */
+		0x1c120, /* DP_SDP_CFG8 */
+		0x1c124, /* DP_SDP_CFG9 */
+		0x1c128, /* DP_SDP_CFG10 */
+		0x1c12c, /* DP_SDP_CFG11 */
+		0x1c130, /* DP_SDP_CFG12 */
+		0x1c134, /* DP_SDP_CFG13 */
+		0x1c1f4, /* DP_SDP_CFG61 */
+		0x1c1f8, /* DP_SDP_CFG62 */
+		0x1c1fc, /* DP_SDP_CFG63 */
+		0x1c200, /* DP_SDP_CFG64 */
+		0x1c204, /* DP_SDP_CFG65 */
+
+		0x1d000, /* DP_PHY_CFG0 */
+		0x1d004, /* DP_PHY_CFG1 */
+		0x1d008, /* DP_PHY_CFG2 */
+		0x1d00c, /* DP_PHY_CFG3 */
+		0x1d010, /* DP_PHY_CFG4 */
+		0x1d014, /* DP_PHY_CFG5 */
+		0x1d018, /* DP_PHY_CFG6 */
+		0x1d01c, /* DP_PHY_CFG7 */
+		0x1d020, /* DP_PHY_CFG8 */
+		0x1d030, /* DP_PHY_CFG12 */
+		0x1d080, /* DP_PHY_MON0 */
+		0x1d084, /* DP_PHY_MON1 */
+		0x1d088, /* DP_PHY_MON2 */
+
+		0x1c288, /* DP_HPD */
+	},
+	.vga_reg = {
+		0x20000, /* VGA_CFG */
+		0x20004, /* VGA_INT_STATES */
+		0x20008, /* VGA_CLEAR */
+	},
+	.dvo_reg = {
+		0x24000, /* DVO_CFG */
+		0x24004, /* DVO_INT_STATES */
+		0x24008, /* DVO_CLEAR */
+	},
+	.wb_reg[0] = {
+		0x28000, /* WB_CLEAR */
+		0x28004, /* WB_EN */
+		0x28008, /* BUFF_WCNT */
+		0x2800c, /* BUFF_ACNT */
+		0x28010, /* STATE_FLAGS */
+		0x28014, /* LAST_WH */
+		0x28018, /* PITCH_CLRFMT */
+		0x2801c, /* MAX_WH */
+		0x28020, /* BASE0_LO */
+		0x28024, /* BASE0_HI */
+		0x28028, /* BASE1_LO */
+		0x2802c, /* BASE1_HI */
+		0x28030, /* BASE2_LO */
+		0x28034, /* BASE2_HI */
+		0x28038, /* BASE3_LO */
+		0x2803c, /* BASE3_HI */
+	},
+	.wb_reg[1] = {
+		0x2c000, /* WB_CLEAR */
+		0x2c004, /* WB_EN */
+		0x2c008, /* BUFF_WCNT */
+		0x2c00c, /* BUFF_ACNT */
+		0x2c010, /* STATE_FLAGS */
+		0x2c014, /* LAST_WH */
+		0x2c018, /* PITCH_CLRFMT */
+		0x2c01c, /* MAX_WH */
+		0x2c020, /* BASE0_LO */
+		0x2c024, /* BASE0_HI */
+		0x2c028, /* BASE1_LO */
+		0x2c02c, /* BASE1_HI */
+		0x2c030, /* BASE2_LO */
+		0x2c034, /* BASE2_HI */
+		0x2c038, /* BASE3_LO */
+		0x2c03c, /* BASE3_HI */
+	},
+	.wb_reg[2] = {
+		0x30000, /* WB_CLEAR */
+		0x30004, /* WB_EN */
+		0x30008, /* BUFF_WCNT */
+		0x3000c, /* BUFF_ACNT */
+		0x30010, /* STATE_FLAGS */
+		0x30014, /* LAST_WH */
+		0x30018, /* PITCH_CLRFMT */
+		0x3001c, /* MAX_WH */
+		0x30020, /* BASE0_LO */
+		0x30024, /* BASE0_HI */
+		0x30028, /* BASE1_LO */
+		0x3002c, /* BASE1_HI */
+		0x30030, /* BASE2_LO */
+		0x30034, /* BASE2_HI */
+		0x30038, /* BASE3_LO */
+		0x3003c, /* BASE3_HI */
+	},
+	.wb_reg[3] = {
+		0x34000, /* WB_CLEAR */
+		0x34004, /* WB_EN */
+		0x34008, /* BUFF_WCNT */
+		0x3400c, /* BUFF_ACNT */
+		0x34010, /* STATE_FLAGS */
+		0x34014, /* LAST_WH */
+		0x34018, /* PITCH_CLRFMT */
+		0x3401c, /* MAX_WH */
+		0x34020, /* BASE0_LO */
+		0x34024, /* BASE0_HI */
+		0x34028, /* BASE1_LO */
+		0x3402c, /* BASE1_HI */
+		0x34030, /* BASE2_LO */
+		0x34034, /* BASE2_HI */
+		0x34038, /* BASE3_LO */
+		0x3403c, /* BASE3_HI */
+	},
+	.unzip_reg = {
+		0x38000, /* META_BASE_LOW */
+		0x38004, /* META_BASE_HIG */
+		0x38008, /* META_MASK_LOW */
+		0x3800a, /* META_MASK_HIG */
+		0x38010, /* ZIP_CTL */
+	},
+	.top_reg = {
+		0x3c000, /* VIDEO_SYNC_EN */
+		0x3c004, /* WB_BROADCAST_EN */
+		0x3c008, /* DCTOP_CLEAR */
+		0x3c00c, /* DC_MMAP */
+		0x3c010, /* DCINT_MSGTYPE */
+		0x3c014, /* DCINT_LINESTATES */
+		0x3c018, /* DCTEST_REM_CTRL */
+		0x3c01c, /* DC_CG_OGG_MASK */
+	},
+};
 
 u32 dc_readl(struct loonggpu_device *adev, u32 reg)
 {
@@ -544,7 +1040,7 @@ void dc_writel_check(struct loonggpu_device *adev, u32 reg, u32 val)
 		val_reg &= CRTC_CFG_MASK;
 	} while ((val_reg != val) && (count--));
 	if (val_reg != val)
-		DRM_INFO("LOONGGPU DC: write reg %x failed, target value is %x, but read-back value is %x\n", reg, val, val_reg);
+		DRM_INFO("LOONGGPU DC: write reg %x not matched, target value is %x, but read-back value is %x\n", reg, val, val_reg);
 }
 
 u32 dc_readl_locked(struct loonggpu_device *adev, u32 reg)
@@ -722,6 +1218,25 @@ static void manage_dc_interrupts(struct loonggpu_device *adev,
 	}
 }
 
+static void manage_dc_msg_interrupts(struct loonggpu_device *adev,
+				     struct loonggpu_crtc *acrtc,
+				     bool enable)
+{
+	unsigned type;
+	struct loonggpu_dc_crtc *dc_crtc = adev->dc->link_info[acrtc->crtc_id].crtc;
+	int video_num = dc_crtc->dc_video.video_num;
+
+	type = get_irq_msg_type(video_num, VIDEO_IRQ_MEM_ACC_DONE);
+
+	if (enable) {
+		drm_crtc_vblank_on(&acrtc->base);
+		loonggpu_irq_get(adev, &adev->dc_irq_msg, type);
+	} else {
+		loonggpu_irq_put(adev, &adev->dc_irq_msg, type);
+		drm_crtc_vblank_off(&acrtc->base);
+	}
+}
+
 static int loonggpu_dc_meta_enable(struct loonggpu_device *adev, bool clear)
 {
 	uint64_t meta_gpu_addr;
@@ -852,7 +1367,7 @@ static void loonggpu_output_poll_changed(struct drm_device *dev)
        struct loonggpu_device *adev = dev->dev_private;
        int i;
 
-       for (i = 0; i < 2; i++) {
+       for (i = 0; i < adev->dc->links; i++) {
                struct loonggpu_dc_crtc *dc_crtc = adev->dc->link_info[i].crtc;
                dc_crtc->timing->clock = 0;
        }
@@ -909,7 +1424,7 @@ static void loonggpu_dc_do_flip(struct drm_crtc *crtc,
 	unsigned long flags;
 	uint32_t target_vblank;
 	int r, vpos, hpos;
-	struct dc_plane_update plane;
+	struct dc_plane_update *plane;
 	struct loonggpu_crtc *acrtc = to_loonggpu_crtc(crtc);
 	struct loonggpu_framebuffer *afb = to_loonggpu_framebuffer(fb);
 	struct loonggpu_bo *abo = gem_to_loonggpu_bo(fb->obj[0]);
@@ -917,6 +1432,10 @@ static void loonggpu_dc_do_flip(struct drm_crtc *crtc,
 	lg_dma_resv_t *resv;
 	uint64_t crtc_array_mode, crtc_address;
 	int align = 64;
+
+	plane = kzalloc(sizeof(*plane), GFP_KERNEL);
+	if (!plane)
+		return;
 
 	/* Prepare wait for target vblank early - before the fence-waits */
 	target_vblank = target - (uint32_t)drm_crtc_vblank_count(crtc) +
@@ -992,12 +1511,24 @@ static void loonggpu_dc_do_flip(struct drm_crtc *crtc,
 		break;
 	}
 
-	plane.type = DC_PLANE_PRIMARY;
-	plane.primary.address.low_part = lower_32_bits(crtc_address);
-	plane.primary.address.high_part = upper_32_bits(crtc_address);
+	plane->type = DC_PLANE_PRIMARY;
+	plane->primary.address.low_part = lower_32_bits(crtc_address);
+	plane->primary.address.high_part = upper_32_bits(crtc_address);
 
-	dc_submit_plane_update(adev->dc, acrtc->crtc_id, &plane);
+	plane->primary.fb_width = afb->base.width;
+	plane->primary.fb_height = afb->base.height;
+	plane->primary.fb_address = afb->address;
+	plane->primary.format = afb->base.format->format;
+	plane->primary.crtc_width = crtc->mode.hdisplay;
+	plane->primary.crtc_height = crtc->mode.vdisplay;
+	plane->primary.crtc_x = crtc->x;
+	plane->primary.crtc_y = crtc->y;
+	plane->primary.stride = afb->base.pitches[0];
+	plane->primary.unzip_mode = (abo->flags & LOONGGPU_GEM_CREATE_COMPRESSED_MASK) >> 9;
 
+	dc_submit_plane_update(adev->dc, acrtc->crtc_id, plane);
+
+	kfree(plane);
 	DRM_DEBUG_DRIVER("%s Flipping to hi: 0x%x, low: 0x%x \n",
 			 __func__,
 			 upper_32_bits(afb->address),
@@ -1077,8 +1608,8 @@ static void loonggpu_dc_commit_planes(struct drm_atomic_state *state,
 
 	if (planes_count) {
 		unsigned long flags;
-		struct dc_timing_info timing;
-		struct dc_plane_update plane;
+		struct dc_timing_info *timing;
+		struct dc_plane_update *plane;
 		struct drm_display_mode *mode = &pcrtc->mode;
 		struct loonggpu_bridge_phy *bridge = NULL;
 		struct drm_framebuffer *drm_fb;
@@ -1089,6 +1620,17 @@ static void loonggpu_dc_commit_planes(struct drm_atomic_state *state,
 				to_loonggpu_framebuffer(modeset_fbs[0]);
 
 		struct loonggpu_bo *bo = gem_to_loonggpu_bo(afb->base.obj[0]);
+
+		plane = kzalloc(sizeof(*plane), GFP_KERNEL);
+		if (!plane)
+			return;
+
+		timing = kzalloc(sizeof(*timing), GFP_KERNEL);
+		if (!timing) {
+			kfree(plane);
+			return;
+		}
+
 		ret = loonggpu_bo_reserve(bo, false);
 		if (unlikely(ret)) {
 			if (ret != -ERESTARTSYS)
@@ -1107,18 +1649,20 @@ static void loonggpu_dc_commit_planes(struct drm_atomic_state *state,
 		}
 
 		cpp = afb->base.format->cpp[0];
-		timing.depth = afb->base.format->cpp[0] << 3;
-		timing.stride = afb->base.pitches[0];
-		timing.clock = mode->clock;
-		timing.hdisplay = mode->hdisplay;
-		timing.htotal = mode->htotal;
-		timing.hsync_start = mode->hsync_start;
-		timing.hsync_end  = mode->hsync_end;
-		timing.vdisplay = mode->vdisplay;
-		timing.vtotal = mode->vtotal;
-		timing.vsync_start = mode->vsync_start;
-		timing.vsync_end = mode->vsync_end;
-		timing.use_dma = 0;
+		timing->depth = afb->base.format->cpp[0] << 3;
+		timing->stride = afb->base.pitches[0];
+		timing->clock = mode->clock;
+		timing->hdisplay = mode->hdisplay;
+		timing->htotal = mode->htotal;
+		timing->hsync_start = mode->hsync_start;
+		timing->hsync_end  = mode->hsync_end;
+		timing->vdisplay = mode->vdisplay;
+		timing->vtotal = mode->vtotal;
+		timing->vsync_start = mode->vsync_start;
+		timing->vsync_end = mode->vsync_end;
+		timing->vrefresh = drm_mode_vrefresh(mode);
+		timing->fixed_vsync_width = 0;
+		timing->use_dma = 0;
 
 
 		/* The width of FB is used to calculate the DMA length when
@@ -1131,10 +1675,10 @@ static void loonggpu_dc_commit_planes(struct drm_atomic_state *state,
 			if (x != 0 && (lfb != afb) && dc_crtc->array_mode == 0) {
 				if (!(drm_fb->width % 64)) {
 					align = 64;
-					timing.use_dma = CRTC_CFG_DMA_256;
+					timing->use_dma = CRTC_CFG_DMA_256;
 				} else if (!(drm_fb->width % 32)) {
 					align = 32;
-					timing.use_dma = CRTC_CFG_DMA_128;
+					timing->use_dma = CRTC_CFG_DMA_128;
 				} else
 					DRM_INFO("Setting with unaligned fb width x: %d\n", drm_fb->width);
 			}
@@ -1146,40 +1690,53 @@ static void loonggpu_dc_commit_planes(struct drm_atomic_state *state,
 		if (x != 0 && dc_crtc->array_mode == 0) {
 			if (!(x % 64) && align >= 64) {
 				align = 64;
-				timing.use_dma = CRTC_CFG_DMA_256;
+				timing->use_dma = CRTC_CFG_DMA_256;
 			} else if (!(x % 32) && align >= 32) {
 				align = 32;
-				timing.use_dma = CRTC_CFG_DMA_128;
+				timing->use_dma = CRTC_CFG_DMA_128;
 			} else
 				DRM_INFO("Setting with unaligned screen x: %d\n", x);
 		}
 
 		DRM_DEBUG_DRIVER("loonggpu crtc-%d hdisplay %d vdisplay %d x %d y %d cpp %d stride %d\n",
-				 acrtc->crtc_id, timing.hdisplay, timing.vdisplay,
-				 x, y, cpp, timing.stride);
+				 acrtc->crtc_id, timing->hdisplay, timing->vdisplay,
+				 x, y, cpp, timing->stride);
 
-		plane.type = DC_PLANE_PRIMARY;
+		plane->type = DC_PLANE_PRIMARY;
 		switch (dc_crtc->array_mode) {
 		case 0:
-			address = afb->address + y * timing.stride + ALIGN(x, align) * cpp;
+			address = afb->address + y * timing->stride + ALIGN(x, align) * cpp;
 			break;
 		case 2:
 			y = (y + 3) & ~3;
 			x = ALIGN(x, 8);
-			address = afb->address + y * timing.stride + x * cpp * 4;
+			address = afb->address + y * timing->stride + x * cpp * 4;
 			break;
 		}
 
-		plane.primary.address.low_part = lower_32_bits(address);
-		plane.primary.address.high_part = upper_32_bits(address);
-		dc_submit_plane_update(adev->dc, acrtc->crtc_id, &plane);
+		plane->primary.address.low_part = lower_32_bits(address);
+		plane->primary.address.high_part = upper_32_bits(address);
+		plane->primary.fb_width = afb->base.width;
+		plane->primary.fb_height = afb->base.height;
+		plane->primary.fb_address = afb->address;
+		plane->primary.format = afb->base.format->format;
+		plane->primary.crtc_width = mode->hdisplay;
+		plane->primary.crtc_height = mode->vdisplay;
+		plane->primary.crtc_x = x;
+		plane->primary.crtc_y = y;
+		plane->primary.stride = timing->stride;
+		plane->primary.unzip_mode = (bo->flags & LOONGGPU_GEM_CREATE_COMPRESSED_MASK) >> 9;
 
-		dc_submit_timing_update(adev->dc, acrtc->crtc_id, &timing);
+		dc_submit_plane_update(adev->dc, acrtc->crtc_id, plane);
+
+		dc_submit_timing_update(adev->dc, acrtc->crtc_id, timing);
 
 		bridge = adev->mode_info.encoders[acrtc->crtc_id]->bridge;
 		if (bridge)
 			bridge_phy_mode_set(bridge, mode, NULL);
 
+		kfree(plane);
+		kfree(timing);
 	}
 }
 
@@ -1216,7 +1773,7 @@ static void loonggpu_dc_atomic_commit_tail(struct drm_atomic_state *state)
 		}
 
 		if (drm_atomic_crtc_needs_modeset(new_crtc_state)) {
-			manage_dc_interrupts(adev, acrtc, false);
+			dc->hw_ops->manage_dc_int(adev, acrtc, false);
 		}
 	}
 
@@ -1269,7 +1826,7 @@ static void loonggpu_dc_atomic_commit_tail(struct drm_atomic_state *state)
 		if (!modeset_needed)
 			continue;
 
-		manage_dc_interrupts(adev, acrtc, true);
+		dc->hw_ops->manage_dc_int(adev, acrtc, true);
 	}
 
 	/* update planes when needed per crtc */
@@ -1434,7 +1991,7 @@ static int dc_initialize_drm_device(struct loonggpu_device *adev)
 	return 0;
 
 fail:
-	for (i = 0; i < 2/*max_planes*/; i++)
+	for (i = 0; i < links/*max_planes*/; i++)
 		kfree(mode_info->planes[i]);
 	return -1;
 }
@@ -1451,8 +2008,20 @@ static void loonggpu_dc_fini(struct loonggpu_device *adev)
 	return;
 }
 
+static const struct loonggpu_display_funcs dc_display_funcs = {
+	.vblank_get_counter = dc_vblank_get_counter,
+	.page_flip_get_scanoutpos = dc_crtc_get_scanoutpos,
+};
+
+static const struct loonggpu_display_funcs video_display_funcs = {
+	.vblank_get_counter = video_get_syncnt,
+	.page_flip_get_scanoutpos = video_get_scanoutpos,
+};
+
 #define DC_MAX_PLANES 4
 static const enum drm_plane_type plane_type[DC_MAX_PLANES] = {
+	DRM_PLANE_TYPE_PRIMARY,
+	DRM_PLANE_TYPE_PRIMARY,
 	DRM_PLANE_TYPE_PRIMARY,
 	DRM_PLANE_TYPE_PRIMARY,
 };
@@ -1461,13 +2030,24 @@ static int dc_early_init(void *handle)
 {
 	struct loonggpu_device *adev = (struct loonggpu_device *)handle;
 
-	adev->mode_info.num_crtc = 2;
+	adev->mode_info.num_crtc = 4;
 	adev->mode_info.num_i2c = 2;
 	adev->mode_info.num_hpd = 3;
 	adev->mode_info.plane_type = plane_type;
 
-	if (adev->mode_info.funcs == NULL)
-		adev->mode_info.funcs = &dc_display_funcs;
+	if (adev->mode_info.funcs == NULL) {
+		switch (adev->chip) {
+		case dev_7a1000:
+		case dev_7a2000:
+		case dev_2k2000:
+		case dev_2k3000:
+			adev->mode_info.funcs = &dc_display_funcs;
+			break;
+		case dev_9a1000:
+			adev->mode_info.funcs = &video_display_funcs;
+			break;
+		}
+	}
 
 	return 0;
 }
@@ -1545,9 +2125,14 @@ static const struct dc_hw_ops ls7a2000_dc_hw_ops = {
 	.dc_irq_fini = dc_irq_fini,
 	.dc_i2c_init = ls7a2000_dc_i2c_init,
 	.dc_hpd_enable = ls7a2000_dc_hpd_enable,
+	.dc_get_modes = loonggpu_dc_get_modes,
+	.dc_device_init = loonggpu_dc_meta_set,
+	.manage_dc_int = manage_dc_interrupts,
 
 	.crtc_enable = dc_crtc_enable,
 	.crtc_timing_set = dc_crtc_timing_set,
+	.crtc_plane_set = crtc_primary_plane_set,
+	.crtc_set_vblank = dc_set_vblank,
 
 	.cursor_move = dc_cursor_move,
 	.cursor_set = dc_cursor_set,
@@ -1573,9 +2158,12 @@ static const struct dc_hw_ops ls7a1000_dc_hw_ops = {
 	.dc_irq_fini = dc_irq_fini,
 	.dc_i2c_init = ls7a1000_dc_i2c_init,
 	.dc_hpd_enable = ls7a2000_dc_hpd_enable,
+	.manage_dc_int = manage_dc_interrupts,
 
 	.crtc_enable = dc_crtc_enable,
 	.crtc_timing_set = dc_crtc_timing_set,
+	.crtc_plane_set = crtc_primary_plane_set,
+	.crtc_set_vblank = dc_set_vblank,
 
 	.cursor_move = dc_cursor_move,
 	.cursor_set = dc_cursor_set,
@@ -1605,10 +2193,15 @@ static const struct dc_hw_ops ls2k2000_dc_hw_ops = {
 	.dc_irq_fini = dc_irq_fini,
 	.dc_i2c_init = ls7a2000_dc_i2c_init,
 	.dc_hpd_enable = ls7a2000_dc_hpd_enable,
+	.dc_get_modes = loonggpu_dc_get_modes,
+	.dc_device_init = loonggpu_dc_meta_set,
+	.manage_dc_int = manage_dc_interrupts,
 
 	.crtc_enable = dc_crtc_enable,
 	.crtc_timing_set = dc_crtc_timing_set,
 	.crtc_cfg_adjust = ls2k2000_dc_crtc_cfg_adjust,
+	.crtc_plane_set = crtc_primary_plane_set,
+	.crtc_set_vblank = dc_set_vblank,
 
 	.cursor_move = dc_cursor_move,
 	.cursor_set = dc_cursor_set,
@@ -1640,9 +2233,14 @@ static const struct dc_hw_ops ls2k3000_dc_hw_ops = {
 	.dc_i2c_init = ls2k3000_dc_i2c_init,
 	.dc_i2c_resume = ls2k3000_dc_i2c_resume,
 	.dc_hpd_enable = ls2k3000_dc_hpd_enable,
+	.dc_get_modes = ls2k3000_dc_get_mdoes,
+	.dc_device_init = loonggpu_dc_meta_set,
+	.manage_dc_int = manage_dc_interrupts,
 
 	.crtc_enable = dc_crtc_enable,
 	.crtc_timing_set = dc_crtc_timing_set,
+	.crtc_plane_set = crtc_primary_plane_set,
+	.crtc_set_vblank = dc_set_vblank,
 
 	.cursor_move = dc_cursor_move,
 	.cursor_set = dc_cursor_set,
@@ -1657,6 +2255,7 @@ static const struct dc_hw_ops ls2k3000_dc_hw_ops = {
 	.hdmi_i2c_set = ls2k3000_hdmi_i2c_set,
 
 	.first_hpd_detect = l2k3000_dp_first_hdp_detect,
+	.interface_status_changed = ls2k3000_interface_status_changed,
 	.dp_hpd_handler = l2k3000_hpd_irq_handler,
 	.dp_pll_set = ls2k3000_dp_pll_set,
 	.dp_enable = ls2k3000_dp_enable,
@@ -1674,6 +2273,77 @@ static const struct dc_hw_ops ls2k3000_dc_hw_ops = {
 static const struct dc_sw_ops ls2k3000_dc_sw_ops = {
 	.dc_topology_init = ls2k3000_dc_topology_init,
 	.dc_irq_sw_init = dc_irq_sw_init,
+};
+
+static void ls9a1000_dc_topology_init(struct loonggpu_dc_crtc *crtc)
+{
+	crtc->cursor = crtc->resource->base.link;
+
+	/* 注意不要访问不存在的接口的寄存器,会导致驱动卡死 */
+	/* crtc_id is video num */
+	switch (crtc->resource->crtc_id) {
+	case 0:
+		crtc->intf[0].index = 0;
+		crtc->intf[0].type = INTERFACE_HDMI;
+		crtc->interfaces = 1;
+		break;
+	case 1:
+		crtc->intf[0].index = 0;
+		crtc->intf[0].type = INTERFACE_DP;
+		crtc->interfaces = 1;
+		break;
+	case 2:
+		crtc->intf[0].index = 0;
+		crtc->intf[0].type = INTERFACE_VGA;
+		crtc->interfaces = 1;
+		break;
+	case 3:
+		crtc->intf[0].index = 1;
+		crtc->intf[0].type = INTERFACE_DP;
+		crtc->interfaces = 1;
+		break;
+	}
+}
+
+static const struct dc_hw_ops ls9a1000_dc_hw_ops = {
+	.dc_pll_set = ls9a1000_dc_pll_set,
+	.dc_irq_hw_init = dc_irq_msg_hw_init,
+	.dc_irq_hw_uninit = dc_irq_msg_hw_uninit,
+	.dc_irq_fini = dc_irq_msg_fini,
+	.dc_i2c_init = ls9a1000_dc_i2c_init,
+	.dc_device_init = ls9a1000_dc_device_init,
+	.manage_dc_int = manage_dc_msg_interrupts,
+
+	.crtc_enable = video_enable,
+	.crtc_timing_set = video_timing_set,
+	.crtc_plane_set = primary_layer_config,
+	.crtc_set_vblank = video_set_vblank,
+	.crtc_gamma_set = video_gamma_set,
+
+	.cursor_move = cursor_layer_move,
+	.cursor_set = cursor_layer_set,
+
+	.hdmi_pll_set = ls9a1000_hdmi_pll_set,
+	.hdmi_enable = ls9a1000_hdmi_enable,
+	.hdmi_init = ls9a1000_hdmi_init,
+	.hdmi_audio_init = ls9a1000_hdmi_audio_init,
+	.hdmi_noaudio_init = ls9a1000_hdmi_noaudio_init,
+	.hdmi_resume = ls9a1000_hdmi_resume,
+	.hdmi_suspend = ls9a1000_hdmi_suspend,
+	.hdmi_i2c_set = ls9a1000_hdmi_i2c_set,
+
+	.dp_pll_set = ls9a1000_dp_pll_set,
+	.dp_enable = ls9a1000_dp_enable,
+	.dp_init = ls9a1000_dp_init,
+	.dp_resume = ls9a1000_dp_resume,
+	.dp_suspend = ls9a1000_dp_suspend,
+	.dp_audio_init = ls9a1000_dp_audio_init,
+	.dp_noaudio_init = ls9a1000_dp_noaudio_init,
+};
+
+static const struct dc_sw_ops ls9a1000_dc_sw_ops = {
+	.dc_topology_init = ls9a1000_dc_topology_init,
+	.dc_irq_sw_init = dc_irq_msg_sw_init,
 };
 
 void dc_set_dma_consistent(struct loonggpu_device *adev)
@@ -1777,12 +2447,13 @@ static int dc_sw_init(void *handle)
 		adev->dc->sw_ops = &ls2k3000_dc_sw_ops;
 	else if (adev->chip == dev_7a1000) {
 		adev->dc->sw_ops = &ls7a1000_dc_sw_ops;
-	}
+	} else if (adev->chip == dev_9a1000)
+		adev->dc->sw_ops = &ls9a1000_dc_sw_ops;
+
 	sw_ops = adev->dc->sw_ops;
 	for (i = 0; i < adev->dc->links; i++) {
 		sw_ops->dc_topology_init(adev->dc->link_info[i].crtc);
 	}
-	DRM_INFO("LOONGGPU DC construct links:%d", adev->dc->links);
 
 	adev->mode_info.num_crtc = adev->dc->links;
 	DRM_INFO("LOONGGPU DC construct links:%d", adev->dc->links);
@@ -1818,7 +2489,8 @@ static int dc_hw_init(void *handle)
 		adev->dc->hw_ops = &ls7a1000_dc_hw_ops;
 		adev->ddev->mode_config.cursor_width = 32;
 		adev->ddev->mode_config.cursor_height = 32;
-	}
+	} else if (adev->chip == dev_9a1000)
+		adev->dc->hw_ops = &ls9a1000_dc_hw_ops;
 
 	for (i = 0; i < adev->dc->links; i++) {
 		dc_interface_init(adev->dc->link_info[i].crtc);
@@ -1834,7 +2506,7 @@ static int dc_hw_init(void *handle)
 		goto error;
 	}
 
-	if (dc_irq_sw_init(adev)) {
+	if (adev->dc->sw_ops->dc_irq_sw_init(adev)) {
 		DRM_ERROR("Failed to initialize IRQ support.\n");
 		goto error;
 	}
@@ -1843,7 +2515,8 @@ static int dc_hw_init(void *handle)
 
 	drm_mode_config_reset(adev->ddev);
 	drm_kms_helper_poll_init(adev->ddev);
-	loonggpu_dc_meta_set(adev);
+	if (adev->dc->hw_ops->dc_device_init)
+		adev->dc->hw_ops->dc_device_init(adev);
 	adev->dc->hw_ops->dc_irq_hw_init(adev);
 
 	DRM_DEBUG_DRIVER("LOONGGPU DC hw init success!\n");

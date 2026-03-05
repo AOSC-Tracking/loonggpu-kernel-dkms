@@ -9,6 +9,7 @@
 
 MODULE_FIRMWARE("loonggpu/lg100_cp.bin");
 MODULE_FIRMWARE("loonggpu/lg200_cp.bin");
+MODULE_FIRMWARE("loonggpu/lg210_cp.bin");
 
 static void gfx_set_ring_funcs(struct loonggpu_device *adev);
 static void gfx_set_irq_funcs(struct loonggpu_device *adev);
@@ -621,6 +622,14 @@ static void gfx_ring_emit_fence_gfx(struct loonggpu_ring *ring, u64 addr,
 			loonggpu_ring_write(ring, upper_32_bits(seq));
 		if (int_sel)
 			loonggpu_ring_write(ring, GSPKT(LG2XX_SCMD32_OP_INTR, 0));
+
+		if (ring->adev->pm.dpm_enabled && (ring->adev->pm.dpm.dvfs.capture_flags & LOONGGPU_DVFS_CAPTURE_EVNT)) {
+			loonggpu_ring_write(ring, LG2XX_SCMD32(LG2XX_SCMD32_OP_ENVT, 0xfff));
+			loonggpu_ring_write(ring,
+				lower_32_bits(ring->adev->pm.dpm.dvfs.evnt_gpu_addr));
+			loonggpu_ring_write(ring,
+				upper_32_bits(ring->adev->pm.dpm.dvfs.evnt_gpu_addr));
+		}
 	}
 	else
 		DRM_ERROR("%s Illegal Family type %d\n", __FUNCTION__, ring->adev->family_type);

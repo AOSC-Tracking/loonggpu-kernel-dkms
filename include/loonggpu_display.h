@@ -5,6 +5,9 @@ uint32_t loonggpu_display_supported_domains(struct loonggpu_device *adev);
 struct drm_framebuffer *
 loonggpu_display_user_framebuffer_create(struct drm_device *dev,
 				       struct drm_file *file_priv,
+#if defined(LG_DRM_MODE_CONFIG_FUNCS_FB_CREATE_HAS_INFO)
+				       const struct drm_format_info *info,
+#endif
 				       const struct drm_mode_fb_cmd2 *mode_cmd);
 int loonggpu_display_crtc_page_flip_target(struct drm_crtc *crtc,
                                 struct drm_framebuffer *fb,

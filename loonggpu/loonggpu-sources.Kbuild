@@ -65,3 +65,6 @@ LOONGGPU_SOURCES += loonggpu/loonggpu_lgkcd_fence.c
 LOONGGPU_SOURCES += loonggpu/loonggpu_lgkcd_gfx_lg2xx.c
 LOONGGPU_SOURCES += loonggpu/loonggpu_lgkcd_gpuvm.c
 LOONGGPU_SOURCES += loonggpu/loonggpu_doorbell_mgr.c
+LOONGGPU_SOURCES += loonggpu/loonggpu_dvfs.c
+LOONGGPU_SOURCES += loonggpu/loonggpu_dc_video.c
+LOONGGPU_SOURCES += loonggpu/loonggpu_dc_irq_msg.c

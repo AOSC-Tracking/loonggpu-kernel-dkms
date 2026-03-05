@@ -1184,7 +1184,7 @@ static int loonggpu_cs_submit(struct loonggpu_cs_parser *p,
 	job = p->job;
 	p->job = NULL;
 
-	r = lg_drm_sched_job_init(&job->base, entity, 1, p->filp);
+	r = lg_drm_sched_job_init(&job->base, entity, 1, p->filp, lg_drm_file_get_client_id(p->filp));
 	if (r)
 		goto error_unlock;
 

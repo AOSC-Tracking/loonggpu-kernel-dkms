@@ -80,6 +80,7 @@ struct kcd_event {
 /* Matching VDD_EVENTTYPE */
 #define KCD_EVENT_TYPE_SIGNAL 0
 #define KCD_EVENT_TYPE_HW_EXCEPTION 3
+#define KCD_EVENT_TYPE_DEBUG 5
 #define KCD_EVENT_TYPE_MEMORY 8
 
 extern void kcd_signal_event_interrupt(u32 pasid, uint32_t partial_id,

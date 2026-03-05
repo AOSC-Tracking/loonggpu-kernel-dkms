@@ -8,6 +8,7 @@
 #include <linux/pci.h>
 #include <drm/drm_debugfs.h>
 #include "loonggpu_gtt_mgr_helper.h"
+#include "loonggpu_pm.h"
 
 /**
  * loonggpu_driver_unload_kms - Main unload function for KMS.
@@ -210,6 +211,7 @@ static int loonggpu_info_ioctl(struct drm_device *dev, void *data, struct drm_fi
 	uint32_t ui32 = 0;
 	uint64_t ui64 = 0;
 	int i, found;
+	int ui32_size = sizeof(ui32);
 
 	if (!info->return_size || !info->return_pointer)
 		return -EINVAL;
@@ -514,8 +516,50 @@ static int loonggpu_info_ioctl(struct drm_device *dev, void *data, struct drm_fi
 	}
 	case LOONGGPU_INFO_NUM_HANDLES:
 			return -EINVAL;
-	case LOONGGPU_INFO_SENSOR:
-		return -ENOENT;
+	case LOONGGPU_INFO_SENSOR: {
+		if (!adev->pm.dpm_enabled)
+			return -ENOENT;
+
+		switch (info->sensor_info.type) {
+		case LOONGGPU_INFO_SENSOR_GFX_SCLK:
+			/* get sclk in Mhz */
+			if (loonggpu_dpm_read_sensor(adev,
+						   LOONGGPU_DPM_SENSOR_GFX_SCLK,
+						   (void *)&ui32, &ui32_size)) {
+				return -EINVAL;
+			}
+			break;
+		case LOONGGPU_INFO_SENSOR_GFX_MCLK:
+			/* get mclk in Mhz */
+			if (loonggpu_dpm_read_sensor(adev,
+						   LOONGGPU_DPM_SENSOR_GFX_MCLK,
+						   (void *)&ui32, &ui32_size)) {
+				return -EINVAL;
+			}
+			break;
+		case LOONGGPU_INFO_SENSOR_GPU_LOAD:
+			/* get GPU load */
+			if (loonggpu_dpm_read_sensor(adev,
+						   LOONGGPU_DPM_SENSOR_GPU_LOAD,
+						   (void *)&ui32, &ui32_size)) {
+				return -EINVAL;
+			}
+			break;
+		case LOONGGPU_INFO_SENSOR_GPU_AVG_POWER:
+			/* get GPU avg power */
+			if (loonggpu_dpm_read_sensor(adev,
+						   LOONGGPU_DPM_SENSOR_GPU_POWER_LEVEL,
+						   (void *)&ui32, &ui32_size)) {
+				return -EINVAL;
+			}
+			break;
+		default:
+			DRM_DEBUG_KMS("Invalid request %d\n",
+				      info->sensor_info.type);
+			return -EINVAL;
+		}
+		return copy_to_user(out, &ui32, min(size, 4u)) ? -EFAULT : 0;
+	}
 	case LOONGGPU_INFO_VRAM_LOST_COUNTER:
 		ui32 = atomic_read(&adev->vram_lost_counter);
 		return copy_to_user(out, &ui32, min(size, 4u)) ? -EFAULT : 0;
@@ -760,7 +804,16 @@ const struct drm_ioctl_desc loonggpu_ioctls_kms[] = {
 	DRM_IOCTL_DEF_DRV(LOONGGPU_GEM_VA, loonggpu_gem_va_ioctl, DRM_AUTH|DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(LOONGGPU_GEM_OP, loonggpu_gem_op_ioctl, DRM_AUTH|DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(LOONGGPU_GEM_USERPTR, loonggpu_gem_userptr_ioctl, DRM_AUTH|DRM_RENDER_ALLOW),
-	DRM_IOCTL_DEF_DRV(LOONGGPU_HWSEMA_OP, loonggpu_hw_sema_op_ioctl, DRM_AUTH|DRM_RENDER_ALLOW)
+	DRM_IOCTL_DEF_DRV(LOONGGPU_HWSEMA_OP, loonggpu_hw_sema_op_ioctl, DRM_AUTH|DRM_RENDER_ALLOW),
+
+	/* 9a dc test */
+	DRM_IOCTL_DEF_DRV(LOONGGPU_LAYER_DISPLAY, layer_display_ioctl, DRM_AUTH|DRM_RENDER_ALLOW),
+	DRM_IOCTL_DEF_DRV(LOONGGPU_LAYER_ZOOM, layer_zoom_ioctl, DRM_AUTH|DRM_RENDER_ALLOW),
+	DRM_IOCTL_DEF_DRV(LOONGGPU_LAYER_TILE, layer_tile_ioctl, DRM_AUTH|DRM_RENDER_ALLOW),
+	DRM_IOCTL_DEF_DRV(LOONGGPU_LAYER_ROTATE, layer_rotate_ioctl, DRM_AUTH|DRM_RENDER_ALLOW),
+	DRM_IOCTL_DEF_DRV(LOONGGPU_VIDEO_GAMMA, video_gamma_ioctl, DRM_AUTH|DRM_RENDER_ALLOW),
+	DRM_IOCTL_DEF_DRV(LOONGGPU_GET_META, dc_get_meta_ioctl, DRM_AUTH|DRM_RENDER_ALLOW),
+	DRM_IOCTL_DEF_DRV(LOONGGPU_SET_META, dc_set_meta_ioctl, DRM_AUTH|DRM_RENDER_ALLOW),
 };
 const int loonggpu_max_kms_ioctl = ARRAY_SIZE(loonggpu_ioctls_kms);
 

@@ -9,10 +9,79 @@
 #include "loonggpu_backlight.h"
 #include "loonggpu_helper.h"
 
+#define DEBUG_FILTERED_MODES 0
+
+static u16 drm_get_product_code(const struct edid *edid)
+{
+    if (!edid) {
+		DRM_INFO( "edid is NULL \n");
+		return -1;
+    }
+
+   return ((uint16_t)edid->prod_code[1] << 8) |
+                    (uint16_t)edid->prod_code[0];
+}
+
+static const char *drm_get_edid_manufacturer(const struct edid *edid)
+{
+    char mfg[3];
+
+    mfg[0] = ((edid->mfg_id[0] >> 2) & 0x1f) + 'A' - 1;
+    mfg[1] = (((edid->mfg_id[0] & 0x03) << 3) |
+              ((edid->mfg_id[1] >> 5) & 0x07)) + 'A' - 1;
+    mfg[2] = (edid->mfg_id[1] & 0x1f) + 'A' - 1;
+
+    return kasprintf(GFP_KERNEL, "%c%c%c", mfg[0], mfg[1], mfg[2]);
+}
+
+static bool is_eat_special_display(const struct edid *edid)
+{
+    const char *manufacturer;
+    u16 product_code;
+    u32 serial;
+
+    if (!edid)
+        return false;
+
+    manufacturer = drm_get_edid_manufacturer(edid);
+    if (!manufacturer)
+        return false;
+
+    if (strncmp(manufacturer, "EAT", 3) != 0)
+        return false;
+
+    product_code = drm_get_product_code(edid);
+    serial = edid->serial;
+
+    return (product_code == 9984 && serial == 1);
+}
+
+static bool is_hpn_special_display(const struct edid *edid)
+{
+    const char *manufacturer;
+    u16 product_code;
+    u32 serial;
+
+    if (!edid)
+        return false;
+
+    manufacturer = drm_get_edid_manufacturer(edid);
+    if (!manufacturer)
+        return false;
+
+    if (strncmp(manufacturer, "HPN", 3) != 0)
+        return false;
+
+    product_code = drm_get_product_code(edid);
+    serial = edid->serial;
+
+    return (product_code == 14467 && serial == 2);
+}
+
 /**
  * @section Bridge-phy connector functions
  */
-static int check_hdmi_audio(struct loonggpu_device *adev, struct drm_connector *connector, struct edid *edid)
+int check_hdmi_audio(struct loonggpu_device *adev, struct drm_connector *connector, struct edid *edid)
 {
 	u8 *ext_edid = NULL;
 	struct loonggpu_dc_crtc *dc_crtc;
@@ -45,17 +114,306 @@ static int check_hdmi_audio(struct loonggpu_device *adev, struct drm_connector *
 	return 0;
 }
 
-static int bridge_phy_connector_get_modes(struct drm_connector *connector)
+static const struct drm_connector_funcs virtual_connector_funcs = {
+	.destroy = drm_connector_cleanup,
+	.reset = drm_atomic_helper_connector_reset,
+	.atomic_duplicate_state = drm_atomic_helper_connector_duplicate_state,
+	.atomic_destroy_state = drm_atomic_helper_connector_destroy_state,
+};
+
+/**
+ * create_virtual_connector - Create and initialize a virtual DRM connector
+ * @dev: DRM device object
+ *
+ * This function is responsible for allocating and initializing a virtual connector.
+ * It encapsulates the complete lifecycle of memory allocation and initialization,
+ * ensuring the connector is either fully initialized successfully or completely
+ * cleaned up on failure.
+ *
+ * Return: Pointer to drm_connector on success, ERR_PTR() error code on error.
+ */
+struct drm_connector *create_virtual_connector(struct drm_device *dev)
 {
-	struct edid *edid = NULL;
-	unsigned int count = 0;
+	struct drm_connector *connector;
+	int ret;
+
+	/* Allocate connector memory */
+	connector = kzalloc(sizeof(*connector), GFP_KERNEL);
+	if (!connector)
+		return ERR_PTR(-ENOMEM);
+
+	/* Initialize DRM connector */
+	ret = drm_connector_init(dev, connector, &virtual_connector_funcs,
+                           DRM_MODE_CONNECTOR_VIRTUAL);
+
+	if (ret) {
+		DRM_ERROR("Failed to initialize virtual connector: %d\n", ret);
+		kfree(connector);
+		return ERR_PTR(ret);
+	}
+
+	return connector;
+}
+
+/**
+ * destroy_virtual_connector - Safely destroy a virtual connector
+ * @connector: Pointer to the connector to be destroyed
+ *
+ * This function safely cleans up connector resources, including checking the
+ * connector state and correctly handling null pointers.
+ */
+void destroy_virtual_connector(struct drm_connector *connector)
+{
+	if (!connector) {
+		DRM_DEBUG("Attempted to destroy NULL connector\n");
+		return;
+	}
+
+	/* Only fully initialized connectors require DRM cleanup */
+	if (connector->dev) {
+		drm_connector_cleanup(connector);
+	}
+
+	kfree(connector);
+}
+
+/**
+ * filter_unique_progressive_modes - Filter the probed_modes list to keep only unique progressive modes.
+ * @connector: Pointer to the DRM connector
+ *
+ * This function directly modifies the connector->probed_modes linked list.
+ * It removes all interlaced modes and duplicate progressive modes (based on
+ * hdisplay, vdisplay, vrefresh, and clock).
+ * After execution, the probed_modes list will contain only unique progressive modes.
+ * Note: This function frees the memory of removed drm_display_mode objects.
+ */
+void filter_unique_progressive_modes(struct drm_connector *connector)
+{
+	struct drm_display_mode *mode;
+	struct drm_display_mode *tmp;
+	struct drm_display_mode *inner;
+	bool unique;
+
+	if (!connector || list_empty(&connector->probed_modes))
+		return;
+
+	/* Use the _safe variant for traversal since we may remove nodes during iteration */
+	list_for_each_entry_safe(mode, tmp, &connector->probed_modes, head) {
+
+		/* First, unconditionally remove all interlaced modes */
+		if (mode->flags & DRM_MODE_FLAG_INTERLACE) {
+			DRM_DEBUG("Removing interlaced mode: %dx%d@%d\n",
+				mode->hdisplay, mode->vdisplay, drm_mode_vrefresh(mode));
+			list_del(&mode->head);
+			drm_mode_destroy(connector->dev, mode); /* Free the mode memory */
+			continue;
+		}
+
+		unique = true;
+
+		/* Check if the current progressive mode duplicates any mode that appears before it in the list */
+		list_for_each_entry(inner, &connector->probed_modes, head) {
+		/* Stop checking when reaching the current mode (only compare with preceding modes) */
+		if (inner == mode)
+			break;
+
+		/* Skip interlaced modes in 'inner' (though they should have been removed in the outer loop) */
+		if (inner->flags & DRM_MODE_FLAG_INTERLACE)
+			continue;
+
+		/* Compare key parameters: resolution, refresh rate, and clock */
+		if (inner->hdisplay == mode->hdisplay && \
+			inner->vdisplay == mode->vdisplay &&  \
+			drm_mode_vrefresh(inner) == drm_mode_vrefresh(mode) && \
+			inner->clock == mode->clock) {
+
+			unique = false;
+			DRM_DEBUG("Found duplicate progressive mode: %dx%d@%d, clock=%d\n",
+			mode->hdisplay, mode->vdisplay,
+			drm_mode_vrefresh(mode), mode->clock);
+			break;
+			}
+		}
+
+		/* Remove the mode from the list and destroy it if it is not unique */
+		if (!unique) {
+			list_del(&mode->head);
+			/* Free the mode memory */
+			drm_mode_destroy(connector->dev, mode);
+		} else {
+			DRM_DEBUG("Keeping unique progressive mode: %dx%d@%d, clock=%d\n",
+				mode->hdisplay, mode->vdisplay, drm_mode_vrefresh(mode), mode->clock);
+		}
+	}
+}
+
+/**
+ * print_filtered_modes - Traverse and print the contents of the filtered
+ *                       connector->probed_modes linked list
+ * @connector: Pointer to the DRM connector
+ *
+ * This function is used after calling filter_unique_progressive_modes to
+ * traverse and print all display mode information (hdisplay, vdisplay,
+ * vrefresh, clock, flags) in the linked list.
+ * It also prints a summary showing the total number of modes currently
+ * in the linked list.
+ * This function is primarily used for debugging and logging purposes.
+ */
+void show_filtered_modes(struct drm_connector *connector)
+{
+#if DEBUG_FILTERED_MODES
+	struct drm_display_mode *mode;
+	int count = 0;
+
+	if (!connector || list_empty(&connector->probed_modes)) {
+		DRM_INFO("Filtered modes list is empty.\n");
+		return;
+	}
+
+
+	DRM_INFO("Listing all modes in connector->probed_modes connetor_type-%d after filtering:\n", connector->connector_type);
+	DRM_INFO("Format: hdisplay x vdisplay @ vrefresh Hz, clock kHz [flags]\n");
+	DRM_INFO("------------------------------------------------------------\n");
+
+	/* Safely traverse the linked list using list_for_each_entry */
+	list_for_each_entry(mode, &connector->probed_modes, head) {
+		count++;
+		DRM_INFO("[%d] %dx%d@%d Hz, clock: %d kHz, flags: 0x%x\n",
+					count,
+					mode->hdisplay,
+					mode->vdisplay,
+					drm_mode_vrefresh(mode),
+					mode->clock,
+					mode->flags);
+	}
+
+	DRM_INFO("------------------------------------------------------------\n");
+	DRM_INFO("Total unique progressive modes in list: %d\n", count);
+#endif
+}
+
+/**
+ * drm_connector_edid_intersection - Perform intersection or copy of probed_modes
+ * between actual_connector and virtual_connector, returning the valid mode count
+ *
+ * @actual_connector: The connector where intersection results or copies will be
+ *                    stored in its probed_modes list
+ * @virtual_connector: The connector providing the mode list for comparison or as copy source
+ *
+ * This function first checks if the actual_connector's probed_modes is empty and
+ * virtual_connector's probed_modes is not empty. If true, it copies the virtual
+ * connector's probed_modes list to the actual connector's probed_modes and returns
+ * the count of copied modes.
+ *
+ * Otherwise, it compares the probed_modes of both connectors, finding modes that
+ * have identical resolution (hdisplay, vdisplay), vertical refresh rate (vrefresh,
+ * calculated by drm_mode_vrefresh), and pixel clock (clock).
+ * Only these common modes will be retained in actual_connector->probed_modes,
+ * while non-matching modes will be removed.
+ * The function returns the number of valid display modes remaining in the
+ * actual connector after processing.
+ *
+ * Return: Number of valid display modes (positive value) on success,
+ *         or a negative error code on failure.
+ */
+int drm_connector_edid_intersection(struct drm_connector *actual_connector,
+                                  struct drm_connector *virtual_connector)
+{
+	struct drm_display_mode *virtual_connector_mode, *new_mode;
+	struct drm_display_mode *actual_connector_mode, *temp;
+	uint32_t actual_connector_vrefresh, virtual_connector_vrefresh;
+	 /* Counter for valid modes */
+	int valid_mode_count = 0;
+	bool found_match;
+
+	/* Parameter validation */
+	if (!actual_connector || !virtual_connector) {
+		DRM_ERROR("Invalid connector pointer(s)\n");
+		return -EINVAL;
+	}
+
+	/*
+	 * Check if actual_connector's probed_modes is empty and virtual_connector's
+	 * probed_modes is not empty. If condition met, copy virtual_connector's
+	 * probed_modes to actual_connector's probed_modes and return the copy count.
+	 */
+	if (list_empty(&actual_connector->probed_modes) &&
+		!list_empty(&virtual_connector->probed_modes)) {
+		DRM_INFO("[EDID Intersection] actual connector probed_modes is empty, copying all modes from virtual connector.\n");
+
+		/* Traverse virtual_connector's probed_modes list and perform copying */
+		list_for_each_entry(virtual_connector_mode, &virtual_connector->probed_modes, head) {
+			new_mode = drm_mode_duplicate(actual_connector->dev, virtual_connector_mode);
+			if (!new_mode) {
+				DRM_ERROR("Failed to duplicate mode from DP connector\n");
+				/* Skip failed copy and continue with next mode */
+				continue;
+			}
+			list_add_tail(&new_mode->head, &actual_connector->probed_modes);
+			/* Increment count for each successfully copied mode */
+			valid_mode_count++;
+		}
+
+		DRM_INFO("[EDID Intersection] Copied %d modes from virtual connector to actual connector.\n", valid_mode_count);
+		 /* Return count of successfully copied modes */
+		return valid_mode_count;
+	}
+
+	/* Reset counter for counting remaining modes after intersection */
+	valid_mode_count = 0;
+
+	/*
+	 * Intersection operation: Traverse actual_connector's probed_modes list and
+	 * compare with virtual_connector's list.
+	 * Initialize valid mode counter starting with total modes in actual_connector
+	 * (will be decreased during traversal).
+	 * Note: Using list_for_each_entry_safe allows node deletion during traversal.
+	 */
+	list_for_each_entry_safe(actual_connector_mode, temp,
+				&actual_connector->probed_modes, head) {
+		found_match = false;
+		actual_connector_vrefresh = drm_mode_vrefresh(actual_connector_mode);
+
+		/* Traverse virtual_connector's probed_modes list to find matches */
+		list_for_each_entry(virtual_connector_mode, &virtual_connector->probed_modes, head) {
+			virtual_connector_vrefresh = drm_mode_vrefresh(virtual_connector_mode);
+
+			if (actual_connector_mode->hdisplay == virtual_connector_mode->hdisplay &&
+				actual_connector_mode->vdisplay == virtual_connector_mode->vdisplay &&
+				actual_connector_vrefresh == virtual_connector_vrefresh &&
+				actual_connector_mode->clock == virtual_connector_mode->clock) {
+				found_match = true;
+				break;
+			}
+		}
+
+		if (found_match) {
+			/* Mode matched, keep it and increment count */
+			valid_mode_count++;
+		} else {
+			/* Remove non-matching mode from actual_connector's probed_list and destroy it */
+			list_del(&actual_connector_mode->head);
+			drm_mode_destroy(actual_connector->dev, actual_connector_mode);
+			/* No match, don't count as valid */
+		}
+	}
+
+	DRM_INFO("[EDID Intersection] actual and virtual common modes filtered. %d modes remaining.\n", valid_mode_count);
+
+	 /* Return count of valid modes remaining after intersection */
+	return valid_mode_count;
+}
+
+int loonggpu_dc_get_modes(struct loonggpu_bridge_phy *phy, int used_method,
+					struct drm_connector *connector, struct edid *edid)
+{
 	struct loonggpu_device *adev = connector->dev->dev_private;
-	struct loonggpu_bridge_phy *phy =
-		adev->mode_info.encoders[connector->index]->bridge;
 	struct loonggpu_bridge_phy *internal_bp = phy->res->internal_bp;
-	unsigned short used_method = phy->res->edid_method;
-	struct connector_resource *connector_resource;
-	int size = sizeof(u8) * EDID_LENGTH * 2;
+	struct loonggpu_connector *aconnector;
+	unsigned int count = 0;
+
+	aconnector = to_loonggpu_connector(connector);
+	aconnector->special_display = false;
 
 	switch (used_method) {
 	case via_i2c:
@@ -63,6 +421,9 @@ static int bridge_phy_connector_get_modes(struct drm_connector *connector)
 			edid = drm_get_edid(connector, &phy->li2c->adapter);
 
 		if (edid) {
+			if (is_hpn_special_display(edid) || is_eat_special_display(edid))
+				aconnector->special_display = true;
+
 			drm_connector_update_edid_property(connector, edid);
 			check_hdmi_audio(adev, connector, edid);
 			count = drm_add_edid_modes(connector, edid);
@@ -75,7 +436,25 @@ static int bridge_phy_connector_get_modes(struct drm_connector *connector)
 		else if (internal_bp && internal_bp->ddc_funcs && internal_bp->ddc_funcs->get_modes)
 			count = internal_bp->ddc_funcs->get_modes(internal_bp, connector);
 		break;
-	case via_vbios:
+	}
+
+	return count;
+}
+
+static int bridge_phy_connector_get_modes(struct drm_connector *connector)
+{
+	struct loonggpu_device *adev = connector->dev->dev_private;
+	struct loonggpu_bridge_phy *phy =
+		adev->mode_info.encoders[connector->index]->bridge;
+	struct loonggpu_bridge_phy *internal_bp = phy->res->internal_bp;
+	unsigned short used_method = phy->res->edid_method;
+	struct connector_resource *connector_resource;
+	struct loonggpu_dc *dc = adev->dc;
+	int size = sizeof(u8) * EDID_LENGTH * 2;
+	struct edid *edid = NULL;
+	unsigned int count = 0;
+
+	if (used_method == via_vbios) {
 		connector_resource = dc_get_vbios_resource(internal_bp->adev->dc->vbios, connector->index, LOONGGPU_RESOURCE_CONNECTOR);
 
 		edid = kmalloc(size, GFP_KERNEL);
@@ -85,8 +464,9 @@ static int bridge_phy_connector_get_modes(struct drm_connector *connector)
 			count = drm_add_edid_modes(connector, edid);
 			kfree(edid);
 		}
-	default:
-		break;
+	} else {
+		if (dc->hw_ops->dc_get_modes)
+			count = dc->hw_ops->dc_get_modes(phy, used_method, connector, edid);
 	}
 
 	if (!count) {
@@ -130,7 +510,12 @@ bool is_resolution_valid(struct panel_resource *panel_resource, struct drm_displ
 
 static enum drm_mode_status
 bridge_phy_connector_mode_valid(struct drm_connector *connector,
-				struct drm_display_mode *mode)
+#if defined(LG_MODE_VALID_HAS_CONST_MODE_ARG)
+				const struct drm_display_mode *mode
+#else
+				struct drm_display_mode *mode
+#endif
+				)
 {
 	struct loonggpu_device *adev = connector->dev->dev_private;
 	struct loonggpu_bridge_phy *phy =
@@ -670,6 +1055,8 @@ static int bridge_phy_internal_init(struct loonggpu_dc_bridge *dc_bridge)
 		return bridge_phy_ls2k3000_init(dc_bridge);
 	case dev_7a1000:
 		return bridge_phy_ls7a1000_init(dc_bridge);
+	case dev_9a1000:
+		return bridge_phy_ls9a1000_init(dc_bridge);
 	default:
 		DRM_DEBUG_DRIVER("No matching chip! Skip internal bridge phy init\n");
 		break;
@@ -846,6 +1233,8 @@ static int bridge_phy_internal_register(struct loonggpu_dc_bridge *dc_bridge)
 		return internal_bridge_ls2k3000_register(dc_bridge);
 	case dev_7a1000:
 		return internal_bridge_ls7a1000_register(dc_bridge);
+	case dev_9a1000:
+		return internal_bridge_ls9a1000_register(dc_bridge);
 	default:
 		DRM_DEBUG_DRIVER("No matching chip! Skip internal bridge phy register\n");
 		break;
@@ -860,7 +1249,7 @@ int loonggpu_dc_bridge_init(struct loonggpu_device *adev, int link_index)
 					adev->dc->link_info[link_index].bridge;
 	int ret;
 
-	if (link_index >= 2)
+	if (link_index >= 4)
 		return -1;
 
 	bridge_phy_internal_register(dc_bridge);

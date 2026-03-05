@@ -9,6 +9,16 @@ enum dc_plane_type{
 
 struct dc_primary_plane {
 	union plane_address address;
+	int fb_width;
+	int fb_height;
+	uint64_t fb_address;
+	u32 format;
+	int crtc_width;
+	int crtc_height;
+	int crtc_x;
+	int crtc_y;
+	int stride;
+	int unzip_mode;
 };
 
 struct dc_cursor_info {
@@ -16,6 +26,7 @@ struct dc_cursor_info {
 	int x;
 	int y;
 	union plane_address address;
+	u32 format;
 };
 
 struct dc_plane_update {

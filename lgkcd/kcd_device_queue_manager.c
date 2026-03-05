@@ -35,6 +35,7 @@
 #include "kcd_mqd_manager.h"
 #include "kcd_kernel_queue.h"
 #include "loonggpu_lgkcd.h"
+#include "kcd_debug.h"
 
 static int execute_queues_cpsch(struct device_queue_manager *dqm,
 				enum kcd_unmap_queues_filter filter,
@@ -278,7 +279,7 @@ static int suspend_single_queue(struct device_queue_manager *dqm,
 			pdd->process->pasid,
 			q->properties.queue_id);
 
-	is_new = q->properties.exception_status;
+	is_new = q->properties.exception_status & KCD_EC_MASK(EC_QUEUE_NEW);
 
 	if (is_new || q->properties.is_being_destroyed) {
 		pr_debug("Suspend: skip %s queue id %i\n",
@@ -885,6 +886,16 @@ static int wait_on_destroy_queue(struct device_queue_manager *dqm,
 
 	q->properties.is_being_destroyed = true;
 
+	if (pdd->process->debug_trap_enabled && q->properties.is_suspended) {
+		dqm_unlock(dqm);
+		mutex_unlock(&q->process->mutex);
+		ret = wait_event_interruptible(dqm->destroy_wait,
+						!q->properties.is_suspended);
+
+		mutex_lock(&q->process->mutex);
+		dqm_lock(dqm);
+	}
+
 	return ret;
 }
 
@@ -956,6 +967,14 @@ static int destroy_queue_cpsch(struct device_queue_manager *dqm,
 			dqm->total_queue_count);
 
 	dqm_unlock(dqm);
+
+	/*
+	 * Do free_mqd and raise delete event after dqm_unlock(dqm) to avoid
+	 * circular locking
+	 */
+	kcd_dbg_ev_raise(KCD_EC_MASK(EC_DEVICE_QUEUE_DELETE),
+				qpd->pqm->process, q->device,
+				-1, false, NULL, 0);
 
 	mqd_mgr->free_mqd(mqd_mgr, q->mqd, q->mqd_mem_obj);
 
@@ -1201,6 +1220,23 @@ void device_queue_manager_uninit(struct device_queue_manager *dqm)
 	kfree(dqm);
 }
 
+int kcd_dqm_evict_pasid(struct device_queue_manager *dqm, u32 pasid)
+{
+	struct kcd_process_device *pdd;
+	struct kcd_process *p = kcd_lookup_process_by_pasid(pasid);
+	int ret = 0;
+
+	if (!p)
+		return -EINVAL;
+	WARN(debug_evictions, "Evicting pid %d", p->lead_thread->pid);
+	pdd = kcd_get_process_device_data(dqm->dev, p);
+	if (pdd)
+		ret = dqm->ops.evict_process_queues(dqm, &pdd->qpd);
+	kcd_unref_process(p);
+
+	return ret;
+}
+
 static void kcd_process_hw_exception(struct work_struct *work)
 {
 	struct device_queue_manager *dqm = container_of(work,
@@ -1268,6 +1304,9 @@ int resume_queues(struct kcd_process *p,
 		int r, per_device_resumed = 0;
 
 		dqm_lock(dqm);
+
+		if (p->debugger_process)
+			kcd_process_set_trap_debug_flag(qpd, true);
 
 		/* unmask queues that resume or already resumed as valid */
 		list_for_each_entry(q, &qpd->queues_list, list) {
@@ -1364,6 +1403,9 @@ int suspend_queues(struct kcd_process *p,
 		mutex_lock(&p->event_mutex);
 		dqm_lock(dqm);
 
+		if (p->debugger_process)
+			kcd_process_set_trap_debug_flag(qpd, false);
+
 		/* unmask queues that suspend or already suspended */
 		list_for_each_entry(q, &qpd->queues_list, list) {
 			int q_idx = q_array_get_index(q->properties.queue_id,
@@ -1427,6 +1469,72 @@ int suspend_queues(struct kcd_process *p,
 	kfree(queue_ids);
 
 	return total_suspended;
+}
+
+static uint32_t set_queue_type_for_user(struct queue_properties *q_props)
+{
+	switch (q_props->type) {
+	case KCD_QUEUE_TYPE_COMPUTE:
+		return KCD_IOC_QUEUE_TYPE_COMPUTE;
+	case KCD_QUEUE_TYPE_SDMA:
+		return KCD_IOC_QUEUE_TYPE_SDMA;
+	default:
+		WARN_ONCE(true, "queue type not recognized!");
+		return 0xffffffff;
+	};
+}
+
+void set_queue_snapshot_entry(struct queue *q,
+			      uint64_t exception_clear_mask,
+			      struct kcd_queue_snapshot_entry *qss_entry)
+{
+	qss_entry->ring_base_address = q->properties.queue_address;
+	qss_entry->write_pointer_address = (uint64_t)q->properties.write_ptr;
+	qss_entry->read_pointer_address = (uint64_t)q->properties.read_ptr;
+	qss_entry->ctx_save_restore_address =
+				q->properties.ctx_save_restore_area_address;
+	qss_entry->ctx_save_restore_area_size =
+				q->properties.ctx_save_restore_area_size;
+	qss_entry->exception_status = q->properties.exception_status;
+	qss_entry->queue_id = q->properties.queue_id;
+	qss_entry->gpu_id = q->device->id;
+	qss_entry->ring_size = (uint32_t)q->properties.queue_size;
+	qss_entry->queue_type = set_queue_type_for_user(&q->properties);
+	q->properties.exception_status &= ~exception_clear_mask;
+}
+
+int debug_lock_and_unmap(struct device_queue_manager *dqm)
+{
+	int r;
+
+	dqm_lock(dqm);
+
+	r = unmap_queues_cpsch(dqm, KCD_UNMAP_QUEUES_FILTER_ALL_QUEUES, 0, false);
+	if (r)
+		dqm_unlock(dqm);
+
+	return r;
+}
+
+int debug_map_and_unlock(struct device_queue_manager *dqm)
+{
+	int r;
+
+	r = map_queues_cpsch(dqm);
+
+	dqm_unlock(dqm);
+
+	return r;
+}
+
+int debug_refresh_runlist(struct device_queue_manager *dqm)
+{
+	int r = debug_lock_and_unmap(dqm);
+
+	if (r)
+		return r;
+
+	return debug_map_and_unlock(dqm);
 }
 
 #if defined(CONFIG_DEBUG_FS)

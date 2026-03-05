@@ -157,4 +157,13 @@ bool dc_crtc_vblank_ack(struct loonggpu_dc_crtc *crtc);
 bool ls7a1000_dc_crtc_vblank_ack(struct loonggpu_dc_crtc *crtc);
 bool ls7a2000_dc_hpd_enable(struct loonggpu_device *adev, uint32_t link, bool enable);
 bool ls2k3000_dc_hpd_enable(struct loonggpu_device *adev, uint32_t link, bool enable);
+
+void dc_handle_vsync_irq(void *interrupt_params);
+int dc_irq_msg_sw_init(struct loonggpu_device *adev);
+int dc_irq_msg_hw_init(struct loonggpu_device *adev);
+int dc_irq_msg_hw_uninit(struct loonggpu_device *adev);
+void dc_irq_msg_fini(struct loonggpu_device *adev);
+int get_irq_msg_type(int mod_num, int irq_num);
+int video_set_vblank(struct drm_crtc *crtc, bool enable);
+
 #endif /* __LOONGGPU_DM_IRQ_H__ */

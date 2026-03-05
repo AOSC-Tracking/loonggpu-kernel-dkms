@@ -245,6 +245,8 @@ struct loonggpu_dc_bridge
 int loonggpu_dc_bridge_init(struct loonggpu_device *adev, int link_index);
 struct loonggpu_bridge_phy *bridge_phy_alloc(struct loonggpu_dc_bridge *dc_bridge);
 
+int check_hdmi_audio(struct loonggpu_device *adev,
+			struct drm_connector *connector, struct edid *edid);
 int bridge_phy_lt6711_init(struct loonggpu_dc_bridge *dc_bridge);
 int bridge_phy_lt6711_remove(struct loonggpu_dc_bridge *phy);
 int bridge_phy_lt9721_init(struct loonggpu_dc_bridge *res);
@@ -260,6 +262,24 @@ int bridge_phy_ls2k2000_init(struct loonggpu_dc_bridge *dc_bridge);
 int internal_bridge_ls2k2000_register(struct loonggpu_dc_bridge *dc_bridge);
 int bridge_phy_ls2k3000_init(struct loonggpu_dc_bridge *dc_bridge);
 int internal_bridge_ls2k3000_register(struct loonggpu_dc_bridge *dc_bridge);
+
+bool ls2k3000_interface_status_changed(struct drm_connector *connector,
+					struct loonggpu_dc_crtc *crtc);
+int loonggpu_dc_get_modes(struct loonggpu_bridge_phy *phy, int used_method,
+					struct drm_connector *connector, struct edid *edid);
+int ls2k3000_dc_get_mdoes(struct loonggpu_bridge_phy *phy, int used_method,
+					struct drm_connector *connector, struct edid *edid);
+int bridge_phy_ls9a1000_init(struct loonggpu_dc_bridge *dc_bridge);
+int internal_bridge_ls9a1000_register(struct loonggpu_dc_bridge *dc_bridge);
+
+void show_filtered_modes(struct drm_connector *connector);
+void filter_unique_progressive_modes(struct drm_connector *connector);
+int drm_connector_edid_intersection(struct drm_connector *actual_connector,
+                                  struct drm_connector *virtual_connector);
+
+struct drm_connector *create_virtual_connector(struct drm_device *dev);
+void destroy_virtual_connector(struct drm_connector *connector);
+
 void bridge_phy_mode_set(struct loonggpu_bridge_phy *phy,
 				struct drm_display_mode *mode,
 				struct drm_display_mode *adj_mode);

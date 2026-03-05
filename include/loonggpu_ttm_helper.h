@@ -314,6 +314,9 @@ static inline int lg_ttm_sg_tt_init(
 #if defined(LG_DRM_PRIME_SG_TO_DMA_ADDR_ARRAY)
 #define lg_drm_prime_sg_to_addr_array	drm_prime_sg_to_dma_addr_array(ttm->sg, \
 					gtt->ttm.dma_address, \
+					ttm->num_pages); \
+					drm_prime_sg_to_page_array(ttm->sg, \
+					ttm->pages, \
 					ttm->num_pages)
 #else
 #define	lg_drm_prime_sg_to_addr_array	drm_prime_sg_to_page_addr_arrays(ttm->sg, \

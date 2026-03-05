@@ -11,6 +11,8 @@
 #include "loonggpu_helper.h"
 #include "loonggpu_gtt_mgr_helper.h"
 #include "loonggpu_bo_pin_helper.h"
+#include "loonggpu_sync_helper.h"
+#include "loonggpu_dma_resv_helper.h"
 
 /**
  * DOC: loonggpu_object
@@ -145,7 +147,7 @@ void loonggpu_bo_placement_from_domain(struct loonggpu_bo *abo, u32 domain)
 		else
 			places[c].flags |= TTM_PL_FLAG_TOPDOWN;
 
-		if (flags & LOONGGPU_GEM_CREATE_VRAM_CONTIGUOUS)
+		if (flags & LOONGGPU_GEM_CREATE_VRAM_CONTIGUOUS || adev->family_type == CHIP_NO_GPU)
 			places[c].flags |= TTM_PL_FLAG_CONTIGUOUS;
 		c++;
 	}
@@ -811,7 +813,7 @@ struct loonggpu_bo *loonggpu_bo_ref(struct loonggpu_bo *bo)
 	if (bo == NULL)
 		return NULL;
 
-	ttm_bo_get(&bo->tbo);
+	kref_get(&bo->tbo.kref);
 	return bo;
 }
 
@@ -1335,6 +1337,54 @@ void loonggpu_bo_fence(struct loonggpu_bo *bo, struct dma_fence *fence,
 		lg_dma_resv_add_shared_fence(resv, fence);
 	else
 		lg_dma_resv_add_excl_fence(resv, fence);
+}
+
+/**
+ * loonggpu_bo_sync_wait_resv - Wait for BO reservation fences
+ *
+ * @adev: loonggpu device pointer
+ * @resv: reservation object to sync to
+ * @sync_mode: synchronization mode
+ * @owner: fence owner
+ * @intr: Whether the wait is interruptible
+ *
+ * Extract the fences from the reservation object and waits for them to finish.
+ *
+ * Returns:
+ * 0 on success, errno otherwise.
+ */
+int loonggpu_bo_sync_wait_resv(struct loonggpu_device *adev, lg_dma_resv_t *resv,
+			     enum loonggpu_sync_mode sync_mode, void *owner,
+			     bool intr, bool explicit)
+{
+	struct loonggpu_sync sync;
+	int r;
+
+	loonggpu_sync_create(&sync);
+	lg_loonggpu_sync_resv(adev, &sync, resv, sync_mode, owner, explicit);
+	r = loonggpu_sync_wait(&sync, intr);
+	loonggpu_sync_free(&sync);
+
+	return r;
+}
+
+/**
+ * loonggpu_bo_sync_wait - Wrapper for loonggpu_bo_sync_wait_resv
+ * @bo: buffer object to wait for
+ * @owner: fence owner
+ * @intr: Whether the wait is interruptible
+ *
+ * Wrapper to wait for fences in a BO.
+ * Returns:
+ * 0 on success, errno otherwise.
+ */
+int loonggpu_bo_sync_wait(struct loonggpu_bo *bo, enum loonggpu_sync_mode sync_mode,
+			void *owner, bool intr, bool explicit)
+{
+	struct loonggpu_device *adev = loonggpu_ttm_adev(bo->tbo.bdev);
+
+	return loonggpu_bo_sync_wait_resv(adev, lg_tbo_to_resv(&bo->tbo),
+					sync_mode, owner, intr, explicit);
 }
 
 /**

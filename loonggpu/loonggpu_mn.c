@@ -85,10 +85,10 @@ static void loonggpu_mn_destroy(struct work_struct *work)
 	mutex_unlock(&adev->mn_lock);
 #if defined(LG_MMU_NOTIFIER_UNREGISTER_NO_RELEASE)
 	mmu_notifier_unregister_no_release(&amn->mn, amn->mm);
+	kfree(amn);
 #else
 	mmu_notifier_put(&amn->mn);
 #endif
-	kfree(amn);
 }
 
 /**
@@ -317,7 +317,8 @@ static void loonggpu_mn_invalidate_range_end(struct mmu_notifier *mn,
 
 static void loonggpu_mn_free_notifier(struct mmu_notifier *subscription)
 {
-	return;
+	struct loonggpu_mn *amn = container_of(subscription, struct loonggpu_mn, mn);
+	kfree(amn);
 }
 
 static const struct mmu_notifier_ops loonggpu_mn_ops[] = {

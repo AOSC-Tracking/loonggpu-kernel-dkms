@@ -56,6 +56,14 @@ extern "C" {
 #define DRM_LOONGGPU_SCHED			0x15
 #define DRM_LOONGGPU_HWSEMA_OP		0x16
 
+#define DRM_LOONGGPU_LAYER_DISPLAY	0x17
+#define DRM_LOONGGPU_LAYER_ZOOM		0x18
+#define DRM_LOONGGPU_LAYER_TILE		0x19
+#define DRM_LOONGGPU_LAYER_ROTATE	0x1a
+#define DRM_LOONGGPU_VIDEO_GAMMA	0x20
+#define DRM_LOONGGPU_GET_META		0x21
+#define DRM_LOONGGPU_SET_META		0x22
+
 #define DRM_IOCTL_LOONGGPU_GEM_CREATE	DRM_IOWR(DRM_COMMAND_BASE + DRM_LOONGGPU_GEM_CREATE, union drm_loonggpu_gem_create)
 #define DRM_IOCTL_LOONGGPU_GEM_MMAP	DRM_IOWR(DRM_COMMAND_BASE + DRM_LOONGGPU_GEM_MMAP, union drm_loonggpu_gem_mmap)
 #define DRM_IOCTL_LOONGGPU_CTX		DRM_IOWR(DRM_COMMAND_BASE + DRM_LOONGGPU_CTX, union drm_loonggpu_ctx)
@@ -73,6 +81,14 @@ extern "C" {
 #define DRM_IOCTL_LOONGGPU_FENCE_TO_HANDLE DRM_IOWR(DRM_COMMAND_BASE + DRM_LOONGGPU_FENCE_TO_HANDLE, union drm_loonggpu_fence_to_handle)
 #define DRM_IOCTL_LOONGGPU_SCHED		DRM_IOW(DRM_COMMAND_BASE + DRM_LOONGGPU_SCHED, union drm_loonggpu_sched)
 #define DRM_IOCTL_LOONGGPU_HWSEMA_OP	DRM_IOWR(DRM_COMMAND_BASE + DRM_LOONGGPU_HWSEMA_OP, struct drm_loonggpu_hw_sema)
+
+#define DRM_IOCTL_LOONGGPU_LAYER_DISPLAY	DRM_IOWR(DRM_COMMAND_BASE + DRM_LOONGGPU_LAYER_DISPLAY, struct drm_loonggpu_layer_display)
+#define DRM_IOCTL_LOONGGPU_LAYER_ZOOM	DRM_IOWR(DRM_COMMAND_BASE + DRM_LOONGGPU_LAYER_ZOOM, struct drm_loonggpu_layer_zoom)
+#define DRM_IOCTL_LOONGGPU_LAYER_TILE	DRM_IOWR(DRM_COMMAND_BASE + DRM_LOONGGPU_LAYER_TILE, struct drm_loonggpu_layer_tile)
+#define DRM_IOCTL_LOONGGPU_LAYER_ROTATE	DRM_IOWR(DRM_COMMAND_BASE + DRM_LOONGGPU_LAYER_ROTATE, struct drm_loonggpu_layer_rotate)
+#define DRM_IOCTL_LOONGGPU_VIDEO_GAMMA	DRM_IOWR(DRM_COMMAND_BASE + DRM_LOONGGPU_VIDEO_GAMMA, struct drm_loonggpu_video_gamma)
+#define DRM_IOCTL_LOONGGPU_GET_META	DRM_IO(DRM_COMMAND_BASE + DRM_LOONGGPU_GET_META)
+#define DRM_IOCTL_LOONGGPU_SET_META	DRM_IO(DRM_COMMAND_BASE + DRM_LOONGGPU_SET_META)
 
 /**
  * DOC: memory domains
@@ -1002,6 +1018,61 @@ struct drm_loonggpu_hw_sema {
     __u32 ctx_id;
      /*ops*/
     __u32 ops;
+};
+
+struct drm_loonggpu_layer_display {
+	uint32_t layer_num;
+	uint32_t format;
+	uint32_t l_width;
+	uint32_t l_height;
+	uint32_t fb_id;
+	uint32_t crtc_id;
+};
+
+struct drm_loonggpu_video_zoom {
+	uint32_t layer_num;
+	uint32_t sam_width;
+	uint32_t sam_height;
+	uint32_t back_width;
+	uint32_t back_height;
+	uint32_t l_width;
+	uint32_t l_height;
+	uint32_t du;
+	uint32_t dv;
+	uint32_t crtc_id;
+};
+
+struct drm_loonggpu_layer_zoom {
+	uint32_t layer_num;
+	uint32_t sam_width;
+	uint32_t sam_height;
+	uint32_t l_width;
+	uint32_t l_height;
+	uint32_t du;
+	uint32_t dv;
+	uint32_t crtc_id;
+};
+
+struct drm_loonggpu_video_gamma {
+	uint32_t crtc_id;
+	uint32_t gamma_index;
+	uint32_t gamma_rgb[1024];
+};
+
+struct drm_loonggpu_layer_tile {
+	uint32_t layer_num;
+	uint32_t tile_mode;
+	uint32_t l_width;
+	uint32_t l_height;
+	uint32_t crtc_id;
+};
+
+struct drm_loonggpu_layer_rotate {
+	uint32_t layer_num;
+	uint32_t rotate_angle;
+	uint32_t l_width;
+	uint32_t l_height;
+	uint32_t crtc_id;
 };
 
 /*

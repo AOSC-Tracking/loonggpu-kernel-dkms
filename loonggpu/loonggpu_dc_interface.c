@@ -158,3 +158,19 @@ void dc_interface_i2c_set(struct loonggpu_dc_crtc *crtc, bool use_gpio_i2c)
 		}
 	}
 }
+
+bool dc_interface_status_changed(struct drm_connector *connector, struct loonggpu_dc_crtc *crtc)
+{
+	enum drm_connector_status old_status;
+	struct loonggpu_dc *dc = crtc->dc;
+
+	if (dc->hw_ops->interface_status_changed) {
+		crtc->timing->clock = 0;
+		return dc->hw_ops->interface_status_changed(connector, crtc);
+	}
+
+	old_status = connector->status;
+	connector->status = drm_helper_probe_detect(connector, NULL, false);
+
+	return  old_status != connector->status;
+}

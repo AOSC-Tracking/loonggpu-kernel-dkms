@@ -6,6 +6,7 @@
 #include "loonggpu_dc_reg.h"
 #include "loonggpu_dc_resource.h"
 #include "loonggpu_helper.h"
+#include "loonggpu_dc_vbios.h"
 
 static const dp_bandwidth_entry_t bw_table[] = {
 	{ 162000 * 1 / 3, DP_PHY_1P62G, DP_PHY_X1 , DP_LINK_1P62G, DP_LINK_X1},
@@ -213,11 +214,131 @@ unsigned int aux_config(struct loonggpu_device *adev, unsigned int rd_wr, aux_ms
 	return 0;
 }
 
-static void dp_recheck_bandwidth(struct loonggpu_device *adev, u32 clock, dp_feature_t *dp_param, int intf)
+
+static void dp_recheck_bandwidth(struct loonggpu_device *adev, struct dc_timing_info *timing, dp_feature_t *dp_param, int intf)
+{
+	unsigned int i, aux_rate = 0, aux_lane = 0, tu_size = 0;
+	unsigned int link_speed = 0, fix_pixclk = 0, allow_fix = 0;
+	unsigned int check_flag = 0;
+	unsigned int max_tu_val = 61;
+	unsigned int vback_porch = 0;
+	aux_msg_t aux_data;
+	int max_rate;
+	int max_lane;
+
+	aux_data.addr = 0x1;
+	aux_data.size = 0;
+	aux_data.data_low = 0;
+	aux_data.data_high = 0;
+	aux_config(adev, READ, aux_data, intf);
+	aux_rate = dc_readl(adev, gdc_reg->dp_reg[intf].aux_monitor1);
+
+	aux_data.addr = 0x2;
+	aux_data.size = 0;
+	aux_data.data_low = 0;
+	aux_data.data_high = 0;
+	aux_config(adev, READ, aux_data, intf);
+	aux_lane = dc_readl(adev, gdc_reg->dp_reg[intf].aux_monitor1);
+
+	max_rate = get_max_rate(aux_rate);
+	max_lane = get_max_lane(aux_lane);
+
+	dp_param->fixed_vsync_width = 0;
+	dp_param->dp_pixclk = timing->clock;
+	vback_porch = timing->vtotal - timing->vsync_start;
+
+	for (i = 0; i < ARRAY_SIZE(bw_table); ) {
+		const dp_bandwidth_entry_t *bw = &bw_table[i];
+
+		if (bw->bw < timing->clock || rate_lane_unsupported(max_rate, max_lane, i)) {
+			i++;
+			continue;
+		}
+
+		dp_param->dp_phy_rate  = bw_table[i].phy_rate;
+		dp_param->dp_phy_xlane = bw_table[i].phy_lane;
+		dp_param->dp_link_rate = bw_table[i].link_rate;
+		dp_param->dp_link_xlane = bw_table[i].link_lane;
+
+		/* link speed */
+		switch (dp_param->dp_link_rate) {
+		case DP_LINK_1P62G:
+			link_speed = 162000;
+			break;
+		case DP_LINK_2P7G:
+			link_speed = 270000;
+			break;
+		case DP_LINK_5P4G:
+			link_speed = 540000;
+			break;
+		default:
+			break;
+		}
+
+		/* Calculate and check fixed vsync width */
+		dp_param->fixed_vsync_width = (u32)((u64)65536 * 2 * 	\
+							timing->clock / link_speed / timing->htotal);
+
+		if (dp_param->fixed_vsync_width >= vback_porch) {
+			if ((max_rate * max_lane != bw_table[i].bw * 3) && (!allow_fix)) {
+				i++;
+				continue;
+			}
+
+			if (allow_fix) {
+				/* second-pass fix */
+				dp_param->fixed_vsync_width = vback_porch - 1;
+				fix_pixclk = (u32)((u64)dp_param->fixed_vsync_width * timing->htotal *
+					link_speed / 65536 / 2);
+
+				if (fix_pixclk < (unsigned int)(timing->clock - 1) && fix_pixclk)
+					dp_param->dp_pixclk = fix_pixclk;
+			}
+		}
+
+		tu_size = ((dp_param->dp_pixclk * 64) / bw_table[i].bw) + 1;
+
+		if ((tu_size <= max_tu_val) && (dp_param->fixed_vsync_width < vback_porch)) {
+			check_flag = 1;
+			break;
+		}
+
+		if ((max_rate * max_lane == bw_table[i].bw * 3) && allow_fix) {
+			dp_param->dp_pixclk = (max_tu_val * bw_table[i].bw) / 64;
+
+			if (fix_pixclk < (dp_param->dp_pixclk - 1) && fix_pixclk)
+				dp_param->dp_pixclk = fix_pixclk;
+
+			check_flag = 1;
+			break;
+		}
+
+		i++;
+		/* first pass failed, retry with fix enabled */
+		if ((max_rate * max_lane == bw_table[i-1].bw * 3) && !check_flag && !allow_fix) {
+			allow_fix = 1;
+			i = 0;
+		}
+	}
+
+	timing->fixed_vsync_width = dp_param->fixed_vsync_width;
+
+	DRM_INFO("index-%d  dp_phy_rate: %d, dp_phy_xlane: %d, dp_link_rate: %d dp_pixclk: %d\n", intf, dp_param->dp_phy_rate,  \
+				dp_param->dp_phy_xlane, dp_param->dp_link_rate, dp_param->dp_pixclk);
+
+	if (check_flag)
+		DRM_INFO("This pclk is within the normal range.\n");
+	else
+		DRM_INFO("NOTE: This pclk is not within the normal range!!\n");
+
+	return;
+}
+
+static void edp_converters_recheck_bandwidth(struct loonggpu_device *adev, u32 clock, dp_feature_t *dp_param, int intf)
 {
 	unsigned int i, aux_rate = 0, aux_lane = 0, tu_size = 0;
 	unsigned int check_flag = 0;
-	unsigned int max_tu_val = 55;
+	unsigned int max_tu_val = 61;
 	aux_msg_t aux_data;
 	uint64_t tmp;
 	int max_rate;
@@ -293,6 +414,11 @@ static void dp_phy_init(struct loonggpu_device *adev, dp_feature_t dp_param, int
 	value = dc_readl(adev, gdc_reg->dp_reg[intf].phy_cfg0 + 0x2c);
 	value |= (0xf << 6);
 	dc_writel(adev, gdc_reg->dp_reg[intf].phy_cfg0 + 0x2c, value);
+
+	/* make sure that vswing and preemp settings take effect immediately */
+	value = dc_readl(adev, gdc_reg->dp_reg[intf].phy_cfg0);
+	value |= (0x1 << 31);
+	dc_writel(adev, gdc_reg->dp_reg[intf].phy_cfg0, value);
 
 	/* set phy rate & lane */
 	value = dc_readl(adev, gdc_reg->dp_reg[intf].phy_cfg0);
@@ -402,7 +528,7 @@ static void dp_link_init(struct loonggpu_device *adev, dp_feature_t dp_param, in
 
 	/* dp MSA */
 	value = dc_readl(adev,  gdc_reg->dp_reg[intf].sdp_cfg0);
-	value |= (0x1 << 30);
+	value |= ((0x1 << 30) | 0xf);
 	dc_writel(adev,  gdc_reg->dp_reg[intf].sdp_cfg0, value);
 
 	value = ((timing->vtotal - timing->vsync_start) << 16) | (timing->htotal - timing->hsync_start);
@@ -796,7 +922,15 @@ void ls2k3000_dp_pll_set(struct loonggpu_dc_crtc *crtc, int intf, struct dc_timi
 	dc_writel(adev, gdc_reg->dp_reg[intf].link_cfg0, link_cfg0);
 	dc_writel(adev, gdc_reg->crtc_reg[intf].cfg, 0);
 
-	dp_recheck_bandwidth(adev, timing->clock, &recheck_dp_param, intf);
+	link_cfg0 = dc_readl(adev, gdc_reg->dp_reg[intf].link_cfg0);
+	link_cfg0 |= 0x1;
+	dc_writel(adev, gdc_reg->dp_reg[intf].link_cfg0, link_cfg0);
+
+	if (is_ls2k3000_laptop(crtc))
+		dp_recheck_bandwidth(adev, timing, &recheck_dp_param, intf);
+	else
+		edp_converters_recheck_bandwidth(adev, timing->clock, &recheck_dp_param, intf);
+
 	dp_phy_init(adev, recheck_dp_param, intf, 0, 0);
 	dp_link_init(adev, recheck_dp_param, intf, timing);
 	dp_soft_training(adev, recheck_dp_param, intf);
@@ -906,6 +1040,8 @@ int ls2k3000_dp_init(struct loonggpu_dc_crtc *crtc, int intf)
 	struct loonggpu_device *adev = crtc->dc->adev;
 
 	dp_aux_init(adev, intf);
+	ls2k3000_dp_noaudio_init(crtc, intf);
+
 	return ls2k3000_dp_aux_detect_status(crtc, intf);
 }
 
@@ -1042,10 +1178,72 @@ void l2k3000_dp_first_hdp_detect(struct loonggpu_dc_crtc *crtc, int intf)
 
 int ls2k3000_dp_audio_init(struct loonggpu_dc_crtc *crtc, int intf)
 {
+	ls2k3000_dp_noaudio_init(crtc, intf);
 	return 0;
 }
 
 int ls2k3000_dp_noaudio_init(struct loonggpu_dc_crtc *crtc, int intf)
+{
+	struct loonggpu_device *adev = crtc->dc->adev;
+	u32 value;
+
+	value = dc_readl(adev,  gdc_reg->dp_reg[intf].sdp_cfg5);
+	value &= ~(0x1 << 31);
+	dc_writel(adev,  gdc_reg->dp_reg[intf].sdp_cfg5, value);
+
+	value = dc_readl(adev,  gdc_reg->dp_reg[intf].sdp_cfg7);
+	value &= ~(0x3 << 30);
+	dc_writel(adev,  gdc_reg->dp_reg[intf].sdp_cfg7, value);
+
+	return 0;
+}
+
+bool is_ls2k3000_laptop(struct loonggpu_dc_crtc *crtc)
+{
+	struct connector_resource *connector_resource;
+	struct loonggpu_dc *dc = crtc->dc;
+
+	connector_resource = dc_get_vbios_resource(dc->vbios,
+			0, LOONGGPU_RESOURCE_CONNECTOR);
+
+	if (connector_resource && connector_resource->type == DRM_MODE_CONNECTOR_eDP)
+		return true;
+
+	return false;
+}
+
+/* 9A1000 */
+int ls9a1000_dp_init(struct loonggpu_dc_crtc *crtc, int intf)
+{
+	return 0;
+}
+
+void ls9a1000_dp_pll_set(struct loonggpu_dc_crtc *crtc, int intf, struct dc_timing_info *timing)
+{
+	return;
+}
+
+bool ls9a1000_dp_enable(struct loonggpu_dc_crtc *crtc, int intf, bool enable)
+{
+	return true;
+}
+
+void ls9a1000_dp_suspend(struct loonggpu_dc_crtc *crtc, int intf)
+{
+	return;
+}
+
+int ls9a1000_dp_resume(struct loonggpu_dc_crtc *crtc, int intf)
+{
+	return 0;
+}
+
+int ls9a1000_dp_audio_init(struct loonggpu_dc_crtc *crtc, int intf)
+{
+	return 0;
+}
+
+int ls9a1000_dp_noaudio_init(struct loonggpu_dc_crtc *crtc, int intf)
 {
 	return 0;
 }

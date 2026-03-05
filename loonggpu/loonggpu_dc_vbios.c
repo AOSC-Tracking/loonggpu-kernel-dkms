@@ -1262,6 +1262,196 @@ void dc_vbios_show(struct loonggpu_vbios *vbios)
 	}
 }
 
+static bool dc_vbios_default(struct loonggpu_vbios *vbios)
+{
+	struct header_resource *header;
+	struct crtc_resource *crtc_0;
+	struct encoder_resource *encoder_0;
+	struct connector_resource *connector_0;
+	struct gpu_resource *gpu_resource;
+
+	DRM_INFO("Add vbios default!!\n");
+
+	header = kvmalloc(sizeof(*header), GFP_KERNEL);
+	memcpy(header->oem_product, "LS9A1000", 32);
+	memcpy(header->oem_vendor, "LOONGGPU", 32);
+	memcpy(header->name, "Loongson-VBIOS", 16);
+	header->base.type = LOONGGPU_RESOURCE_HEADER;
+	header->links = 1;
+	header->max_planes = 4;
+	header->ver_majro = 0;
+	header->ver_minor = 5;
+	list_add_tail(&header->base.node, &vbios->resource_list);
+
+	crtc_0 = kvmalloc(sizeof(*crtc_0), GFP_KERNEL);
+	crtc_0->base.link = 0;
+	crtc_0->base.type = LOONGGPU_RESOURCE_CRTC;
+	crtc_0->feature = 0; //feature这个变量现在没有用到,可以考虑增加接口类型、数量等信息
+	crtc_0->crtc_id = 2; //video的硬件编号,fpga的video-2是vga接口
+	crtc_0->encoder_id = 0;
+	crtc_0->max_freq = 340000;
+	crtc_0->max_width = 4096;
+	crtc_0->max_height = 4096;
+	crtc_0->is_vb_timing = 0;
+	list_add_tail(&crtc_0->base.node, &vbios->resource_list);
+
+	connector_0 = kvmalloc(sizeof(*connector_0), GFP_KERNEL);
+	connector_0->base.link = 0;
+	connector_0->base.type = LOONGGPU_RESOURCE_CONNECTOR;
+	connector_0->feature = 0; //可以考虑在这个变量上增加复用的接口及其类型
+	connector_0->i2c_id = 0;
+	connector_0->type = DRM_MODE_CONNECTOR_VGA;
+	connector_0->hotplug = FORCE_ON;
+	connector_0->edid_method = via_encoder; //在fpga上用9A的get_modes接口
+	connector_0->irq_gpio = 0;
+	connector_0->gpio_placement = 0;
+	list_add_tail(&connector_0->base.node, &vbios->resource_list);
+
+	encoder_0 = kvmalloc(sizeof(*encoder_0), GFP_KERNEL);
+	encoder_0->base.link = 0;
+	encoder_0->base.type = LOONGGPU_RESOURCE_ENCODER;
+	encoder_0->feature = 0;
+	encoder_0->i2c_id = 0;
+	encoder_0->connector_id = 0;
+	encoder_0->type = 1;
+	encoder_0->config_type = 3;
+	encoder_0->chip_addr = 0;
+	encoder_0->chip = ENCODER_CHIP_ID_INTERNAL_DVO;
+	list_add_tail(&encoder_0->base.node, &vbios->resource_list);
+#if 0
+	struct crtc_resource *crtc_1;
+	struct crtc_resource *crtc_2;
+	struct crtc_resource *crtc_3;
+	struct encoder_resource *encoder_1;
+	struct encoder_resource *encoder_2;
+	struct encoder_resource *encoder_3;
+	struct connector_resource *connector_1;
+	struct connector_resource *connector_2;
+	struct connector_resource *connector_3;
+
+	crtc_1 = kvmalloc(sizeof(*crtc_1), GFP_KERNEL);
+	crtc_1->base.link = 1;
+	crtc_1->base.type = LOONGGPU_RESOURCE_CRTC;
+	crtc_1->feature = 0;
+	crtc_1->crtc_id = 1;
+	crtc_1->encoder_id = 1;
+	crtc_1->max_freq = 340000;
+	crtc_1->max_width = 4096;
+	crtc_1->max_height = 4096;
+	crtc_1->is_vb_timing = 0;
+	list_add_tail(&crtc_1->base.node, &vbios->resource_list);
+
+	connector_1 = kvmalloc(sizeof(*connector_1), GFP_KERNEL);
+	connector_1->base.link = 1;
+	connector_1->base.type = LOONGGPU_RESOURCE_CONNECTOR;
+	connector_1->feature = 0;
+	connector_1->i2c_id = 1;
+	connector_1->type = DRM_MODE_CONNECTOR_DisplayPort;
+	connector_1->hotplug = FORCE_ON;
+	connector_1->edid_method = via_encoder;
+	connector_1->irq_gpio = 0;
+	connector_1->gpio_placement = 0;
+	list_add_tail(&connector_1->base.node, &vbios->resource_list);
+
+	encoder_1 = kvmalloc(sizeof(*encoder_1), GFP_KERNEL);
+	encoder_1->base.link = 1;
+	encoder_1->base.type = LOONGGPU_RESOURCE_ENCODER;
+	encoder_1->feature = 0;
+	encoder_1->i2c_id = 1;
+	encoder_1->connector_id = 1;
+	encoder_1->type = 2;
+	encoder_1->config_type = 3;
+	encoder_1->chip_addr = 0;
+	encoder_1->chip = ENCODER_CHIP_ID_INTERNAL_DP;
+	list_add_tail(&encoder_1->base.node, &vbios->resource_list);
+
+	crtc_2 = kvmalloc(sizeof(*crtc_2), GFP_KERNEL);
+	crtc_2->base.link = 2;
+	crtc_2->base.type = LOONGGPU_RESOURCE_CRTC;
+	crtc_2->feature = 0;
+	crtc_2->crtc_id = 0;
+	crtc_2->encoder_id = 2;
+	crtc_2->max_freq = 340000;
+	crtc_2->max_width = 4096;
+	crtc_2->max_height = 4096;
+	crtc_2->is_vb_timing = 0;
+	list_add_tail(&crtc_2->base.node, &vbios->resource_list);
+
+	connector_2 = kvmalloc(sizeof(*connector_2), GFP_KERNEL);
+	connector_2->base.link = 2;
+	connector_2->base.type = LOONGGPU_RESOURCE_CONNECTOR;
+	connector_2->feature = 0;
+	connector_2->i2c_id = 2;
+	connector_2->type = DRM_MODE_CONNECTOR_HDMIA;
+	connector_2->hotplug = IRQ;
+	connector_2->edid_method = via_i2c;
+	connector_2->irq_gpio = 0;
+	connector_2->gpio_placement = 0;
+	list_add_tail(&connector_2->base.node, &vbios->resource_list);
+
+	encoder_2 = kvmalloc(sizeof(*encoder_2), GFP_KERNEL);
+	encoder_2->base.link = 2;
+	encoder_2->base.type = LOONGGPU_RESOURCE_ENCODER;
+	encoder_2->feature = 0;
+	encoder_2->i2c_id = 2;
+	encoder_2->connector_id = 2;
+	encoder_2->type = 2;
+	encoder_2->config_type = 3;
+	encoder_2->chip_addr = 0;
+	encoder_2->chip = ENCODER_CHIP_ID_INTERNAL_HDMI;
+	list_add_tail(&encoder_2->base.node, &vbios->resource_list);
+
+	crtc_3 = kvmalloc(sizeof(*crtc_3), GFP_KERNEL);
+	crtc_3->base.link = 3;
+	crtc_3->base.type = LOONGGPU_RESOURCE_CRTC;
+	crtc_3->feature = 0;
+	crtc_3->crtc_id = 3;
+	crtc_3->encoder_id = 3;
+	crtc_3->max_freq = 340000;
+	crtc_3->max_width = 4096;
+	crtc_3->max_height = 4096;
+	crtc_3->is_vb_timing = 0;
+	list_add_tail(&crtc_3->base.node, &vbios->resource_list);
+
+	connector_3 = kvmalloc(sizeof(*connector_3), GFP_KERNEL);
+	connector_3->base.link = 3;
+	connector_3->base.type = LOONGGPU_RESOURCE_CONNECTOR;
+	connector_3->feature = 0;
+	connector_3->i2c_id = 3;
+	connector_3->type = DRM_MODE_CONNECTOR_DisplayPort;
+	connector_3->hotplug = IRQ;
+	connector_3->edid_method = via_i2c;
+	connector_3->irq_gpio = 0;
+	connector_3->gpio_placement = 0;
+	list_add_tail(&connector_3->base.node, &vbios->resource_list);
+
+	encoder_3 = kvmalloc(sizeof(*encoder_3), GFP_KERNEL);
+	encoder_3->base.link = 3;
+	encoder_3->base.type = LOONGGPU_RESOURCE_ENCODER;
+	encoder_3->feature = 0;
+	encoder_3->i2c_id = 3;
+	encoder_3->connector_id = 3;
+	encoder_3->type = 2;
+	encoder_3->config_type = 3;
+	encoder_3->chip_addr = 0;
+	encoder_3->chip = ENCODER_CHIP_ID_INTERNAL_DP;
+	list_add_tail(&encoder_3->base.node, &vbios->resource_list);
+#endif
+	gpu_resource = kvmalloc(sizeof(*gpu_resource), GFP_KERNEL);
+	gpu_resource->base.link = 0;
+	gpu_resource->base.type = LOONGGPU_RESOURCE_GPU;
+	gpu_resource->vram_type = DDR4;
+	gpu_resource->bit_width = 192;
+	gpu_resource->cap = 2560;
+	gpu_resource->count_freq = 1000;
+	gpu_resource->freq = 1000;
+	gpu_resource->shaders_num = 2560;
+	gpu_resource->shaders_freq = 500;
+	list_add_tail(&gpu_resource->base.node, &vbios->resource_list);
+
+	return true;
+}
+
 bool dc_vbios_init(struct loonggpu_dc *dc)
 {
 	struct vbios_info *header;
@@ -1286,7 +1476,10 @@ bool dc_vbios_init(struct loonggpu_dc *dc)
 		header = dc->vbios->vbios_ptr;
 	}
 
-	ret = dc_vbios_create(dc->vbios);
+	if (dc->adev->chip == dev_9a1000)
+		ret = dc_vbios_default(dc->vbios);
+	else
+		ret = dc_vbios_create(dc->vbios);
 	if (ret == false) {
 		pr_err("%s %d failed \n", __func__, __LINE__);
 		kvfree(dc->vbios);

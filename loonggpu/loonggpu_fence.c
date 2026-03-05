@@ -255,7 +255,7 @@ void loonggpu_fence_process(struct loonggpu_ring *ring)
  */
 static void loonggpu_fence_fallback(struct timer_list *t)
 {
-	struct loonggpu_ring *ring = from_timer(ring, t,
+	struct loonggpu_ring *ring = lg_from_timer(ring, t,
 					      fence_drv.fallback_timer);
 
 	loonggpu_fence_process(ring);
@@ -471,7 +471,7 @@ void loonggpu_fence_driver_fini(struct loonggpu_device *adev)
 		loonggpu_irq_put(adev, ring->fence_drv.irq_src,
 			       ring->fence_drv.irq_type);
 		drm_sched_fini(&ring->sched);
-		del_timer_sync(&ring->fence_drv.fallback_timer);
+		lg_del_timer_sync(&ring->fence_drv.fallback_timer);
 		for (j = 0; j <= ring->fence_drv.num_fences_mask; ++j)
 			dma_fence_put(ring->fence_drv.fences[j]);
 		kfree(ring->fence_drv.fences);

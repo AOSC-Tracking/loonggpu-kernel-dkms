@@ -25,7 +25,7 @@ struct loonggpu_encoder;
 #define to_loonggpu_plane(x)	container_of(x, struct loonggpu_plane, base)
 
 #define LOONGGPU_MAX_HPD_PINS 3
-#define LOONGGPU_MAX_CRTCS 2
+#define LOONGGPU_MAX_CRTCS 4
 #define LOONGGPU_MAX_PLANES 4
 
 enum loonggpu_rmx_type {
@@ -127,14 +127,15 @@ struct loonggpu_connector {
 	enum dc_irq_source irq_source_i2c;
 	enum dc_irq_source irq_source_hpd[MAX_DC_INTERFACES];
 	enum dc_irq_source irq_source_vga_hpd;
+	bool special_display;
 };
 
 struct loonggpu_mode_info {
 	bool mode_config_initialized;
 	struct loonggpu_crtc *crtcs[LOONGGPU_MAX_CRTCS];
 	struct loonggpu_plane *planes[LOONGGPU_MAX_PLANES];
-	struct loonggpu_connector *connectors[2];
-	struct loonggpu_encoder *encoders[2];
+	struct loonggpu_connector *connectors[4];
+	struct loonggpu_encoder *encoders[4];
 	struct loonggpu_backlight *backlights[2];
 	/* underscan */
 	struct drm_property *underscan_property;
@@ -167,6 +168,7 @@ int loonggpu_display_get_crtc_scanoutpos(struct drm_device *dev,
 int loonggpu_display_framebuffer_init(struct drm_device *dev,
 				   struct loonggpu_framebuffer *rfb,
 				   const struct drm_mode_fb_cmd2 *mode_cmd,
+				   const struct drm_format_info *info,
 				   struct drm_gem_object *obj);
 
 int loonggpu_fbdev_init(struct loonggpu_device *adev);
@@ -176,5 +178,5 @@ int loonggpu_fbdev_total_size(struct loonggpu_device *adev);
 bool loonggpu_fbdev_robj_is_fb(struct loonggpu_device *adev, struct loonggpu_bo *robj);
 int loonggpu_align_pitch(struct loonggpu_device *adev, int width, int bpp, bool tiled);
 int loonggpu_display_modeset_create_props(struct loonggpu_device *adev);
-
+int loonggpufb_create(struct drm_fb_helper *helper, struct drm_fb_helper_surface_size *sizes);
 #endif /* __LOONGGPU_MODE_H__ */

@@ -44,8 +44,15 @@ static int pm_map_process(struct packet_manager *pm,
 			lower_32_bits(vm_page_table_base_addr);
 	packet->pgd_base_addr_hi =
 			upper_32_bits(vm_page_table_base_addr);
+
+	if (pdd->dev->adev->family_type < CHIP_LG210)
+		return 0;
+
 	packet->tba_lo = lower_32_bits(qpd->tba_addr);
 	packet->tba_hi = upper_32_bits(qpd->tba_addr);
+	packet->tma_lo = lower_32_bits(qpd->tma_addr);
+	packet->tma_hi = upper_32_bits(qpd->tma_addr);
+	packet->dbg_flags = pdd->process->debugger_process ? 0x1 : 0;
 
 	return 0;
 }

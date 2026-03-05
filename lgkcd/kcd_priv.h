@@ -776,12 +776,29 @@ struct kcd_process {
 	 */
 	unsigned long last_restore_timestamp;
 
+	/* Indicates device process is debug attached with reserved vmid. */
+	bool debug_trap_enabled;
+
+	/* per-process-per device debug event fd file */
+	struct file *dbg_ev_file;
+
+	/* If the process is a kcd debugger, we need to know so we can clean
+	 * up at exit time.  If a process enables debugging on itself, it does
+	 * its own clean-up, so we don't set the flag here.  We track this by
+	 * counting the number of processes this process is debugging.
+	 */
+	atomic_t debugged_process_count;
+
+	/* If the process is a debugged, this is the debugger process */
+	struct kcd_process *debugger_process;
+
 	/* Kobj for our procfs */
 	struct kobject *kobj;
 	struct kobject *kobj_queues;
 	struct attribute attr_pasid;
 
 	/* Exception code enable mask and status */
+	uint64_t exception_enable_mask;
 	uint64_t exception_status;
 
 	/* Used to drain stale interrupts */
@@ -793,6 +810,18 @@ struct kcd_process {
 
 	bool xnack_enabled;
 
+	/* Work area for debugger event writer worker. */
+	struct work_struct debug_event_workarea;
+
+	/* Tracks debug per-vmid request for debug flags */
+	bool dbg_flags;
+
+	atomic_t poison;
+
+	/* Tracks runtime enable status */
+	struct semaphore runtime_enable_sema;
+	bool is_runtime_retry;
+	struct kcd_runtime_info runtime_info;
 	/* Use for delayed freeing of kcd_process structure */
 	struct rcu_head	rcu;
 };
@@ -969,6 +998,11 @@ void kcd_process_close_interrupt_drain(unsigned int pasid);
 /* lgkcd Apertures */
 int kcd_init_apertures(struct kcd_process *process);
 
+void kcd_process_set_trap_handler(struct qcm_process_device *qpd,
+				  uint64_t tba_addr,
+				  uint64_t tma_addr);
+void kcd_process_set_trap_debug_flag(struct qcm_process_device *qpd,
+				     bool enabled);
 
 int kcd_process_get_queue_info(struct kcd_process *p,
 			       uint32_t *num_queues,
@@ -987,6 +1021,7 @@ void device_queue_manager_uninit(struct device_queue_manager *dqm);
 struct kernel_queue *kernel_queue_init(struct kcd_node *dev,
 					enum kcd_queue_type type);
 void kernel_queue_uninit(struct kernel_queue *kq, bool hanging);
+int kcd_dqm_evict_pasid(struct device_queue_manager *dqm, u32 pasid);
 
 /* Process Queue Manager */
 struct process_queue_node {
@@ -1014,6 +1049,11 @@ struct kernel_queue *pqm_get_kernel_queue(struct process_queue_manager *pqm,
 						unsigned int qid);
 struct queue *pqm_get_user_queue(struct process_queue_manager *pqm,
 						unsigned int qid);
+int pqm_get_queue_snapshot(struct process_queue_manager *pqm,
+			   uint64_t exception_clear_mask,
+			   void __user *buf,
+			   int *num_qss_entries,
+			   uint32_t *entry_size);
 
 int lgkcd_fence_wait_timeout(uint64_t *fence_addr,
 			      uint64_t fence_value,

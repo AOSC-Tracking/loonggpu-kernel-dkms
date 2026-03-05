@@ -40,9 +40,7 @@ int loonggpu_pasid_alloc(unsigned int bits)
 	int pasid = -EINVAL;
 
 	for (bits = min(bits, 31U); bits > 0; bits--) {
-		pasid = ida_simple_get(&loonggpu_pasid_ida,
-				       1U << (bits - 1), 1U << bits,
-				       GFP_KERNEL);
+		pasid = lg_ida_simple_get(&loonggpu_pasid_ida, bits);
 		if (pasid != -ENOSPC)
 			break;
 	}
@@ -60,7 +58,7 @@ int loonggpu_pasid_alloc(unsigned int bits)
 void loonggpu_pasid_free(unsigned int pasid)
 {
 	trace_loonggpu_pasid_freed(pasid);
-	ida_simple_remove(&loonggpu_pasid_ida, pasid);
+	lg_ida_simple_remove(&loonggpu_pasid_ida, pasid);
 }
 
 static void loonggpu_pasid_free_cb(struct dma_fence *fence,

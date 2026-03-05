@@ -583,7 +583,7 @@ static int kcd_fill_mem_info_for_cpu(int numa_node_id, int *avail_size,
 	 */
 	pgdat = NODE_DATA(numa_node_id);
 	for (zone_type = 0; zone_type < MAX_NR_ZONES; zone_type++)
-#if defined(LG_ZONE_MANAGED_PAGES)
+#if defined(LG_ZONE_MANAGED_PAGES) || defined(LG_ZONE_MANAGED_PAGES_HAS_CONST_ZONE)
 		mem_in_bytes += zone_managed_pages(&pgdat->node_zones[zone_type]);
 #else
 		mem_in_bytes += pgdat->node_zones[zone_type].managed_pages;

@@ -56,6 +56,37 @@ static void dc_io_wreg(void *base, u32 offset, u32 val)
 	writel(val, base + offset);
 }
 
+static void dc_crtc_reset(struct loonggpu_device *adev, int link)
+{
+	int retry_count = 0;
+	u32 value;
+
+	DRM_INFO("Reset crtc-%d\n", link);
+
+retry:
+	retry_count++;
+
+	value = dc_readl(adev, gdc_reg->crtc_reg[link].cfg);
+	value &= ~(CRTC_CFG_RESET | CRTC_CFG_ENABLE);
+	dc_writel_check(adev, gdc_reg->crtc_reg[link].cfg, value);
+	mdelay(10);
+
+	value |= CRTC_CFG_RESET | CRTC_CFG_ENABLE;
+	dc_writel_check(adev, gdc_reg->crtc_reg[link].cfg, value);
+	mdelay(30);
+
+	/* check buffer overflow */
+	value = dc_readl(adev, gdc_reg->crtc_reg[link].cfg);
+
+	if (retry_count > 1000) {
+		DRM_INFO("Can not reset crtc-%d !!\n", link);
+		return;
+	}
+
+	if(value & 0x1000000)
+		goto retry;
+}
+
 static bool ls7a2000_pix_pll_set(struct loonggpu_device *adev, u32 clock, unsigned long pll_reg)
 {
 	u32 val;
@@ -174,6 +205,7 @@ void ls2k2000_dc_crtc_cfg_adjust(u32 array_mode, u32 *crtc_cfg)
 bool dc_crtc_timing_set(struct loonggpu_dc_crtc *crtc, struct dc_timing_info *timing)
 {
 	struct loonggpu_device *adev = crtc->dc->adev;
+	struct loonggpu_connector * aconnector;
 	struct loonggpu_dc *dc = adev->dc;
 	u32 depth;
 	u32 link;
@@ -185,6 +217,7 @@ bool dc_crtc_timing_set(struct loonggpu_dc_crtc *crtc, struct dc_timing_info *ti
 	u32 vdisplay, cur_vdisplay;
 	u32 vsync, cur_vsync;
 	u32 panel_cfg, cur_panel_cfg;
+	u32 fixed_vsync_end = 0;
 
 	if (IS_ERR_OR_NULL(crtc) || IS_ERR_OR_NULL(timing))
 		return false;
@@ -214,6 +247,7 @@ bool dc_crtc_timing_set(struct loonggpu_dc_crtc *crtc, struct dc_timing_info *ti
 		break;
 	}
 
+	aconnector = adev->mode_info.connectors[link];
 	if (dc->hw_ops->crtc_cfg_adjust)
 		dc->hw_ops->crtc_cfg_adjust(crtc->array_mode, &crtc_cfg);
 
@@ -286,9 +320,9 @@ bool dc_crtc_timing_set(struct loonggpu_dc_crtc *crtc, struct dc_timing_info *ti
 		cur_hdisplay == hdisplay &&
 		cur_hsync == hsync &&
 		cur_vdisplay == vdisplay &&
-		cur_vsync == vsync &&
 		cur_crtc_cfg == crtc_cfg &&
-		crtc->timing->clock == timing->clock)
+		crtc->timing->clock == timing->clock &&
+		crtc->timing->vrefresh == timing->vrefresh)
 		return false;
 
 	value = dc_readl(adev, gdc_reg->crtc_reg[link].cfg);
@@ -302,12 +336,38 @@ bool dc_crtc_timing_set(struct loonggpu_dc_crtc *crtc, struct dc_timing_info *ti
 	dc_writel(adev, gdc_reg->crtc_reg[link].panelcfg, panel_cfg);
 	dc_writel(adev, gdc_reg->crtc_reg[link].paneltim, 0);
 
-	if (crtc->timing->clock != timing->clock) {
+	if (crtc->timing->clock != timing->clock ||
+		crtc->timing->vrefresh != timing->vrefresh) {
 		if (dc->hw_ops->dc_pll_set(crtc, timing))
 			memcpy(crtc->timing, timing, sizeof(struct dc_timing_info));
 	}
 
+	/*
+		Some 2K3000 laptops and cloud terminal devices exhibit screen flickering.
+		This is resolved by adjusting the vsync_end value. This workaround is
+		limited to EDP interfaces.
+	*/
+	if (crtc->timing->fixed_vsync_width && !link) {
+		fixed_vsync_end = crtc->timing->vsync_start + crtc->timing->fixed_vsync_width;
+		vsync = (vsync & ~(0xFFF << 16)) | ((fixed_vsync_end & 0xFFF) << 16);
+		dc_writel(adev, gdc_reg->crtc_reg[link].vsync, vsync);
+	}
+
 	dc_writel_check(adev, gdc_reg->crtc_reg[link].cfg, crtc_cfg);
+	/*
+		To address display corruption (offset) issues on certain HP and PanSheng monitors
+		when using HDMI, implement a software workaround for this hardware-specific problem.
+	*/
+	if (aconnector->special_display) {
+		msleep(300);
+		vsync = (vsync & ~0x7FF) | (((vsync & 0x7FF) + 1) & 0x7FF);
+		dc_writel(adev, gdc_reg->crtc_reg[link].vsync, vsync);
+	}
+
+	value = dc_readl(adev, gdc_reg->crtc_reg[link].cfg);
+	if (value & 0x1000000)
+		dc_crtc_reset(adev, link);
+
 	return true;
 }
 
@@ -449,7 +509,7 @@ static bool dc_crtc_fb_address_update(struct loonggpu_dc_crtc *crtc,
 	return true;
 }
 
-static bool crtc_primary_plane_set(struct loonggpu_dc_crtc *crtc,
+bool crtc_primary_plane_set(struct loonggpu_dc_crtc *crtc,
 					 struct dc_primary_plane *primary)
 {
 	if (IS_ERR_OR_NULL(crtc) || IS_ERR_OR_NULL(primary))
@@ -471,7 +531,7 @@ bool dc_crtc_plane_update(struct loonggpu_dc_crtc *crtc, struct dc_plane_update 
 		ret = dc->hw_ops->cursor_set(crtc, &update->cursor);
 		break;
 	case DC_PLANE_PRIMARY:
-		ret = crtc_primary_plane_set(crtc, &update->primary);
+		ret = dc->hw_ops->crtc_plane_set(crtc, &update->primary);
 		break;
 	case DC_PLANE_OVERLAY:
 	default:
@@ -499,6 +559,8 @@ struct loonggpu_dc_crtc *dc_crtc_construct(struct loonggpu_dc *dc, struct crtc_r
 
 	crtc->dc = dc;
 	crtc->resource = resource;
+	crtc->dc_video.dp_num = 0xf;
+	crtc->dc_video.hdmi_num = 0xf;
 
 	link = crtc->resource->base.link;
 	if (link >= DC_DVO_MAXLINK)
@@ -542,7 +604,7 @@ static const struct drm_crtc_helper_funcs loonggpu_dc_crtc_helper_funcs = {
 	lg_get_scanout_position_setting(loonggpu_crtc_helper_scanout_position)
 };
 
-static inline int dc_set_vblank(struct drm_crtc *crtc, bool enable)
+int dc_set_vblank(struct drm_crtc *crtc, bool enable)
 {
 	enum dc_irq_source irq_source;
 	struct loonggpu_crtc *acrtc = to_loonggpu_crtc(crtc);
@@ -557,12 +619,16 @@ static inline int dc_set_vblank(struct drm_crtc *crtc, bool enable)
 
 static int dc_enable_vblank(struct drm_crtc *crtc)
 {
-	return dc_set_vblank(crtc, true);
+	struct loonggpu_device *adev = crtc->dev->dev_private;
+
+	return adev->dc->hw_ops->crtc_set_vblank(crtc, true);
 }
 
 static void dc_disable_vblank(struct drm_crtc *crtc)
 {
-	dc_set_vblank(crtc, false);
+	struct loonggpu_device *adev = crtc->dev->dev_private;
+
+	adev->dc->hw_ops->crtc_set_vblank(crtc, false);
 }
 
 static u32 loonggpu_get_vblank_counter_crtc(struct drm_crtc *crtc)
@@ -571,6 +637,15 @@ static u32 loonggpu_get_vblank_counter_crtc(struct drm_crtc *crtc)
 	unsigned int pipe = crtc->index;
 
 	return loonggpu_get_vblank_counter_kms(dev, pipe);
+}
+
+static int loonggpu_crtc_gamma_set(struct drm_crtc *crtc, u16 *red, u16 *green,
+				    u16 *blue, uint32_t size,
+				    struct drm_modeset_acquire_ctx *ctx)
+{
+	struct loonggpu_device *adev = crtc->dev->dev_private;
+
+	return adev->dc->hw_ops->crtc_gamma_set(crtc, red, green, blue);
 }
 
 static const struct drm_crtc_funcs loonggpu_dc_crtc_funcs = {
@@ -582,7 +657,8 @@ static const struct drm_crtc_funcs loonggpu_dc_crtc_funcs = {
 	.atomic_destroy_state = drm_atomic_helper_crtc_destroy_state,
 	.enable_vblank = dc_enable_vblank,
 	.disable_vblank = dc_disable_vblank,
-	.get_vblank_counter = loonggpu_get_vblank_counter_crtc
+	.get_vblank_counter = loonggpu_get_vblank_counter_crtc,
+	.gamma_set = loonggpu_crtc_gamma_set
 };
 
 int loonggpu_dc_crtc_init(struct loonggpu_device *adev,
@@ -625,8 +701,12 @@ int loonggpu_dc_crtc_init(struct loonggpu_device *adev,
 
 	adev->mode_info.crtcs[crtc_index] = acrtc;
 
-	crtc_pan = dc_readl(adev, gdc_reg->crtc_reg[crtc_index].panelcfg);
-	dc_writel(adev, gdc_reg->crtc_reg[crtc_index].panelcfg, crtc_pan & (~CRTC_PANCFG_DE));
+	if (adev->chip != dev_9a1000) {
+		crtc_pan = dc_readl(adev, gdc_reg->crtc_reg[crtc_index].panelcfg);
+		dc_writel(adev, gdc_reg->crtc_reg[crtc_index].panelcfg, crtc_pan & (~CRTC_PANCFG_DE));
+	} else
+		drm_mode_crtc_set_gamma_size(&acrtc->base, 256);
+
 	return 0;
 
 fail:

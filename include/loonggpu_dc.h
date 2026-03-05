@@ -7,13 +7,16 @@
 #include "loonggpu_dc_interface.h"
 
 #define DC_VER "1.0"
-#define DC_DVO_MAXLINK 2
+#define DC_DVO_MAXLINK 4
 
 extern const struct loonggpu_ip_block_version dc_ip_block;
 
 struct loonggpu_device;
 struct drm_device;
 struct dc_cursor_info;
+struct loonggpu_bridge_phy;
+struct dc_primary_plane;
+struct loonggpu_crtc;
 
 struct dc_cursor_position {
 	uint32_t x;
@@ -55,6 +58,7 @@ union plane_address {
 };
 
 struct dc_timing_info {
+	u32 vrefresh;
 	s32 clock;		/* from drm_display_mode::clock*/
 	s32 hdisplay;
 	s32 hsync_start;
@@ -67,6 +71,7 @@ struct dc_timing_info {
 	u32 stride;
 	u32 depth;
 	u32 use_dma;
+	u32 fixed_vsync_width; /*vsync_width = vsync_end - vsync_start*/
 };
 
 struct dc_sw_ops {
@@ -86,11 +91,18 @@ struct dc_hw_ops {
 	int (*dc_i2c_init)(struct loonggpu_device *adev, uint32_t link_index);
 	void (*dc_i2c_resume)(struct loonggpu_device *adev, uint32_t link_index);
 	bool (*dc_hpd_enable)(struct loonggpu_device *adev, uint32_t link, bool enable);
+	int (*dc_get_modes)(struct loonggpu_bridge_phy *phy, int used_method,
+					struct drm_connector *connector, struct edid *edid);
+	void (*dc_device_init)(struct loonggpu_device *adev);
+	void (*manage_dc_int)(struct loonggpu_device *adev, struct loonggpu_crtc *acrtc, bool enable);
 
 	/* crtc operations */
 	bool (*crtc_enable)(struct loonggpu_dc_crtc *crtc, bool enable);
 	bool (*crtc_timing_set)(struct loonggpu_dc_crtc *crtc, struct dc_timing_info *timing);
 	void (*crtc_cfg_adjust)(u32 array_mode, u32 *crtc_cfg);
+	int (*crtc_set_vblank)(struct drm_crtc *crtc, bool enable);
+	bool (*crtc_plane_set)(struct loonggpu_dc_crtc *crtc, struct dc_primary_plane *primary);
+	int (*crtc_gamma_set)(struct drm_crtc *crtc, u16 *red, u16 *green, u16 *blue);
 
 	/* cursor operations*/
 	bool (*cursor_move)(struct loonggpu_dc_crtc *crtc, struct dc_cursor_move *move);
@@ -121,6 +133,7 @@ struct dc_hw_ops {
 	bool (*dc_i2c_ack) (struct loonggpu_dc_crtc *crtc);
 	bool (*dc_crtc_vblank_ack) (struct loonggpu_dc_crtc *crtc);
 	u32 (*dc_vblank_get_counter) (struct loonggpu_device *adev, int crtc_num);
+	bool (*interface_status_changed)(struct drm_connector *connector, struct loonggpu_dc_crtc *crtc);
 };
 
 struct loonggpu_dc {

@@ -184,6 +184,8 @@ void handle_cursor_update(struct drm_plane *plane,
 	dc_plane.cursor.y = plane->state->crtc_h;
 	dc_plane.cursor.address.low_part = lower_32_bits(address);
 	dc_plane.cursor.address.high_part = upper_32_bits(address);
+	dc_plane.cursor.enable = position.enable;
+	dc_plane.cursor.format = afb->base.format->format;
 
 	move.enable = position.enable;
 	move.hot_x = position.x_hotspot;

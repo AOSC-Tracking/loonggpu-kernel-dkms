@@ -125,6 +125,7 @@ int ls7a2000_hdmi_init(struct loonggpu_dc_crtc *crtc, int intf)
 	struct loonggpu_device *adev = crtc->dc->adev;
 
 	dc_writel(adev, gdc_reg->hdmi_reg_v1[intf].ctrl, 0x282);
+	msleep(50);
 	dc_writel(adev, gdc_reg->hdmi_reg_v1[intf].phy_ctrl, 0xf02);
 	dc_writel(adev, gdc_reg->hdmi_reg_v1[intf].zoneidle, 0x00400040);
 
@@ -556,4 +557,290 @@ int ls2k3000_hdmi_noaudio_init(struct loonggpu_dc_crtc *crtc, int intf)
 	dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].ctrl, 0x382 | (val & 1));
 
 	return 0;
+}
+
+/* 9A1000 */
+static void ls9a1000_codec_init(struct loonggpu_device *adev, int intf)
+{
+	dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].zoneidle + 0x2404, 1);
+	dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].zoneidle + 0x2400, 0);
+
+	dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].zoneidle + 0x2200, 0x00050010);
+	dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].zoneidle + 0x2204, 0x01001000);
+	dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].zoneidle + 0x2214, 0x70709);
+	dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].zoneidle + 0x2254, 1);
+
+	dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].zoneidle + 0x2300, 0x00050010);
+	dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].zoneidle + 0x2304, 0x01001000);
+	dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].zoneidle + 0x2314, 0x70709);
+	dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].zoneidle + 0x2354, 1);
+}
+
+bool ls9a1000_hdmi_enable(struct loonggpu_dc_crtc *crtc, int intf, bool enable)
+{
+	u32 hdmi_ctrl, phy_cfg0;
+	struct loonggpu_device *adev = crtc->dc->adev;
+
+	if (IS_ERR_OR_NULL(adev))
+		return false;
+
+	if (intf >= MAX_DC_INTERFACES)
+		return false;
+
+	phy_cfg0 = dc_readl(adev, gdc_reg->hdmi_reg_v2[intf].phy_cfg0);
+	if (enable && (phy_cfg0 & (0x1 << 29)))
+		goto out;
+
+	if (!enable && (!(phy_cfg0 & (0x1 << 29))))
+		goto out;
+
+	if (enable) {
+		phy_cfg0 |= (0x1 << 29);
+		hdmi_ctrl = dc_readl(adev, gdc_reg->hdmi_reg_v2[intf].ctrl);
+		hdmi_ctrl |= HDMI_CTRL_ENABLE;
+		dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].ctrl, hdmi_ctrl);
+	} else {
+		hdmi_ctrl = dc_readl(adev, gdc_reg->hdmi_reg_v2[intf].ctrl);
+		hdmi_ctrl &= ~HDMI_CTRL_ENABLE;
+		dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].ctrl, hdmi_ctrl);
+		phy_cfg0 &= ~(0x1 << 29);
+	}
+
+	dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].phy_cfg0, phy_cfg0);
+
+out:
+	return true;
+}
+
+int ls9a1000_hdmi_audio_init(struct loonggpu_dc_crtc *dc_crtc, int intf)
+{
+	struct loonggpu_device *adev = dc_crtc->dc->adev;
+	uint32_t reg_val;
+
+	reg_val = dc_readl(adev, gdc_reg->hdmi_reg_v2[intf].ctrl);
+	if ((reg_val & 0x2) && (reg_val & 0x4))
+		return 0;
+
+	/* enable hdmi */
+	dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].ctrl, 0x389 | 0x4);
+	dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].zoneidle, 0x400040);
+
+	/* audio N */
+	dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].audio_ncfg, 6272);
+	ls9a1000_codec_init(adev, intf);
+
+	/* enable ACR */
+	reg_val = dc_readl(adev, gdc_reg->hdmi_reg_v2[intf].audio_ctscfg);
+	reg_val |= (1 << 31);
+	dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].audio_ctscfg, reg_val);
+
+	dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].audio_infoframe, 0x11);
+	reg_val = dc_readl(adev, gdc_reg->hdmi_reg_v2[intf].audio_infoframe);
+	reg_val |= (1 << 2);
+	dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].audio_infoframe, reg_val);
+	dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].audio_infoframe, 0x15);
+
+	dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].avi_ctrl, 0x5);
+
+	return 0;
+}
+
+int ls9a1000_hdmi_noaudio_init(struct loonggpu_dc_crtc *crtc, int intf)
+{
+	u32 val;
+	struct loonggpu_device *adev = crtc->dc->adev;
+
+	val = dc_readl(adev, gdc_reg->hdmi_reg_v2[intf].ctrl);
+	dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].ctrl, 0x388 | (val & 1));
+
+	return 0;
+}
+
+void ls9a1000_hdmi_suspend(struct loonggpu_dc_crtc *crtc, int intf)
+{
+	struct loonggpu_device *adev = crtc->dc->adev;
+
+	crtc->hdmi_ctrl[intf] = dc_readl(adev, gdc_reg->hdmi_reg_v2[intf].ctrl);
+}
+
+int ls9a1000_hdmi_resume(struct loonggpu_dc_crtc *crtc, int intf)
+{
+	struct loonggpu_device *adev = crtc->dc->adev;
+
+	dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].ctrl, crtc->hdmi_ctrl[intf]);
+	if (crtc->hdmi_ctrl[intf] & HDMI_CTRL_AUDIO_ENABLE) {
+		dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].zoneidle, 0x00400040);
+		dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].audio_ncfg, 6272);
+		dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].audio_ctscfg, 0x80000000);
+		dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].audio_infoframe, 0x15);
+		dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].audio_sample, 0x1);
+	}
+
+	return 0;
+}
+
+static void ls9a1000_hdmi_phy_cfg(struct loonggpu_dc_crtc *dc_crtc, int intf)
+{
+	struct loonggpu_device *adev = dc_crtc->dc->adev;
+	uint32_t tx_rate, tx_clkdiv, phy_clk, high_phy_clk, tmds_clk_ratio;
+	u32 reg_val;
+	uint32_t phy_color_depth = 0; /* 8bpc */
+
+	tx_clkdiv = get_tx_clkdiv();
+	tx_rate = get_tx_rate();
+	phy_clk = ((2 * mpllcfg.multiplier * 27) / mpllcfg.tx_clkdiv / 5 / mpllcfg.tx_rate) * 10;
+	high_phy_clk = 3400;
+	tmds_clk_ratio = ((phy_clk <= high_phy_clk) ? 0 : 1);
+
+	/* deassert phy reset */
+	reg_val = dc_readl(adev, gdc_reg->hdmi_reg_v2[intf].phy_cfg0);
+	reg_val |= 0x1 << 31;
+	dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].phy_cfg0, reg_val);
+	mdelay(10);
+
+	/* deassert lane tx reset */
+	reg_val = dc_readl(adev, gdc_reg->hdmi_reg_v2[intf].phy_cfg0);
+	reg_val |= 0x1 << 30;
+	dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].phy_cfg0, reg_val);
+
+	/* use alt ref clk */
+	reg_val = dc_readl(adev, gdc_reg->hdmi_reg_v2[intf].phy_cfg2);
+	reg_val &= ~(0x1 << 1);
+	dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].phy_cfg2, reg_val);
+
+	/* wait sram init done */
+	while ((dc_readl(adev, gdc_reg->hdmi_reg_v2[intf].phy_mon0) & (0x1 << 14)) == 0);
+
+	/* ext ld done */
+	reg_val = dc_readl(adev, gdc_reg->hdmi_reg_v2[intf].phy_cfg2);
+	reg_val |= 0x1 << 29;
+	dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].phy_cfg2, reg_val);
+
+	/* wait sram boot done */
+	while ((dc_readl(adev, gdc_reg->hdmi_reg_v2[intf].phy_mon0) & (0xf << 4)) != 0);
+
+	/* power up */
+	reg_val = dc_readl(adev, gdc_reg->hdmi_reg_v2[intf].phy_cfg1);
+	reg_val &= ~(0xffff << 16);
+	dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].phy_cfg1, reg_val);
+
+	/* set pixelclk & frag_clk */
+	hdmi_phy_cr_access(adev, 1, 0x1f, 0x4000);
+	hdmi_phy_cr_access(adev, 1, mpllcfg.multiplier << 8, 0x4001);
+	hdmi_phy_cr_access(adev, 1, (tx_clkdiv << 12) | 0x800, 0x4002);
+	hdmi_phy_cr_access(adev, 1, 0x0, 0x4003);
+	hdmi_phy_cr_access(adev, 1, tx_rate << 11, 0x4006);
+	hdmi_phy_cr_access(adev, 1, 0x226, 0x4042);
+	hdmi_phy_cr_access(adev, 1, tmds_clk_ratio, 0x5011);
+	hdmi_phy_cr_access(adev, 1, 0x718, 0x5000);
+	hdmi_phy_cr_access(adev, 1, 0x0, 0x5001);
+	hdmi_phy_cr_access(adev, 1, tmds_clk_ratio, 0x5111);
+	hdmi_phy_cr_access(adev, 1, 0x718, 0x5100);
+	hdmi_phy_cr_access(adev, 1, 0x0, 0x5101);
+	hdmi_phy_cr_access(adev, 1, tmds_clk_ratio, 0x5211);
+	hdmi_phy_cr_access(adev, 1, 0x718, 0x5200);
+	hdmi_phy_cr_access(adev, 1, 0x0, 0x5201);
+	hdmi_phy_cr_access(adev, 1, tmds_clk_ratio, 0x5311);
+	hdmi_phy_cr_access(adev, 1, 0x718, 0x5300);
+	hdmi_phy_cr_access(adev, 1, 0x0, 0x5301);
+	hdmi_phy_cr_access(adev, 1, 0x5811, 0x4041);
+	hdmi_phy_cr_access(adev, 1, 0x0, 0x4040);
+	hdmi_phy_cr_access(adev, 1, (0x226 & ~0x3) | phy_color_depth, 0x4042);
+
+	/* enable tx valid */
+	reg_val = dc_readl(adev, gdc_reg->hdmi_reg_v2[intf].phy_cfg0);
+	reg_val |= (0x1 << 29); /* 使能数据输出 */
+	dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].phy_cfg0, reg_val);
+
+	DRM_INFO("9A1000 HDMI phy config ok!\n");
+}
+
+void ls9a1000_hdmi_pll_set(struct loonggpu_dc_crtc *crtc, int intf, int clock)
+{
+	/* pll参数的计算流程暂时用2k3000的，后续根据硬件情况改写 */
+	ls2k3000_calc_phy_clk((unsigned int)(clock));
+	ls9a1000_hdmi_phy_cfg(crtc, intf);
+}
+
+void ls9a1000_hdmi_i2c_set(struct loonggpu_dc_crtc *crtc, int intf, bool use_gpio_i2c)
+{
+	u32 reg_val;
+	struct loonggpu_device *adev = crtc->dc->adev;
+
+	reg_val = dc_readl(adev, gdc_reg->hdmi_reg_v2[intf].ctrl);
+	if (use_gpio_i2c)
+		reg_val &= ~(1 << 8);
+	else
+		reg_val |= (1 << 8);
+	dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].ctrl, reg_val);
+}
+
+int ls9a1000_hdmi_init(struct loonggpu_dc_crtc *dc_crtc, int intf)
+{
+	struct loonggpu_device *adev = dc_crtc->dc->adev;
+	int reg_val;
+
+	dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].ctrl, 0x389 | 0x4);
+	dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].zoneidle, 0x400040);
+
+	/* audio N */
+	dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].audio_ncfg, 6272);
+
+	dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].zoneidle + 0x2404, 1);
+	dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].zoneidle + 0x2400, 0);
+
+	dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].zoneidle + 0x2200, 0x00050010);
+	dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].zoneidle + 0x2204, 0x01001000);
+	dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].zoneidle + 0x2214, 0x70709);
+	dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].zoneidle + 0x2254, 1);
+
+	dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].zoneidle + 0x2300, 0x00050010);
+	dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].zoneidle + 0x2304, 0x01001000);
+	dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].zoneidle + 0x2314, 0x70709);
+	dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].zoneidle + 0x2354, 1);
+
+	/* enable ACR */
+	reg_val = dc_readl(adev, gdc_reg->hdmi_reg_v2[intf].audio_ctscfg);
+	reg_val |= (1 << 31);
+	dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].audio_ctscfg, reg_val);
+
+	dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].audio_infoframe, 0x11);
+	reg_val = dc_readl(adev, gdc_reg->hdmi_reg_v2[intf].audio_infoframe);
+	reg_val |= (1 << 2);
+	dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].audio_infoframe, reg_val);
+	dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].audio_infoframe, 0x15);
+
+	dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].avi_ctrl, 0x5);
+
+	return 0;
+}
+
+void ls9a1000_hdmi_timing_set(struct loonggpu_dc_crtc *crtc, struct dc_timing_info *timing, int intf)
+{
+	struct loonggpu_device *adev = crtc->dc->adev;
+	int reg_val;
+	int mode_bpc;
+
+	/* color mode */
+	if(timing->depth == 8){
+		mode_bpc = 0;
+	}else if(timing->depth == 10){
+		mode_bpc = 1;
+	}
+	reg_val = dc_readl(adev, gdc_reg->hdmi_reg_v2[intf].timing0);
+	reg_val &= ~(0xf << 8);
+	reg_val |= (mode_bpc << 8);
+	dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].timing0, reg_val);
+
+	/* H & V polarity */
+	reg_val = dc_readl(adev, gdc_reg->hdmi_reg_v2[intf].timing0);
+	reg_val &= ~0x3;
+	dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].timing0, reg_val);
+
+	/* H sync */
+	dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].timing1, (timing->hsync_end << 16) | timing->hsync_start);
+	/* V sync */
+	dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].timing2, (timing->vsync_end << 16) | timing->vsync_start);
+	dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].timing3, (timing->hdisplay << 16) | timing->htotal);
+	dc_writel(adev, gdc_reg->hdmi_reg_v2[intf].timing4, (timing->vdisplay << 16) | timing->vtotal);
 }

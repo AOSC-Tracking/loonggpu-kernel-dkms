@@ -25,7 +25,7 @@ static void mmu_vram_gtt_location(struct loonggpu_device *adev,
 	/*TODO Use generic register to get vram base address*/
 
 	/*refrence from LS7A2000 page data*/
-	if (adev->chip == dev_7a2000)
+	if (adev->chip == dev_7a2000 || adev->chip == dev_9a1000)
 		base = 0x1000000000000;
 	else if (adev->chip == dev_2k2000 || adev->chip == dev_2k3000)
 		base = adev->gmc.aper_base;

@@ -39,6 +39,7 @@ typedef struct dp_feature {
 	unsigned int dp_pixclk;
 	unsigned int dp_link_rate;
 	unsigned int dp_link_xlane;
+	unsigned int fixed_vsync_width;
 } dp_feature_t;
 
 typedef struct {
@@ -55,6 +56,7 @@ typedef struct {
 	unsigned int link_lane;
 } dp_bandwidth_entry_t;
 
+bool is_ls2k3000_laptop(struct loonggpu_dc_crtc *crtc);
 unsigned int aux_config(struct loonggpu_device *adev, unsigned int rd_wr, aux_msg_t aux_msg, int intf);
 int ls2k3000_dp_audio_init(struct loonggpu_dc_crtc *crtc, int intf);
 int ls2k3000_dp_noaudio_init(struct loonggpu_dc_crtc *crtc, int intf);
@@ -65,5 +67,13 @@ bool ls2k3000_dp_enable(struct loonggpu_dc_crtc *crtc, int intf, bool enable);
 void ls2k3000_dp_pll_set(struct loonggpu_dc_crtc *crtc, int intf, struct dc_timing_info *timing);
 void l2k3000_dp_first_hdp_detect(struct loonggpu_dc_crtc *crtc, int intf);
 void l2k3000_hpd_irq_handler(struct loonggpu_device *adev, struct loonggpu_iv_entry *entry);
+
+int ls9a1000_dp_init(struct loonggpu_dc_crtc *crtc, int intf);
+void ls9a1000_dp_pll_set(struct loonggpu_dc_crtc *crtc, int intf, struct dc_timing_info *timing);
+bool ls9a1000_dp_enable(struct loonggpu_dc_crtc *crtc, int intf, bool enable);
+void ls9a1000_dp_suspend(struct loonggpu_dc_crtc *crtc, int intf);
+int ls9a1000_dp_resume(struct loonggpu_dc_crtc *crtc, int intf);
+int ls9a1000_dp_audio_init(struct loonggpu_dc_crtc *crtc, int intf);
+int ls9a1000_dp_noaudio_init(struct loonggpu_dc_crtc *crtc, int intf);
 
 #endif /* __LOONGGPU_DP_H__ */

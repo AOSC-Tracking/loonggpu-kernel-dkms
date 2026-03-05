@@ -44,6 +44,7 @@
 #include "loonggpu_lgkcd.h"
 #include "kcd_smi_events.h"
 #include "loonggpu_dma_buf.h"
+#include "kcd_debug.h"
 
 static long kcd_ioctl(struct file *, unsigned int, unsigned long);
 static int kcd_open(struct inode *, struct file *);
@@ -349,6 +350,8 @@ static int kcd_ioctl_create_queue(struct file *filep, struct kcd_process *p,
 
 	pr_debug("Write ptr address   == 0x%016llX\n",
 			args->write_pointer_address);
+
+	kcd_dbg_ev_raise(KCD_EC_MASK(EC_QUEUE_NEW), p, dev, queue_id, false, NULL, 0);
 	return 0;
 
 err_create_queue:
@@ -425,6 +428,36 @@ static int kcd_ioctl_update_queue(struct file *filp, struct kcd_process *p,
 	mutex_unlock(&p->mutex);
 
 	return retval;
+}
+
+static int kcd_ioctl_set_trap_handler(struct file *filep,
+					struct kcd_process *p, void *data)
+{
+	struct kcd_ioctl_set_trap_handler_args *args = data;
+	int err = 0;
+	struct kcd_process_device *pdd;
+
+	mutex_lock(&p->mutex);
+
+	pdd = kcd_process_device_data_by_id(p, args->gpu_id);
+	if (!pdd) {
+		err = -EINVAL;
+		goto err_pdd;
+	}
+
+	pdd = kcd_bind_process_to_device(pdd->dev, p);
+	if (IS_ERR(pdd)) {
+		err = -ESRCH;
+		goto out;
+	}
+
+	kcd_process_set_trap_handler(&pdd->qpd, args->tba_addr, args->tma_addr);
+
+out:
+err_pdd:
+	mutex_unlock(&p->mutex);
+
+	return err;
 }
 
 static int kcd_ioctl_get_clock_counters(struct file *filep,
@@ -1331,6 +1364,262 @@ static int kcd_ioctl_svm(struct file *filep, struct kcd_process *p, void *data)
 }
 #endif
 
+static int runtime_enable(struct kcd_process *p, uint64_t r_debug,
+			bool enable_ttmp_setup)
+{
+	int i = 0, ret = 0;
+
+	if (p->is_runtime_retry)
+		goto retry;
+
+	if (p->runtime_info.runtime_state != DEBUG_RUNTIME_STATE_DISABLED)
+		return -EBUSY;
+
+	for (i = 0; i < p->n_pdds; i++) {
+		struct kcd_process_device *pdd = p->pdds[i];
+
+		if (pdd->qpd.queue_count)
+			return -EEXIST;
+	}
+
+	p->runtime_info.runtime_state = DEBUG_RUNTIME_STATE_ENABLED;
+	p->runtime_info.r_debug = r_debug;
+	p->runtime_info.ttmp_setup = enable_ttmp_setup;
+
+retry:
+	if (p->debug_trap_enabled) {
+		if (!p->is_runtime_retry) {
+			kcd_dbg_trap_activate(p);
+			kcd_dbg_ev_raise(KCD_EC_MASK(EC_PROCESS_RUNTIME),
+					p, NULL, 0, false, NULL, 0);
+		}
+
+		mutex_unlock(&p->mutex);
+		ret = down_interruptible(&p->runtime_enable_sema);
+		mutex_lock(&p->mutex);
+
+		p->is_runtime_retry = !!ret;
+	}
+
+	return ret;
+}
+
+static int runtime_disable(struct kcd_process *p)
+{
+	int ret;
+	bool was_enabled = p->runtime_info.runtime_state == DEBUG_RUNTIME_STATE_ENABLED;
+
+	p->runtime_info.runtime_state = DEBUG_RUNTIME_STATE_DISABLED;
+	p->runtime_info.r_debug = 0;
+
+	if (p->debug_trap_enabled) {
+		if (was_enabled)
+			kcd_dbg_trap_deactivate(p, false, 0);
+
+		if (!p->is_runtime_retry)
+			kcd_dbg_ev_raise(KCD_EC_MASK(EC_PROCESS_RUNTIME),
+					p, NULL, 0, false, NULL, 0);
+
+		mutex_unlock(&p->mutex);
+		ret = down_interruptible(&p->runtime_enable_sema);
+		mutex_lock(&p->mutex);
+
+		p->is_runtime_retry = !!ret;
+		if (ret)
+			return ret;
+	}
+
+	p->runtime_info.ttmp_setup = false;
+
+	return 0;
+}
+
+static int kcd_ioctl_runtime_enable(struct file *filep, struct kcd_process *p, void *data)
+{
+	struct kcd_ioctl_runtime_enable_args *args = data;
+	int r;
+
+	mutex_lock(&p->mutex);
+
+	if (args->mode_mask & KCD_RUNTIME_ENABLE_MODE_ENABLE_MASK)
+		r = runtime_enable(p, args->r_debug,
+				!!(args->mode_mask & KCD_RUNTIME_ENABLE_MODE_TTMP_SAVE_MASK));
+	else
+		r = runtime_disable(p);
+
+	mutex_unlock(&p->mutex);
+
+	return r;
+}
+
+static int kcd_ioctl_set_debug_trap(struct file *filep, struct kcd_process *p, void *data)
+{
+	struct kcd_ioctl_dbg_trap_args *args = data;
+	struct task_struct *thread = NULL;
+	struct mm_struct *mm = NULL;
+	struct pid *pid = NULL;
+	struct kcd_process *target = NULL;
+	int r = 0;
+
+	pid = find_get_pid(args->pid);
+	if (!pid) {
+		pr_debug("Cannot find pid info for %i\n", args->pid);
+		r = -ESRCH;
+		goto out;
+	}
+
+	thread = get_pid_task(pid, PIDTYPE_PID);
+	if (!thread) {
+		r = -ESRCH;
+		goto out;
+	}
+
+	mm = get_task_mm(thread);
+	if (!mm) {
+		r = -ESRCH;
+		goto out;
+	}
+
+	if (args->op == KCD_IOC_DBG_TRAP_ENABLE) {
+		bool create_process;
+
+		rcu_read_lock();
+		create_process = thread && thread != current && ptrace_parent(thread) == current;
+		rcu_read_unlock();
+
+		target = create_process ? kcd_create_process(thread) :
+					kcd_lookup_process_by_pid(pid);
+	} else {
+		target = kcd_lookup_process_by_pid(pid);
+	}
+
+	if (IS_ERR_OR_NULL(target)) {
+		pr_debug("Cannot find process PID %i to debug\n", args->pid);
+		r = target ? PTR_ERR(target) : -ESRCH;
+		goto out;
+	}
+
+	/* Check if target is still PTRACED. */
+	rcu_read_lock();
+	if (target != p && args->op != KCD_IOC_DBG_TRAP_DISABLE
+				&& ptrace_parent(target->lead_thread) != current) {
+		pr_err("PID %i is not PTRACED and cannot be debugged\n", args->pid);
+		r = -EPERM;
+	}
+	rcu_read_unlock();
+
+	if (r)
+		goto out;
+
+	mutex_lock(&target->mutex);
+
+	if (args->op != KCD_IOC_DBG_TRAP_ENABLE && !target->debug_trap_enabled) {
+		pr_err("PID %i not debug enabled for op %i\n", args->pid, args->op);
+		r = -EINVAL;
+		goto unlock_out;
+	}
+
+	if (target->runtime_info.runtime_state != DEBUG_RUNTIME_STATE_ENABLED &&
+			(args->op == KCD_IOC_DBG_TRAP_SUSPEND_QUEUES ||
+			 args->op == KCD_IOC_DBG_TRAP_RESUME_QUEUES ||
+			 args->op == KCD_IOC_DBG_TRAP_SET_FLAGS)) {
+		r = -EPERM;
+		goto unlock_out;
+	}
+
+	switch (args->op) {
+	case KCD_IOC_DBG_TRAP_ENABLE:
+		if (target != p)
+			target->debugger_process = p;
+
+		r = kcd_dbg_trap_enable(target,
+					args->enable.dbg_fd,
+					(void __user *)args->enable.rinfo_ptr,
+					&args->enable.rinfo_size);
+		if (!r)
+			target->exception_enable_mask = args->enable.exception_mask;
+
+		break;
+	case KCD_IOC_DBG_TRAP_DISABLE:
+		r = kcd_dbg_trap_disable(target);
+		break;
+	case KCD_IOC_DBG_TRAP_SEND_RUNTIME_EVENT:
+		r = kcd_dbg_send_exception_to_runtime(target,
+				args->send_runtime_event.gpu_id,
+				args->send_runtime_event.queue_id,
+				args->send_runtime_event.exception_mask);
+		break;
+	case KCD_IOC_DBG_TRAP_SET_EXCEPTIONS_ENABLED:
+		kcd_dbg_set_enabled_debug_exception_mask(target,
+				args->set_exceptions_enabled.exception_mask);
+		break;
+	case KCD_IOC_DBG_TRAP_SUSPEND_QUEUES:
+		r = suspend_queues(target,
+				args->suspend_queues.num_queues,
+				args->suspend_queues.exception_mask,
+				(uint32_t *)args->suspend_queues.queue_array_ptr);
+
+		break;
+	case KCD_IOC_DBG_TRAP_RESUME_QUEUES:
+		r = resume_queues(target, args->resume_queues.num_queues,
+				(uint32_t *)args->resume_queues.queue_array_ptr);
+		break;
+	case KCD_IOC_DBG_TRAP_SET_FLAGS:
+		r = kcd_dbg_trap_set_flags(target, &args->set_flags.flags);
+		break;
+	case KCD_IOC_DBG_TRAP_QUERY_DEBUG_EVENT:
+		r = kcd_dbg_ev_query_debug_event(target,
+				&args->query_debug_event.queue_id,
+				&args->query_debug_event.gpu_id,
+				args->query_debug_event.exception_mask,
+				&args->query_debug_event.exception_mask);
+		break;
+	case KCD_IOC_DBG_TRAP_QUERY_EXCEPTION_INFO:
+		r = kcd_dbg_trap_query_exception_info(target,
+				args->query_exception_info.source_id,
+				args->query_exception_info.exception_code,
+				args->query_exception_info.clear_exception,
+				(void __user *)args->query_exception_info.info_ptr,
+				&args->query_exception_info.info_size);
+		break;
+	case KCD_IOC_DBG_TRAP_GET_QUEUE_SNAPSHOT:
+		r = pqm_get_queue_snapshot(&target->pqm,
+				args->queue_snapshot.exception_mask,
+				(void __user *)args->queue_snapshot.snapshot_buf_ptr,
+				&args->queue_snapshot.num_queues,
+				&args->queue_snapshot.entry_size);
+		break;
+	case KCD_IOC_DBG_TRAP_GET_DEVICE_SNAPSHOT:
+		r = kcd_dbg_trap_device_snapshot(target,
+				args->device_snapshot.exception_mask,
+				(void __user *)args->device_snapshot.snapshot_buf_ptr,
+				&args->device_snapshot.num_devices,
+				&args->device_snapshot.entry_size);
+		break;
+	default:
+		pr_err("Invalid option: %i\n", args->op);
+		r = -EINVAL;
+	}
+
+unlock_out:
+	mutex_unlock(&target->mutex);
+
+out:
+	if (thread)
+		put_task_struct(thread);
+
+	if (mm)
+		mmput(mm);
+
+	if (pid)
+		put_pid(pid);
+
+	if (target)
+		kcd_unref_process(target);
+
+	return r;
+}
+
 static int kcd_ioctl_submit_queue(struct file *filep, struct kcd_process *p, void *data)
 {
 	struct kcd_ioctl_submit_queue_args *args = data;
@@ -1415,6 +1704,9 @@ static const struct lgkcd_ioctl_desc lgkcd_ioctls[] = {
 	LGKCD_IOCTL_DEF(LGKCD_IOC_WAIT_EVENTS,
 			kcd_ioctl_wait_events, 0),
 
+	LGKCD_IOCTL_DEF(LGKCD_IOC_SET_TRAP_HANDLER,
+			kcd_ioctl_set_trap_handler, 0),
+
 	LGKCD_IOCTL_DEF(LGKCD_IOC_GET_PROCESS_APERTURES_NEW,
 			kcd_ioctl_get_process_apertures_new, 0),
 
@@ -1449,6 +1741,12 @@ static const struct lgkcd_ioctl_desc lgkcd_ioctls[] = {
 
 	LGKCD_IOCTL_DEF(LGKCD_IOC_EXPORT_DMABUF,
 				kcd_ioctl_export_dmabuf, 0),
+
+	LGKCD_IOCTL_DEF(LGKCD_IOC_RUNTIME_ENABLE,
+			kcd_ioctl_runtime_enable, 0),
+
+	LGKCD_IOCTL_DEF(LGKCD_IOC_DBG_TRAP,
+			kcd_ioctl_set_debug_trap, 0),
 
 	LGKCD_IOCTL_DEF(LGKCD_IOC_SUBMIT_QUEUE,
 			kcd_ioctl_submit_queue, 0),

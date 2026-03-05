@@ -26,4 +26,5 @@ bool dc_interface_enable(struct loonggpu_dc_crtc *crtc, bool enable);
 void dc_interface_pll_set(struct loonggpu_dc_crtc *crtc, struct dc_timing_info *timing);
 void dc_interface_pll_set(struct loonggpu_dc_crtc *crtc, struct dc_timing_info *timing);
 void dc_interface_i2c_set(struct loonggpu_dc_crtc *crtc, bool use_gpio_i2c);
-#endif /* __LOONGGPU_HDMI_H__ */
+bool dc_interface_status_changed(struct drm_connector *connector, struct loonggpu_dc_crtc *crtc);
+#endif /* __LOONGGPU_INTERFACE_H__ */

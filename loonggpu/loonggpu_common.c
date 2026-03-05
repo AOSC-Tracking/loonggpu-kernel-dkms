@@ -10,6 +10,7 @@
 #include "loonggpu_xdma.h"
 #include "loonggpu_dc_reg.h"
 #include "loonggpu_doorbell.h"
+#include "loonggpu_dvfs.h"
 #if defined (LG_ASM_LOONGSON_H_PRESENT)
 #include <asm/loongson.h>
 #else
@@ -53,7 +54,12 @@ static int loonggpu_read_register(struct loonggpu_device *adev, u32 se_num,
 			    u32 sh_num, u32 reg_offset, u32 *value)
 {
 	DRM_DEBUG_DRIVER("%s Not implemented\n", __func__);
-	*value = 0;
+
+	if (reg_offset == LOONGGPU_LG2XX_IP_STATE)
+		*value = RREG32(LOONGGPU_LG2XX_IP_STATE);
+	else
+		*value = 0;
+
 	return 0;
 }
 
@@ -248,13 +254,15 @@ int loonggpu_set_ip_blocks(struct loonggpu_device *adev)
 		loonggpu_device_ip_block_add(adev, &dc_ip_block);
 		loonggpu_device_ip_block_add(adev, &gfx_ip_block);
 		loonggpu_device_ip_block_add(adev, &xdma_ip_block);
+		if (adev->family_type >= CHIP_LG200)
+			loonggpu_device_ip_block_add(adev, &dvfs_ip_block_v1_0_0);
 		break;
 	case CHIP_LG210:
 		loonggpu_device_ip_block_add(adev, &loonggpu_common_ip_block);
 		loonggpu_device_ip_block_add(adev, &mmu_ip_block);
 		loonggpu_device_ip_block_add(adev, &zip_ip_block);
 		loonggpu_device_ip_block_add(adev, &loonggpu_ih_ip_block);
-		// loonggpu_device_ip_block_add(adev, &dc_ip_block);
+		loonggpu_device_ip_block_add(adev, &dc_ip_block);
 		loonggpu_device_ip_block_add(adev, &gfx_ip_block);
 		loonggpu_device_ip_block_add(adev, &xdma_ip_block);
 		break;

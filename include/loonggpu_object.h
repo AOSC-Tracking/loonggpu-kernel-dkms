@@ -287,6 +287,8 @@ void loonggpu_bo_move_notify(struct ttm_buffer_object *bo,
 int loonggpu_bo_fault_reserve_notify(struct ttm_buffer_object *bo);
 void loonggpu_bo_fence(struct loonggpu_bo *bo, struct dma_fence *fence,
 		     bool shared);
+int loonggpu_bo_sync_wait(struct loonggpu_bo *bo, enum loonggpu_sync_mode sync_mode,
+                        void *owner, bool intr, bool explicit);
 u64 loonggpu_bo_gpu_offset(struct loonggpu_bo *bo);
 int loonggpu_bo_backup_to_shadow(struct loonggpu_device *adev,
 			       struct loonggpu_ring *ring,

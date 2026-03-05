@@ -289,11 +289,12 @@ uint32_t loonggpu_display_supported_domains(struct loonggpu_device *adev)
 int loonggpu_display_framebuffer_init(struct drm_device *dev,
 				    struct loonggpu_framebuffer *rfb,
 				    const struct drm_mode_fb_cmd2 *mode_cmd,
+				    const struct drm_format_info *info,
 				    struct drm_gem_object *obj)
 {
 	int ret;
 	rfb->base.obj[0] = obj;
-	drm_helper_mode_fill_fb_struct(dev, &rfb->base, mode_cmd);
+	lg_drm_helper_mode_fill_fb_struct(dev, &rfb->base, info, mode_cmd);
 	ret = drm_framebuffer_init(dev, &rfb->base, &loonggpu_fb_funcs);
 	if (ret) {
 		rfb->base.obj[0] = NULL;
@@ -305,6 +306,9 @@ int loonggpu_display_framebuffer_init(struct drm_device *dev,
 struct drm_framebuffer *
 loonggpu_display_user_framebuffer_create(struct drm_device *dev,
 				       struct drm_file *file_priv,
+#if defined(LG_DRM_MODE_CONFIG_FUNCS_FB_CREATE_HAS_INFO)
+				       const struct drm_format_info *info,
+#endif
 				       const struct drm_mode_fb_cmd2 *mode_cmd)
 {
 	struct drm_gem_object *obj;
@@ -334,7 +338,11 @@ loonggpu_display_user_framebuffer_create(struct drm_device *dev,
 		return ERR_PTR(-ENOMEM);
 	}
 
-	ret = loonggpu_display_framebuffer_init(dev, loonggpu_fb, mode_cmd, obj);
+#if defined(LG_DRM_MODE_CONFIG_FUNCS_FB_CREATE_HAS_INFO)
+	ret = loonggpu_display_framebuffer_init(dev, loonggpu_fb, mode_cmd, info, obj);
+#else
+	ret = loonggpu_display_framebuffer_init(dev, loonggpu_fb, mode_cmd, NULL, obj);
+#endif
 	if (ret) {
 		kfree(loonggpu_fb);
 		lg_drm_gem_object_put(obj);

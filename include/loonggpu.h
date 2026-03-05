@@ -11,6 +11,7 @@
 #include <linux/dma-fence.h>
 #include <linux/pci.h>
 #include <linux/aer.h>
+#include <linux/hrtimer.h>
 #if defined(LG_DRM_DRM_BUDDY_H_PRESENT)
 #include <drm/drm_buddy.h>
 #endif
@@ -71,6 +72,7 @@ extern int loonggpu_testing;
 extern int loonggpu_disp_priority;
 extern int loonggpu_msi;
 extern int loonggpu_lockup_timeout;
+extern int loonggpu_dpm;
 extern int loonggpu_runtime_pm;
 extern int loonggpu_vm_size;
 extern int loonggpu_vm_block_size;
@@ -90,6 +92,7 @@ extern int loonggpu_cwsr_enable;
 extern int loonggpu_panel_cfg_clk_pol;
 extern int loonggpu_panel_cfg_de_pol;
 extern int loonggpu_gpu_uart;
+extern int loonggpu_ls7a2000_mode_limit;
 
 #ifdef CONFIG_VDD_LOONGSON
 extern bool no_system_mem_limit;
@@ -145,7 +148,8 @@ enum loonggpu_chip {
 	dev_7a2000,
 	dev_2k2000,
 	dev_2k3000,
-	dev_7a1000
+	dev_7a1000,
+	dev_9a1000
 };
 
 enum loonggpu_cp_irq {
@@ -422,6 +426,10 @@ void loonggpu_fence_slab_fini(void);
 /* reserved 0x54 ~ 0x74 */
 #define LOONGGPU_RESERVE_START_OFFSET		0x54
 #define LOONGGPU_RESERVE_END_OFFSET		0x74
+
+#define LOONGGPU_LG2XX_IP_STATE			0x44
+#define LOONGGPU_LG2XX_DPM_STATE		0xe8
+
 #define LOONGGPU_FW_VERSION_OFFSET			0x78
 #define LOONGGPU_HW_FEATURE_OFFSET			0x7c
 
@@ -429,7 +437,10 @@ void loonggpu_fence_slab_fini(void);
 #define LOONGGPU_EC_INT				0x84
 #define LOONGGPU_HOST_INT				0x88
 #define LOONGGPU_HWINF				0x8c
+#define LOONGGPU_TIME_COUNT_LO			0x90
+#define LOONGGPU_TIME_COUNT_HI			0x94
 #define LOONGGPU_FREQ_SCALE			0x9c
+#define LOONGGPU_POWER_LEVEL_RET		0xe8
 
 #define LOONGGPU_FW_WPORT				0xf0
 #define LOONGGPU_FW_WPTR				0xf4
@@ -562,8 +573,12 @@ void loonggpu_fence_slab_fini(void);
 	#define LG2XX_ICMD32_SOP_ZIP_ZDIS	0x00000002
 	#define LG2XX_ICMD32_SOP_ZIP_UTAGADDR	0x00000003
 	#define LG2XX_ICMD32_SOP_ZIP_UTAGMASK	0x00000004
+	#define LG2XX_ICMD32_SOP_ZIP_CNT	0x00000006
+	#define LG2XX_ICMD32_SOP_ZIP_CNTEN	0x00000007
+	#define LG2XX_ICMD32_SOP_ZIP_CNTDIS	0x00000008
 #define LG2XX_ICMD32_MOP_FREQ		0x00000008
 	#define LG2XX_ICMD32_SOP_FREQ_UFRQ	0x00000000
+	#define LG2XX_ICMD32_SOP_POWER_LEVEL_UFRQ	0x00000001
 #define LG2XX_ICMD32_MOP_EXC		0x00000009
 	#define LG2XX_ICMD32_SOP_EXC_BEQ	0x00000001
 	#define LG2XX_ICMD32_SOP_EXC_EQSZ	0x00000002
@@ -585,6 +600,7 @@ void loonggpu_fence_slab_fini(void);
 #define LG2XX_SCMD32_OP_VMID				0x0F
 #define LG2XX_SCMD32_OP_WB32				0x10
 #define LG2XX_SCMD32_OP_WB64				0x11 /* writeback operation */
+#define LG2XX_SCMD32_OP_ENVT				0x12
 #define LG2XX_SCMD32_OP_INTR				0x14
 #define LG2XX_SCMD32_OP_IB				0x80
 #define LG2XX_SCMD32_OP_WREG				0x81
@@ -609,6 +625,8 @@ void loonggpu_fence_slab_fini(void);
 #define LG2XX_INT_CFG0_MAP		(0x0 << 8)
 #define LG2XX_INT_CFG0_VMID		(0x0 << 9)
 
+#define LG2XX_DPM_STATE_READY		(0x80000000)
+#define LG2XX_EC132_OFFSET		(0x100000)
 /*
  * IRQS.
  */
@@ -1018,6 +1036,115 @@ struct loonggpu_xdma {
 	int			num_instances;
 };
 
+enum loong_dpm_sensors {
+	LOONGGPU_DPM_SENSOR_GFX_SCLK = 0,
+	LOONGGPU_DPM_SENSOR_GFX_COUNTER,
+	LOONGGPU_DPM_SENSOR_GPU_LOAD,
+	LOONGGPU_DPM_SENSOR_GFX_MCLK,
+	LOONGGPU_DPM_SENSOR_GPU_TEMP,
+	LOONGGPU_DPM_SENSOR_GFX_PCNT,
+	LOONGGPU_DPM_SENSOR_GFX_EVNT,
+	LOONGGPU_DPM_SENSOR_GPU_POWER_LEVEL,
+};
+
+enum loonggpu_dpm_clock_type {
+	DPM_SCLK,
+	DPM_MCLK,
+};
+
+struct loonggpu_dpm_funcs {
+	int (*print_clock_levels)(void *handle, enum loonggpu_dpm_clock_type type, char *buf);
+	int (*force_clock_level)(void *handle, enum loonggpu_dpm_clock_type type, uint32_t mask);
+	int (*read_sensor)(void *handle, int idx, void *value, int *size);
+	int (*update_state)(void *handle);
+	int (*set_capture_flags)(void *handle, uint32_t value);
+	int (*get_capture_flags)(void *handle, char *buf);
+};
+
+enum loonggpu_dpm_forced_level {
+	LOONGGPU_DPM_FORCED_LEVEL_AUTO = 0x1,
+	LOONGGPU_DPM_FORCED_LEVEL_MANUAL = 0x2,
+	LOONGGPU_DPM_FORCED_LEVEL_LOW = 0x4,
+	LOONGGPU_DPM_FORCED_LEVEL_HIGH = 0x8,
+};
+
+enum loonggpu_pm_state_type {
+	POWER_STATE_TYPE_ONDEMAND = 0,
+};
+
+struct loonggpu_ps {
+
+};
+
+#define DVFS_MAX_REGULAR_DPM_NUMBER 0x8
+#define DVFS_MAX_DPM_AVG_TIMES 2
+#define DVFS_MAX_EVNT_REG_NUMS 17
+#define DVFS_MAX_PCNT_REG_NUMS 32
+
+#define LOONGGPU_DVFS_CAPTURE_EVNT (0x1ULL << 0)
+#define LOONGGPU_DVFS_CAPTURE_PCNT (0x1ULL << 1)
+
+struct loonggpu_dvfs_level {
+	bool enabled;
+	u32 value;
+	u32 param1;
+	u32 level;
+};
+
+struct loonggpu_dvfs_single_table {
+	u32 count;
+	struct loonggpu_dvfs_level dvfs_levels[DVFS_MAX_REGULAR_DPM_NUMBER];
+};
+
+struct loonggpu_dvfs {
+	int num_ps;
+	struct loonggpu_ps *current_ps;
+	struct loonggpu_ps *requested_ps;
+	struct loonggpu_ps *boot_ps;
+
+	struct loonggpu_dvfs_single_table sclk_table;
+	uint32_t			  max_sclk;
+	struct loonggpu_dvfs_single_table mclk_table;
+	uint32_t			  max_mclk;
+
+	uint32_t 			capture_flags;
+	struct hrtimer 			capture_htimer;
+	bool 				capture_enable;
+
+	uint32_t 			capture_period;
+	uint32_t			*capture_data;
+	uint32_t			capture_counter;
+	spinlock_t			capture_lock;
+
+	uint32_t			capture_gpu_load; // 0.01%
+	uint32_t			capture_gpu_load_avg[DVFS_MAX_DPM_AVG_TIMES];
+
+	uint32_t			cur_power_level;
+	uint32_t			max_power_level;
+
+	uint32_t			cur_mclk;
+
+	struct loonggpu_bo		*evnt_bo; // evnt capture buffer
+	uint64_t			evnt_gpu_addr;
+	void *				evnt_ptr;
+};
+
+struct loonggpu_dpm {
+	struct loonggpu_dvfs dvfs;
+	bool bios_support;
+	void *handle;
+	enum loonggpu_pm_state_type state;
+	enum loonggpu_dpm_forced_level forced_level;
+};
+
+struct loonggpu_pm {
+	struct loonggpu_dpm dpm;
+
+	const struct loonggpu_dpm_funcs *dpm_funcs;
+	bool dpm_enabled;
+	struct mutex		mutex;
+};
+
 /*
  * Firmware
  */
@@ -1196,6 +1323,7 @@ struct loonggpu_device {
 	resource_size_t			rmmio_base;
 	resource_size_t			rmmio_size;
 	void __iomem			*rmmio;
+	void __iomem			*rmmio_sc;
 
 	/* loongson dc mmio */
 	resource_size_t			loongson_dc_rmmio_base;
@@ -1253,6 +1381,7 @@ struct loonggpu_device {
 	struct loonggpu_irq_src		vsync_irq;
 	struct loonggpu_irq_src		i2c_irq;
 	struct loonggpu_irq_src		hpd_irq;
+	struct loonggpu_irq_src		dc_irq_msg;
 
 	/* rings */
 	u64				fence_context;
@@ -1275,6 +1404,9 @@ struct loonggpu_device {
 
 	/* xdma */
 	struct loonggpu_xdma		xdma;
+
+	/* pm */
+	struct loonggpu_pm		pm;
 
 	/* KCD */
 	struct loonggpu_kcd_dev		kcd;

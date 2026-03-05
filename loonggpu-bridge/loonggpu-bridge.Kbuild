@@ -13,3 +13,4 @@ LOONGGPU_BRIDGE_SOURCES += loonggpu-bridge/ls7a1000_drv.c
 LOONGGPU_BRIDGE_SOURCES += loonggpu-bridge/lt8618_drv.c
 LOONGGPU_BRIDGE_SOURCES += loonggpu-bridge/it66121_drv.c
 LOONGGPU_BRIDGE_SOURCES += loonggpu-bridge/ms7210_drv.c
+LOONGGPU_BRIDGE_SOURCES += loonggpu-bridge/ls9a1000_drv.c

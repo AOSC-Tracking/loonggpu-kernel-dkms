@@ -3,9 +3,12 @@
 
 #include "loonggpu_dc.h"
 #include "loonggpu_dc_interface.h"
+#include "loonggpu_dc_video.h"
 
 #define MAX_DC_INTERFACES	6
 #define MAX_DC_HDMI	2
+
+struct dc_primary_plane;
 
 struct loonggpu_dc_crtc {
 	struct crtc_resource *resource;
@@ -17,6 +20,7 @@ struct loonggpu_dc_crtc {
 	struct dc_interface intf[MAX_DC_INTERFACES];
 	unsigned int interfaces;
 	unsigned int hdmi_ctrl[MAX_DC_HDMI];
+	struct loonggpu_dc_video dc_video;
 };
 
 enum fb_color_format {
@@ -50,6 +54,9 @@ void dc_crtc_destroy(struct loonggpu_dc_crtc *crtc);
 bool dc_crtc_enable(struct loonggpu_dc_crtc *crtc, bool enable);
 bool dc_crtc_timing_set(struct loonggpu_dc_crtc *crtc, struct dc_timing_info *timing);
 u32 dc_crtc_get_vblank_counter(struct loonggpu_dc_crtc *crtc);
+int dc_set_vblank(struct drm_crtc *crtc, bool enable);
+bool crtc_primary_plane_set(struct loonggpu_dc_crtc *crtc,
+			    struct dc_primary_plane *primary);
 enum drm_mode_status ls7a2000_dc_crtc_mode_valid(struct loonggpu_dc_crtc *crtc,
 				const struct drm_display_mode *mode);
 enum drm_mode_status ls2k2000_dc_crtc_mode_valid(struct loonggpu_dc_crtc *crtc,

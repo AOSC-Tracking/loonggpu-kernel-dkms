@@ -127,7 +127,7 @@ int loonggpu_job_submit(struct loonggpu_job *job, struct drm_sched_entity *entit
 	if (!f)
 		return -EINVAL;
 
-	r = lg_drm_sched_job_init(&job->base, entity, 1, owner);
+	r = lg_drm_sched_job_init(&job->base, entity, 1, owner, 0);
 	if (r)
 		return r;
 	lg_drm_sched_job_arm(&job->base);

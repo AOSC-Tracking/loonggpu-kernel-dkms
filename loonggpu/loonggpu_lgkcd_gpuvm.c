@@ -203,7 +203,7 @@ int loonggpu_lgkcd_reserve_mem_limit(struct loonggpu_device *adev,
 	    (kcd_mem_limit.ttm_mem_used + ttm_mem_needed >
 	     kcd_mem_limit.max_ttm_mem_limit) ||
 	    (adev && adev->kcd.vram_used[0] + vram_needed >
-	     vram_size - reserved_for_pt)) {
+	     vram_size - reserved_for_pt - atomic64_read(&adev->vram_pin_size))) {
 		ret = -ENOMEM;
 		goto release;
 	}
@@ -516,7 +516,8 @@ static int loonggpu_lgkcd_bo_validate(struct loonggpu_bo *bo, uint32_t domain,
 		lg_ttm_bo_wait(&bo->tbo, false, false);
 		loonggpu_lgkcd_add_eviction_fence(bo, ef_list, ef_count);
 #else
-		lg_ttm_bo_wait(&bo->tbo, false, false);
+		/* not waitting for kcd fence */
+		loonggpu_bo_sync_wait(bo, LOONGGPU_SYNC_NE_OWNER, LOONGGPU_FENCE_OWNER_KCD, false, false);
 #endif
 	}
 
