@@ -831,7 +831,11 @@ void loonggpu_bo_unref(struct loonggpu_bo **bo)
 		return;
 
 	tbo = &((*bo)->tbo);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 19, 0)
+	ttm_bo_fini(tbo);
+#else
 	ttm_bo_put(tbo);
+#endif
 	*bo = NULL;
 }
 
