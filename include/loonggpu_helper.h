@@ -40,6 +40,7 @@
 #include <drm/drm_irq.h>
 #endif
 #include <drm/drm_modeset_helper.h>
+#include <linux/version.h>
 
 /*
  * drm_sched_hw_job_reset() was replaced with drm_seched_stop.
