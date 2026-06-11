@@ -1725,8 +1725,8 @@ int loonggpu_driver_open_kms(struct drm_device *dev, struct drm_file *file_priv)
 void loonggpu_driver_postclose_kms(struct drm_device *dev,
 				 struct drm_file *file_priv);
 int loonggpu_device_ip_suspend(struct loonggpu_device *adev);
-int loonggpu_device_suspend(struct drm_device *dev, bool suspend, bool fbcon);
-int loonggpu_device_resume(struct drm_device *dev, bool resume, bool fbcon);
+int loonggpu_device_suspend(struct drm_device *dev, bool suspend, bool notify_clients);
+int loonggpu_device_resume(struct drm_device *dev, bool resume, bool notify_clients);
 u32 loonggpu_get_vblank_counter_kms(struct drm_device *dev, unsigned int pipe);
 long loonggpu_kms_compat_ioctl(struct file *filp, unsigned int cmd,
 			     unsigned long arg);

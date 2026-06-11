@@ -1,10 +1,10 @@
 #include <linux/power_supply.h>
 #include <linux/kthread.h>
-#include <linux/console.h>
 #include <linux/slab.h>
 #include "loonggpu.h"
 #include <drm/drm_crtc_helper.h>
 #include <drm/drm_atomic_helper.h>
+#include <drm/drm_client_event.h>
 #include "loonggpu_drm.h"
 #include <linux/vgaarb.h>
 #include <linux/vga_switcheroo.h>
@@ -1714,6 +1714,11 @@ static int loonggpu_zip_gem_bo_evict(int id, void *ptr, void *data)
 	return 0;
 }
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 19, 0)
+#define drm_client_dev_suspend(x) (drm_client_dev_suspend)((x), false)
+#define drm_client_dev_resume(x) (drm_client_dev_resume)((x), false)
+#endif
+
 /*
  * Suspend & resume.
  */
@@ -1728,7 +1733,7 @@ static int loonggpu_zip_gem_bo_evict(int id, void *ptr, void *data)
  * Returns 0 for success or an error on failure.
  * Called at driver suspend.
  */
-int loonggpu_device_suspend(struct drm_device *dev, bool suspend, bool fbcon)
+int loonggpu_device_suspend(struct drm_device *dev, bool suspend, bool notify_clients)
 {
 	struct loonggpu_device *adev;
 	int r;
@@ -1745,8 +1750,8 @@ int loonggpu_device_suspend(struct drm_device *dev, bool suspend, bool fbcon)
 
 	drm_kms_helper_poll_disable(dev);
 
-	if (fbcon)
-		loonggpu_fbdev_set_suspend(adev, 1);
+	if (notify_clients)
+		drm_client_dev_suspend(dev);
 
 	loonggpu_lgkcd_suspend(adev, false);
 
@@ -1802,7 +1807,7 @@ int loonggpu_device_suspend(struct drm_device *dev, bool suspend, bool fbcon)
  * Returns 0 for success or an error on failure.
  * Called at driver resume.
  */
-int loonggpu_device_resume(struct drm_device *dev, bool resume, bool fbcon)
+int loonggpu_device_resume(struct drm_device *dev, bool resume, bool notify_clients)
 {
 	struct loonggpu_device *adev = dev->dev_private;
 	struct loonggpu_dc *dc = adev->dc;
@@ -1883,8 +1888,8 @@ int loonggpu_device_resume(struct drm_device *dev, bool resume, bool fbcon)
 	flush_delayed_work(&adev->late_init_work);
 
 	/* blat the mode back in */
-	if (fbcon)
-		loonggpu_fbdev_set_suspend(adev, 0);
+	if (notify_clients)
+		drm_client_dev_resume(dev);
 
 	drm_kms_helper_poll_enable(dev);
 
