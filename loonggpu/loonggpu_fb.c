@@ -1,6 +1,7 @@
 #include <linux/module.h>
 #include <linux/slab.h>
 #include <linux/pm_runtime.h>
+#include <linux/version.h>
 #include <linux/vga_switcheroo.h>
 
 #include "loonggpu.h"
@@ -76,8 +77,15 @@ static void loonggpu_fbdev_fb_destroy(struct fb_info *info)
 
 	loonggpufb_destroy_pinned_object(gobj);
 	drm_client_release(&fb_helper->client);
+
+	/*
+	 * In 6.19 and later drm_client_release() has already done this, so
+	 * we need to avoid a double free.  Sigh.
+	 */
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 19, 0)
 	drm_fb_helper_unprepare(fb_helper);
 	kfree(fb_helper);
+#endif
 }
 
 static struct fb_ops loonggpufb_ops = {
