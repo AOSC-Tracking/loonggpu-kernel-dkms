@@ -4,7 +4,6 @@ LGKCD_SOURCES += lgkcd/kcd_ipc.c
 LGKCD_SOURCES += lgkcd/kcd_chardev.c
 LGKCD_SOURCES += lgkcd/kcd_crat.c
 LGKCD_SOURCES += lgkcd/kcd_debug.c
-LGKCD_SOURCES += lgkcd/kcd_debugfs.c
 LGKCD_SOURCES += lgkcd/kcd_device.c
 LGKCD_SOURCES += lgkcd/kcd_device_queue_manager.c
 LGKCD_SOURCES += lgkcd/kcd_device_queue_manager_lg2xx.c
@@ -29,4 +28,8 @@ LGKCD_SOURCES += lgkcd/kcd_doorbell.c
 ifeq ($(CONFIG_VDD_LOONGSON_SVM),1)
 LGKCD_SOURCES += lgkcd/kcd_svm.c
 LGKCD_SOURCES += lgkcd/kcd_migrate.c
+endif
+
+ifeq ($(CONFIG_DEBUG_FS),y)
+LGKCD_SOURCES += lgkcd/kcd_debugfs.c
 endif
