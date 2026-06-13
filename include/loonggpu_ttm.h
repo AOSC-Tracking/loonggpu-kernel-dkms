@@ -17,10 +17,30 @@
 #define LOONGGPU_VRAM_NUM_TRANSFER_WINDOWS     2
 uint64_t loonggpu_ttm_domain_start(struct loonggpu_device *adev, uint32_t type);
 
+#if __has_include(<linux/gpu_buddy.h>)
+typedef struct gpu_buddy lg_buddy_t;
+typedef struct gpu_buddy_block lg_buddy_block_t;
+#define lg_buddy_init gpu_buddy_init
+#define lg_buddy_fini gpu_buddy_fini
+#define lg_buddy_print gpu_buddy_print
+#define lg_buddy_alloc_blocks gpu_buddy_alloc_blocks
+#define LG_BUDDY_TOPDOWN_ALLOCATION GPU_BUDDY_TOPDOWN_ALLOCATION
+#define LG_BUDDY_RANGE_ALLOCATION GPU_BUDDY_RANGE_ALLOCATION
+#else
+typedef struct drm_buddy lg_buddy_t;
+typedef struct drm_buddy_block lg_buddy_block_t;
+#define lg_buddy_init drm_buddy_init
+#define lg_buddy_fini drm_buddy_fini
+#define lg_buddy_print drm_buddy_print
+#define lg_buddy_alloc_blocks drm_buddy_alloc_blocks
+#define LG_BUDDY_TOPDOWN_ALLOCATION DRM_BUDDY_TOPDOWN_ALLOCATION
+#define LG_BUDDY_RANGE_ALLOCATION DRM_BUDDY_RANGE_ALLOCATION
+#endif
+
 struct loonggpu_vram_mgr {
         lg_loonggpu_vram_mgr_man
 	#if defined(LG_DRM_DRM_BUDDY_H_PRESENT)
-	struct drm_buddy b_mm;
+	lg_buddy_t b_mm;
 	#endif
 	struct mutex m_lock;
         struct drm_mm mm;

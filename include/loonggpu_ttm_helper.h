@@ -244,6 +244,19 @@ void loonggpu_res_first(struct ttm_resource *res,
 		     struct loonggpu_res_cursor *cur);
 void loonggpu_res_next(struct loonggpu_res_cursor *cur, uint64_t size);
 
+#if __has_include(<linux/gpu_buddy.h>)
+static inline u64
+loonggpu_vram_mgr_block_start(struct gpu_buddy_block *block)
+{
+	return gpu_buddy_block_offset(block);
+}
+
+static inline u64
+loonggpu_vram_mgr_block_size(struct gpu_buddy_block *block)
+{
+	return (u64)PAGE_SIZE << gpu_buddy_block_order(block);
+}
+#else
 static inline u64
 loonggpu_vram_mgr_block_start(struct drm_buddy_block *block)
 {
@@ -255,6 +268,7 @@ loonggpu_vram_mgr_block_size(struct drm_buddy_block *block)
 {
 	return (u64)PAGE_SIZE << drm_buddy_block_order(block);
 }
+#endif
 
 static inline struct loonggpu_vram_mgr_resource *
 to_loonggpu_vram_mgr_resource(struct ttm_resource *res)

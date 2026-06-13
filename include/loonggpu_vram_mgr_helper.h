@@ -2,22 +2,26 @@
 #define __LOONGGPU_VRAM_MGR_HELPER_H__
 
 #if defined(LG_DRM_DRM_BUDDY_H_PRESENT)
-static inline void lg_drm_buddy_free_list(struct drm_buddy *mm,
+static inline void lg_drm_buddy_free_list(lg_buddy_t *mm,
 					struct list_head *objects,
 					unsigned int flags)
 {
-#if defined(LG_DRM_BUDDY_FREE_LIST_HAS_FLAGS)
+#if __has_include(<linux/gpu_buddy.h>)
+	gpu_buddy_free_list(mm, objects, flags);
+#elif defined(LG_DRM_BUDDY_FREE_LIST_HAS_FLAGS)
 	drm_buddy_free_list(mm, objects, flags);
 #else
 	drm_buddy_free_list(mm, objects);
 #endif
 }
-static inline void lg_drm_buddy_block_trim(struct drm_buddy *mm,
+static inline void lg_drm_buddy_block_trim(lg_buddy_t *mm,
 					   u64 *start,
 					   u64 new_size,
 					   struct list_head *blocks)
 {
-#if defined(LG_DRM_BUDDY_BLOCK_TRIM_HAS_START)
+#if __has_include(<linux/gpu_buddy.h>)
+	gpu_buddy_block_trim(mm, start, new_size, blocks);
+#elif defined(LG_DRM_BUDDY_BLOCK_TRIM_HAS_START)
 	drm_buddy_block_trim(mm, start, new_size, blocks);
 #else
 	drm_buddy_block_trim(mm, new_size, blocks);
@@ -182,7 +186,7 @@ static inline void lg_vram_init_mgr(struct loonggpu_vram_mgr *mgr)
 static inline int lg_vram_init_mgr_mm(struct loonggpu_vram_mgr *mgr, u64 start, u64 size)
 {
 #if defined(LG_DRM_DRM_BUDDY_H_PRESENT)
-	return drm_buddy_init(&mgr->b_mm, size, PAGE_SIZE);
+	return lg_buddy_init(&mgr->b_mm, size, PAGE_SIZE);
 #else
 	drm_mm_init(&mgr->mm, start, size);
 	return 0;
@@ -193,7 +197,7 @@ static inline void lg_vram_mm_fini(struct loonggpu_vram_mgr *mgr)
 {
 #if defined(LG_DRM_DRM_BUDDY_H_PRESENT)
 	mutex_lock(&mgr->m_lock);
-	drm_buddy_fini(&mgr->b_mm);
+	lg_buddy_fini(&mgr->b_mm);
 	mutex_unlock(&mgr->m_lock);
 #else
 	spin_lock(&mgr->lock);
@@ -203,7 +207,7 @@ static inline void lg_vram_mm_fini(struct loonggpu_vram_mgr *mgr)
 }
 
 #if defined(LG_DRM_DRM_BUDDY_H_PRESENT)
-#define lg_vram_mgr_vis_size_arg struct drm_buddy_block *block
+#define lg_vram_mgr_vis_size_arg lg_buddy_block_t *block
 #define lg_vram_mgr_vis_size_start loonggpu_vram_mgr_block_start(block)
 #define lg_vram_mgr_vis_size_end start + loonggpu_vram_mgr_block_size(block)
 #else

@@ -85,7 +85,7 @@ u64 loonggpu_vram_mgr_bo_visible_size(struct loonggpu_bo *bo)
 	lg_ttm_mem_t *mem = lg_bo_to_mem;
 #if defined(LG_DRM_DRM_BUDDY_H_PRESENT)
 	struct loonggpu_vram_mgr_resource *vres = to_loonggpu_vram_mgr_resource(mem);
-	struct drm_buddy_block *block;
+	lg_buddy_block_t *block;
 #else
 	struct drm_mm_node *nodes = mem->mm_node;
 	unsigned pages = mem->num_pages;
