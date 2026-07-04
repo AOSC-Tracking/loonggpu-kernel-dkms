@@ -104,7 +104,11 @@ void loonggpu_pasid_free_delayed(lg_dma_resv_t *resv, unsigned int pasid)
 		struct dma_fence_array *array;
 
 		array = dma_fence_array_create(count, fences, context,
-					       1, false);
+					       1
+#if LINUX_VERSION_CODE < KERNEL_VERSION(7, 2, 0)
+					      , false
+#endif
+						);
 		if (!array) {
 			kfree(fences);
 			goto fallback;
