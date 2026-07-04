@@ -1358,7 +1358,7 @@ static void loonggpu_dc_meta_free(struct loonggpu_device *adev)
 }
 
 static int loonggpu_dc_atomic_commit(struct drm_device *dev,
-				  struct drm_atomic_state *state,
+				  lg_atomic_check_state_arg *state,
 				  bool nonblock)
 {
 	return drm_atomic_helper_commit(dev, state, nonblock);
@@ -1618,7 +1618,7 @@ static void loonggpu_dc_do_flip(struct drm_crtc *crtc,
 			 lower_32_bits(afb->address));
 }
 
-static void loonggpu_dc_commit_planes(struct drm_atomic_state *state,
+static void loonggpu_dc_commit_planes(lg_atomic_check_state_arg *state,
 				   struct drm_device *dev,
 				   struct drm_crtc *pcrtc,
 				   bool *wait_for_vblank)
@@ -1855,7 +1855,7 @@ static void loonggpu_dc_commit_planes(struct drm_atomic_state *state,
 	}
 }
 
-static void loonggpu_dc_atomic_commit_tail(struct drm_atomic_state *state)
+static void loonggpu_dc_atomic_commit_tail(lg_atomic_check_state_arg *state)
 {
 	struct drm_device *dev = state->dev;
 	struct loonggpu_device *adev = dev->dev_private;

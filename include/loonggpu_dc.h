@@ -6,8 +6,18 @@
 #include "loonggpu_ih.h"
 #include "loonggpu_dc_interface.h"
 
+#include <linux/version.h>
+
 #define DC_VER "1.0"
 #define DC_DVO_MAXLINK 4
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(7, 2, 0)
+typedef struct drm_atomic_commit lg_atomic_check_state_arg;
+#elif defined(LG_ATOMIC_CHECK_HAS_CRTC_STATE_ARG)
+typedef struct drm_crtc_state lg_atomic_check_state_arg;
+#else
+typedef struct drm_atomic_state lg_atomic_check_state_arg;
+#endif
 
 extern const struct loonggpu_ip_block_version dc_ip_block;
 
@@ -173,7 +183,7 @@ struct loonggpu_dc {
 	/**
 	 * Caches device atomic state for suspend/resume
 	 */
-	struct drm_atomic_state *cached_state;
+	lg_atomic_check_state_arg *cached_state;
 
 	spinlock_t irq_handler_list_table_lock;
 	struct irq_list_head irq_handler_list_low_tab[DC_IRQ_SOURCES_NUMBER];

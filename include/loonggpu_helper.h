@@ -490,7 +490,9 @@ static inline void lg_drm_sched_job_arm(struct drm_sched_job *job)
 #define LG_DMA_RESV_USAGE_READ		0
 #endif
 
-#if defined(LG_ATOMIC_CHECK_HAS_DRM_ATOMIC_STATE)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(7, 2, 0)
+#define lg_dc_plane_atomic_check_args	struct drm_plane *plane, struct drm_atomic_commit *state
+#elif defined(LG_ATOMIC_CHECK_HAS_DRM_ATOMIC_STATE)
 #define lg_dc_plane_atomic_check_args	struct drm_plane *plane, struct drm_atomic_state *state
 #else
 #define lg_dc_plane_atomic_check_args	struct drm_plane *plane, struct drm_plane_state *state
@@ -642,7 +644,9 @@ typedef struct ttm_global lg_ttm_global_t;
 typedef struct ttm_bo_global lg_ttm_global_t;
 #endif
 
-#if defined(LG_ATOMIC_CHECK_HAS_CRTC_STATE_ARG)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(7, 2, 0)
+typedef struct drm_atomic_commit lg_atomic_check_state_arg;
+#elif defined(LG_ATOMIC_CHECK_HAS_CRTC_STATE_ARG)
 typedef struct drm_crtc_state lg_atomic_check_state_arg;
 #else
 typedef struct drm_atomic_state lg_atomic_check_state_arg;
