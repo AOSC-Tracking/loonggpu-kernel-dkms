@@ -779,7 +779,9 @@ static inline int lg_drm_sched_init(struct loonggpu_ring *ring,
 	const struct drm_sched_init_args args = {
 		.ops = ops,
 		.submit_wq = NULL,
+#if LINUX_VERSION_CODE < KERNEL_VERSION(7, 2, 0)
 		.num_rqs = DRM_SCHED_PRIORITY_COUNT,
+#endif
 		.credit_limit = num_hw_submission,
 		.hang_limit = hang_limit,
 		.timeout = timeout,
