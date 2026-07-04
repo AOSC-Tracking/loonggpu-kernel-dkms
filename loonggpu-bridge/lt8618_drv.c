@@ -779,7 +779,7 @@ static bool lt8618_chip_id_verify(struct loonggpu_bridge_phy *phy, char *str)
 	}
 
 	phy->chip_version = version_val[2];
-	strncpy(str, version_val, ARRAY_SIZE(version_val));
+	strscpy(str, version_val, ARRAY_SIZE(version_val));
 
 	lt8618_dev = phy->priv;
 	if (version_val[2] == 0xE1)

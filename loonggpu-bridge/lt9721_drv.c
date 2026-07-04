@@ -64,7 +64,7 @@ static bool lt9721_chip_id_verify(struct loonggpu_bridge_phy *phy, char *str)
 	}
 
 	phy->chip_version = version_val[1];
-	strncpy(str, version_val, ARRAY_SIZE(version_val));
+	strscpy(str, version_val, ARRAY_SIZE(version_val));
 
 	lt9721_dev = phy->priv;
 	if (version_val[1] == 0x06)

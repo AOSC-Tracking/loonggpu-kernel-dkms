@@ -422,7 +422,7 @@ loonggpu_dc_create_common_mode(struct drm_connector *connector,
 	mode->hdisplay = hdisplay;
 	mode->vdisplay = vdisplay;
 	mode->type &= ~DRM_MODE_TYPE_PREFERRED;
-	strncpy(mode->name, name, DRM_DISPLAY_MODE_LEN);
+	strscpy(mode->name, name, DRM_DISPLAY_MODE_LEN);
 
 	return mode;
 
@@ -1089,7 +1089,7 @@ static int bridge_phy_chip_id_verify(struct loonggpu_bridge_phy *phy)
 		if (!ret)
 			DRM_ERROR("Failed to verify chip %s, return [%s]\n",
 				  phy->res->chip_name, str);
-		strncpy(phy->res->vendor_str, str, NAME_SIZE_MAX - 1);
+		strscpy(phy->res->vendor_str, str, NAME_SIZE_MAX - 1);
 		return ret;
 	}
 

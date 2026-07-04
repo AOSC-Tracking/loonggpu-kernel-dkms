@@ -100,7 +100,7 @@ static bool it66121_chip_id_verify(struct loonggpu_bridge_phy *phy, char *str)
 	}
 
 	DRM_DEV_DEBUG(to_dev(phy), "PHY vendor: %c%c\n", buf[1], buf[0]);
-	strncpy(buf, str, ARRAY_SIZE(buf));
+	strscpy(buf, str, ARRAY_SIZE(buf));
 
 	return true;
 }
