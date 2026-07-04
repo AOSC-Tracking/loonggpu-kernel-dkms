@@ -1231,7 +1231,11 @@ static int loonggpu_cs_submit(struct loonggpu_cs_parser *p,
 	priority = job->base.s_priority;
 	lg_drm_sched_entity_push_job(&job->base, entity);
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(7, 2, 0)
+	ring = to_loonggpu_ring(container_of(entity->rq, typeof(struct drm_gpu_scheduler), rq));
+#else
 	ring = to_loonggpu_ring(entity->rq->sched);
+#endif
 	loonggpu_ring_priority_get(ring, priority);
 
 	ttm_eu_fence_buffer_objects(&p->ticket, &p->validated, p->fence);

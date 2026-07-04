@@ -138,7 +138,11 @@ int loonggpu_job_submit(struct loonggpu_job *job, struct drm_sched_entity *entit
 	priority = job->base.s_priority;
 	lg_drm_sched_entity_push_job(&job->base, entity);
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(7, 2, 0)
+	ring = to_loonggpu_ring(container_of(entity->rq, typeof(struct drm_gpu_scheduler), rq));
+#else
 	ring = to_loonggpu_ring(entity->rq->sched);
+#endif
 	loonggpu_ring_priority_get(ring, priority);
 
 	return 0;
@@ -162,7 +166,12 @@ int loonggpu_job_submit_direct(struct loonggpu_job *job, struct loonggpu_ring *r
 static struct dma_fence *loonggpu_job_dependency(struct drm_sched_job *sched_job,
 					       struct drm_sched_entity *s_entity)
 {
-	struct loonggpu_ring *ring = to_loonggpu_ring(s_entity->rq->sched);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(7, 2, 0)
+	struct drm_gpu_scheduler *sched = container_of(s_entity->rq, typeof(*sched), rq);
+#else
+	struct drm_gpu_scheduler *sched = s_entity->rq->sched;
+#endif
+	struct loonggpu_ring *ring = to_loonggpu_ring(sched);
 	struct loonggpu_job *job = to_loonggpu_job(sched_job);
 	struct loonggpu_vm *vm = job->vm;
 	struct dma_fence *fence;

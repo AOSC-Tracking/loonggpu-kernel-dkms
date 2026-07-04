@@ -322,6 +322,7 @@ static int loonggpu_vm_clear_bo(struct loonggpu_device *ldev,
 	struct dma_fence *fence = NULL;
 	lg_dma_resv_t *resv = to_dma_resv(bo);
 	unsigned entries;
+	struct drm_gpu_scheduler *sched = NULL;
 	struct loonggpu_ring *ring;
 	struct loonggpu_job *job;
 	u64 addr;
@@ -332,7 +333,12 @@ static int loonggpu_vm_clear_bo(struct loonggpu_device *ldev,
 
 	entries = loonggpu_bo_size(bo) / loonggpu_get_pde_pte_size(ldev);
 
-	ring = container_of(vm->entity.rq->sched, struct loonggpu_ring, sched);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(7, 2, 0)
+	sched = container_of(vm->entity.rq, typeof(*sched), rq);
+#else
+	sched = vm->entity.rq->sched;
+#endif
+	ring = container_of(sched, struct loonggpu_ring, sched);
 
 	r = lg_dma_resv_reserve_shared(resv, 1);
 	if (r)
@@ -971,9 +977,14 @@ restart:
 		struct loonggpu_ring *ring;
 		struct dma_fence *fence;
 		lg_dma_resv_t *resv = to_dma_resv(root);
+		struct drm_gpu_scheduler *sched =
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(7, 2, 0)
+				container_of(vm->entity.rq, typeof(*sched), rq);
+#else
+				vm->entity.rq->sched;
+#endif
 
-		ring = container_of(vm->entity.rq->sched, struct loonggpu_ring,
-				    sched);
+		ring = container_of(sched, struct loonggpu_ring, sched);
 
 		loonggpu_ring_pad_ib(ring, params.ib);
 		loonggpu_sync_resv(ldev, &job->sync, resv, LOONGGPU_SYNC_ALWAYS, LOONGGPU_FENCE_OWNER_VM, false);
@@ -1114,6 +1125,7 @@ int loonggpu_vm_bo_update_mapping(struct loonggpu_device *ldev,
 	unsigned nptes, ncmds, ndw;
 	struct loonggpu_job *job;
 	struct loonggpu_pte_update_params params;
+	struct drm_gpu_scheduler *sched = NULL;
 	struct dma_fence *f = NULL;
 	lg_dma_resv_t *resv;
 	int r;
@@ -1149,7 +1161,12 @@ int loonggpu_vm_bo_update_mapping(struct loonggpu_device *ldev,
 					   addr, flags);
 	}
 
-	ring = container_of(vm->entity.rq->sched, struct loonggpu_ring, sched);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(7, 2, 0)
+	sched = container_of(vm->entity.rq, typeof(*sched), rq);
+#else
+	sched = vm->entity.rq->sched;
+#endif
+	ring = container_of(sched, struct loonggpu_ring, sched);
 
 	nptes = last - start + 1;
 

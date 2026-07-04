@@ -758,7 +758,9 @@ static inline long lg_get_user_pages(uint64_t userptr, unsigned num_pages,
 static inline struct drm_sched_rq *lg_sched_to_sched_rq(struct drm_gpu_scheduler *sched,
 					enum drm_sched_priority priority)
 {
-#if defined(LG_DRM_SCHED_INIT_HAS_DEVICE_RQ) || \
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(7, 2, 0)
+	return &sched->rq;
+#elif defined(LG_DRM_SCHED_INIT_HAS_DEVICE_RQ) || \
     defined (LG_DRM_SCHED_INIT_HAS_SUBMIT_WQ) || \
     defined(LG_DRM_GPU_SCHEDULER_HAS_NUM_RQS)
 	return sched->sched_rq[priority];
@@ -1104,7 +1106,11 @@ static inline dma_addr_t *lg_tbo_to_dma_address(struct ttm_buffer_object *tbo)
 static bool loonggpu_drm_sched_dependency_optimized(struct dma_fence* fence,
 					struct drm_sched_entity *entity)
 {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(7, 2, 0)
+	struct drm_gpu_scheduler *sched = container_of(entity->rq, typeof(*sched), rq);
+#else
 	struct drm_gpu_scheduler *sched = entity->rq->sched;
+#endif
 	struct drm_sched_fence *s_fence;
 
 	if (!fence || dma_fence_is_signaled(fence))
