@@ -171,60 +171,37 @@ bool loonggpu_vmid_had_gpu_reset(struct loonggpu_device *adev,
  * Try to find an idle VMID, if none is idle add a fence to wait to the sync
  * object. Returns -ENOMEM when we are out of memory.
  */
-static int loonggpu_vmid_grab_idle(struct loonggpu_vm *vm,
-				 struct loonggpu_ring *ring,
-				 struct loonggpu_sync *sync,
-				 struct loonggpu_vmid **idle)
+static int loonggpu_vmid_grab_idle(struct loonggpu_ring *ring,
+				 struct loonggpu_vmid **idle,
+				 struct dma_fence **fence)
 {
 	struct loonggpu_device *adev = ring->adev;
 	struct loonggpu_vmid_mgr *id_mgr = &adev->vm_manager.id_mgr;
-	struct dma_fence **fences;
-	unsigned i;
-	int r;
 
-	if (ring->vmid_wait && !dma_fence_is_signaled(ring->vmid_wait))
-		return loonggpu_sync_fence(adev, sync, ring->vmid_wait, false);
-
-	fences = kmalloc_array(id_mgr->num_ids, sizeof(void *), GFP_KERNEL);
-	if (!fences)
-		return -ENOMEM;
+	/* If anybody is waiting for a VMID let everybody wait for fairness */
+	if (!dma_fence_is_signaled(ring->vmid_wait)) {
+		*fence = dma_fence_get(ring->vmid_wait);
+		return 0;
+	}
 
 	/* Check if we have an idle VMID */
-	i = 0;
-	list_for_each_entry((*idle), &id_mgr->ids_lru, list) {
-		fences[i] = loonggpu_sync_peek_fence(&(*idle)->active, ring);
-		if (!fences[i])
-			break;
-		++i;
+	list_for_each_entry_reverse((*idle), &id_mgr->ids_lru, list) {
+		/* Don't use per engine and per process VMID at the same time */
+		*fence = loonggpu_sync_peek_fence(&(*idle)->active, ring);
+		if (!(*fence))
+			return 0;
 	}
 
-	/* If we can't find a idle VMID to use, wait till one becomes available */
-	if (&(*idle)->list == &id_mgr->ids_lru) {
-		u64 fence_context = adev->vm_manager.fence_context + ring->idx;
-		unsigned seqno = ++adev->vm_manager.seqno[ring->idx];
-		struct dma_fence_array *array;
-		unsigned j;
+	/*
+	 * If we can't find a idle VMID to use, wait on a fence from the least
+	 * recently used in the hope that it will be available soon.
+	 */
+	*idle = NULL;
+	dma_fence_put(ring->vmid_wait);
+	ring->vmid_wait = dma_fence_get(*fence);
 
-		*idle = NULL;
-		for (j = 0; j < i; ++j)
-			dma_fence_get(fences[j]);
-
-		array = dma_fence_array_create(i, fences, fence_context,
-					       seqno, true);
-		if (!array) {
-			for (j = 0; j < i; ++j)
-				dma_fence_put(fences[j]);
-			kfree(fences);
-			return -ENOMEM;
-		}
-
-		r = loonggpu_sync_fence(adev, sync, &array->base, false);
-		dma_fence_put(ring->vmid_wait);
-		ring->vmid_wait = &array->base;
-		return r;
-	}
-	kfree(fences);
-
+	/* This is the reference we return */
+	dma_fence_get(*fence);
 	return 0;
 }
 
@@ -381,7 +358,7 @@ int loonggpu_vmid_grab(struct loonggpu_vm *vm, struct loonggpu_ring *ring,
 	int r = 0;
 
 	mutex_lock(&id_mgr->lock);
-	r = loonggpu_vmid_grab_idle(vm, ring, sync, &idle);
+	r = loonggpu_vmid_grab_idle(ring, &idle, &fence);
 	if (r || !idle)
 		goto error;
 
