@@ -371,10 +371,10 @@ int get_irq_msg_type(int mod_num, int irq_num)
 }
 
 /* type 的0-7位是子模块编号,8-31位是中断编号 */
-int dc_set_irq_msg_state(struct loonggpu_device *adev,
-			 struct loonggpu_irq_src *src,
-			 unsigned type,
-			 enum loonggpu_interrupt_state state)
+static int dc_set_irq_msg_state(struct loonggpu_device *adev,
+				struct loonggpu_irq_src *src,
+				unsigned type,
+				enum loonggpu_interrupt_state state)
 {
 	int mod_num = type & 0xff;
 	int irq_num = type >> 8;

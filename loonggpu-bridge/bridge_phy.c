@@ -64,7 +64,7 @@ const char *drm_get_edid_manufacturer(const struct edid *edid)
 	return kasprintf(GFP_KERNEL, "%c%c%c", mfg[0], mfg[1], mfg[2]);
 }
 
-void fix_monitor_offset(struct loonggpu_device *adev, u32 link)
+static void fix_monitor_offset(struct loonggpu_device *adev, u32 link)
 {
 	u32 vsync = 0;
 
@@ -74,7 +74,7 @@ void fix_monitor_offset(struct loonggpu_device *adev, u32 link)
 	dc_writel(adev, gdc_reg->crtc_reg[link].vsync, vsync);
 }
 
-void fix_vsc_missing_display(struct loonggpu_device *adev, u32 link)
+static void fix_vsc_missing_display(struct loonggpu_device *adev, u32 link)
 {
 	u32 reg_val;
 

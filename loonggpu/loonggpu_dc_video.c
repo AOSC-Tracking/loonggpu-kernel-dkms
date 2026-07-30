@@ -773,7 +773,7 @@ static void video_meta_set(struct loonggpu_device *adev)
 
 	DRM_INFO("set dc video meta OK!\n");
 }
-
+#if 0
 void video_meta_free(struct loonggpu_device *adev)
 {
 	adev->dc->meta_gpu_addr = 0;
@@ -787,7 +787,7 @@ void video_meta_free(struct loonggpu_device *adev)
 
 	DRM_INFO("close video unzip\n");
 }
-
+#endif
 bool ls9a1000_dc_pll_set(struct loonggpu_dc_crtc *crtc, struct dc_timing_info *timing)
 {
 	/* 9A上一定要先配置接口的时钟再配置video, video依赖接口的时钟 */
@@ -1013,7 +1013,7 @@ int layer_display_ioctl(struct drm_device *dev, void *data, struct drm_file *fil
 
 	return ret;
 }
-
+#if 0
 int video_zoom_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 {
 	struct loonggpu_device *adev = dev->dev_private;
@@ -1057,7 +1057,7 @@ int video_zoom_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 
 	return ret;
 }
-
+#endif
 int layer_zoom_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 {
 	struct loonggpu_device *adev = dev->dev_private;

@@ -1357,9 +1357,12 @@ void loonggpu_bo_fence(struct loonggpu_bo *bo, struct dma_fence *fence,
  * Returns:
  * 0 on success, errno otherwise.
  */
-int loonggpu_bo_sync_wait_resv(struct loonggpu_device *adev, lg_dma_resv_t *resv,
-			     enum loonggpu_sync_mode sync_mode, void *owner,
-			     bool intr, bool explicit)
+static int loonggpu_bo_sync_wait_resv(struct loonggpu_device *adev,
+				      lg_dma_resv_t *resv,
+				      enum loonggpu_sync_mode sync_mode,
+				      void *owner,
+				      bool intr,
+				      bool explicit)
 {
 	struct loonggpu_sync sync;
 	int r;
