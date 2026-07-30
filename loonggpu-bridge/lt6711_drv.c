@@ -19,13 +19,13 @@ static int lt6711_get_modes(struct loonggpu_bridge_phy *phy,
 			    struct drm_connector *connector)
 {
 	struct loonggpu_dc_i2c *i2c = phy->li2c;
-	struct edid *edid;
+	const struct drm_edid *edid;
 	unsigned int count = 0;
 
-	edid = drm_get_edid(connector, &i2c->adapter);
+	edid = drm_edid_read_ddc(connector, &i2c->adapter);
 	if (edid) {
-		drm_connector_update_edid_property(connector, edid);
-		count = drm_add_edid_modes(connector, edid);
+		drm_edid_connector_update(connector, edid);
+		count = drm_edid_connector_add_modes(connector);
 		kfree(edid);
 	} else {
 		DRM_ERROR("LT6711 edid is invalid.\n");

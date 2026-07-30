@@ -188,17 +188,17 @@ static void ms7210_ddc_ctrl(struct loonggpu_bridge_phy *phy, bool enabled)
 static int ms7210_get_modes(struct loonggpu_bridge_phy *phy,
 			    struct drm_connector *connector)
 {
-	struct edid *edid;
+	struct drm_edid *edid;
 	unsigned int count;
 	struct i2c_adapter *i2c_adap;
 
 	i2c_adap = &phy->li2c->adapter;
 	ms7210_ddc_ctrl(phy, true);
 
-	edid = drm_get_edid(connector, i2c_adap);
+	edid = drm_edid_read_ddc(connector, i2c_adap);
 	if (edid) {
-		drm_connector_update_edid_property(connector, edid);
-		count = drm_add_edid_modes(connector, edid);
+		drm_edid_connector_update(connector, edid);
+		count = drm_edid_connector_add_modes(connector);
 		kfree(edid);
 	}
 

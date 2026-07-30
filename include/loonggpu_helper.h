@@ -1374,24 +1374,6 @@ static inline void lg_unuse_mm(struct mm_struct *mm)
 #endif
 }
 
-#if defined(LG_DRM_DO_GET_EDID)
-static inline struct edid *lg_drm_do_get_edid(struct drm_connector *connector,
-#else
-static inline const struct edid *lg_drm_do_get_edid(struct drm_connector *connector,
-#endif
-					int (*get_edid_block)(void *data, u8 *buf,
-							      unsigned int block, size_t len),
-					void *context)
-{
-#if defined(LG_DRM_DO_GET_EDID)
-	return drm_do_get_edid(connector, get_edid_block, context);
-#else
-	const struct drm_edid *edid;
-	edid = drm_edid_read_custom(connector, get_edid_block, context);
-	return drm_edid_raw(edid);
-#endif
-}
-
 static inline int lg_del_timer(struct timer_list *timer)
 {
 #if defined(LG_DEL_TIMER)
