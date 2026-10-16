@@ -126,6 +126,7 @@ static const struct special_display special_displays[] = {
 		.serial = 16843009,
 		.sd_func = fix_vsc_missing_display,
 	},
+	{ /* sentinel */ },
 };
 
 void is_special_display(struct loonggpu_device *adev, struct loonggpu_connector *aconnector, u32 link)
