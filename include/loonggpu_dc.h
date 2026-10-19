@@ -174,7 +174,7 @@ struct loonggpu_dc {
 	/**
 	 * Caches device atomic state for suspend/resume
 	 */
-	struct drm_atomic_state *cached_state;
+	struct drm_atomic_commit *cached_state;
 
 	spinlock_t irq_handler_list_table_lock;
 	struct irq_list_head irq_handler_list_low_tab[DC_IRQ_SOURCES_NUMBER];

@@ -144,6 +144,7 @@ LG_CONFTEST_TYPE_COMPILE_TESTS += drm_sched_entity_push_job
 LG_CONFTEST_TYPE_COMPILE_TESTS += drm_sched_backend_ops_has_prepare
 LG_CONFTEST_TYPE_COMPILE_TESTS += dma_resv_usage_bookkeep
 LG_CONFTEST_TYPE_COMPILE_TESTS += drm_plane_atomic_check_has_atomic_state_arg
+LG_CONFTEST_TYPE_COMPILE_TESTS += drm_plane_atomic_check_has_atomic_commit_arg
 LG_CONFTEST_TYPE_COMPILE_TESTS += vga_client_register
 LG_CONFTEST_TYPE_COMPILE_TESTS += fb_info_has_apertures
 LG_CONFTEST_TYPE_COMPILE_TESTS += drm_fb_helper_prepare

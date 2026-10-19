@@ -2408,6 +2408,28 @@ compile_test() {
             compile_check_conftest "$CODE" "LG_ATOMIC_CHECK_HAS_DRM_ATOMIC_STATE" "" "types"
         ;;
 
+        drm_plane_atomic_check_has_atomic_commit_arg)
+            #
+            # Determine if the drm_plane_helper_funcs->atomic_check()
+            # has 'atomic_commit' parameter.
+            #
+            # Changed by commit 5164f7e7ff8ec7d41065d3862630c2ba09854328 ("drm:
+	    # Rename struct drm_atomic_state to drm_atomic_commit") in v7.2-rc1
+            #
+            CODE="
+            #include <drm/drm_modeset_helper_vtables.h>
+            #include <drm/drm_plane.h>
+            #include <drm/drm_atomic.h>
+            static const struct drm_plane_helper_funcs *funcs;
+            typeof(*funcs->atomic_check) conftest_drm_plane_atomic_check_has_atomic_state_arg;
+            int conftest_drm_plane_atomic_check_has_atomic_state_arg(
+                    struct drm_plane *plane,
+                    struct drm_atomic_commit *state) {
+                return 0;
+            }"
+            compile_check_conftest "$CODE" "LG_ATOMIC_CHECK_HAS_DRM_ATOMIC_COMMIT" "" "types"
+        ;;
+
         vga_client_register)
             #
             # Determine if the function vga_client_register() has
