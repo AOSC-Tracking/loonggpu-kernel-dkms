@@ -515,7 +515,7 @@ int drm_connector_edid_intersection(struct drm_connector *actual_connector,
 
 static struct drm_display_mode *
 loonggpu_dc_create_common_mode(struct drm_connector *connector,
-			     char *name,
+			     const char *name,
 			     int hdisplay, int vdisplay)
 {
 	struct loonggpu_device *adev = connector->dev->dev_private;
@@ -531,7 +531,7 @@ loonggpu_dc_create_common_mode(struct drm_connector *connector,
 	mode->hdisplay = hdisplay;
 	mode->vdisplay = vdisplay;
 	mode->type &= ~DRM_MODE_TYPE_PREFERRED;
-	strncpy(mode->name, name, DRM_DISPLAY_MODE_LEN);
+	strscpy(mode->name, name, DRM_DISPLAY_MODE_LEN);
 
 	return mode;
 
