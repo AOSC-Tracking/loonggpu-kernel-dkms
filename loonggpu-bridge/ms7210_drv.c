@@ -268,12 +268,12 @@ static bool ms7210_chip_id_verify(struct loonggpu_bridge_phy *phy, char *str)
 	    version_val[2] != MS7210_CHIP_ID2) {
 		DRM_ERROR("Invalid ms7210 chip version {%02x,%02x,%02x}\n",
 			  version_val[0], version_val[1], version_val[2]);
-		strcpy("Unknown", str);
+		strscpy("Unknown", str, strlen("Unknown"));
 		return false;
 	}
 
 	phy->chip_version = version_val[0];
-	strcpy(str, MS7210_CHIP_NAME);
+	strscpy(str, MS7210_CHIP_NAME, NAME_SIZE_MAX - 1);
 	return true;
 }
 

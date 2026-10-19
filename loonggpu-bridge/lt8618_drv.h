@@ -67,6 +67,7 @@ enum hdmi_mode {
  * Reset nRES_Pin -> delay 100ms -> Set nRES_Pin -> delay 100ms
  */
 #define LT8618_CHIP_NAME "LT8618"
+#define LT8618_CHIP_NAME_MAX 32U
 #define LT8618_CHIP_ADDR 0x3B
 #define LT8618_GPIO_PLACEMENT_OFFSET 16U
 

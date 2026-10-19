@@ -59,7 +59,7 @@ static bool lt9721_chip_id_verify(struct loonggpu_bridge_phy *phy, char *str)
 				version_val, CHIP_VERSION_LEN);
 	if (version_val[0] != 0x16) {
 		DRM_ERROR("Invalid lt9721 chip version {%02x}\n", version_val[0]);
-		strcpy(str, "Unknown");
+		strscpy(str, "Unknown", NAME_SIZE_MAX - 1);
 		return false;
 	}
 

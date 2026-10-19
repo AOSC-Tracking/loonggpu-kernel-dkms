@@ -774,7 +774,7 @@ static bool lt8618_chip_id_verify(struct loonggpu_bridge_phy *phy, char *str)
 	if (version_val[0] != 0x17 || version_val[1] != 0x02) {
 		DRM_ERROR("Invalid lt8618 chip version {%02x,%02x,%02x}\n",
 			  version_val[0], version_val[1], version_val[2]);
-		strcpy("Unknown", str);
+		strscpy("Unknown", str, strlen("Unknown"));
 		return false;
 	}
 
