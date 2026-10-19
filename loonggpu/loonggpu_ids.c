@@ -104,7 +104,7 @@ void loonggpu_pasid_free_delayed(lg_dma_resv_t *resv, unsigned int pasid)
 		struct dma_fence_array *array;
 
 		array = dma_fence_array_create(count, fences, context,
-					       1, false);
+					       1);
 		if (!array) {
 			kfree(fences);
 			goto fallback;
@@ -206,7 +206,7 @@ static int loonggpu_vmid_grab_idle(struct loonggpu_vm *vm,
 			dma_fence_get(fences[j]);
 
 		array = dma_fence_array_create(i, fences, fence_context,
-					       seqno, true);
+					       seqno);
 		if (!array) {
 			for (j = 0; j < i; ++j)
 				dma_fence_put(fences[j]);
