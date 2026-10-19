@@ -774,7 +774,7 @@ static void video_meta_set(struct loonggpu_device *adev)
 	DRM_INFO("set dc video meta OK!\n");
 }
 
-void video_meta_free(struct loonggpu_device *adev)
+static void video_meta_free(struct loonggpu_device *adev)
 {
 	adev->dc->meta_gpu_addr = 0;
 	adev->dc->meta_bo = NULL;
@@ -1014,7 +1014,7 @@ int layer_display_ioctl(struct drm_device *dev, void *data, struct drm_file *fil
 	return ret;
 }
 
-int video_zoom_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
+static int video_zoom_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 {
 	struct loonggpu_device *adev = dev->dev_private;
 	struct drm_loonggpu_video_zoom *video_zoom = data;
