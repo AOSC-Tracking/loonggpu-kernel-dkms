@@ -84,10 +84,9 @@ static const struct bridge_phy_cfg_funcs it66121_cfg_funcs = {
 	.hdmi_audio = it66121_audio_enable,
 };
 
-static bool it66121_chip_id_verify(struct loonggpu_bridge_phy *phy, char *str)
+static bool it66121_chip_id_verify(struct loonggpu_bridge_phy *phy)
 {
 	u8 buf[4];
-
 	struct regmap *regmap = phy->phy_regmap;
 
 	regmap_raw_read(regmap, IT66121_REG_VENDOR_ID_BASE, &buf,
@@ -98,9 +97,6 @@ static bool it66121_chip_id_verify(struct loonggpu_bridge_phy *phy, char *str)
 			      "Failed to verify IT66121 chip id\n");
 		return false;
 	}
-
-	DRM_DEV_DEBUG(to_dev(phy), "PHY vendor: %c%c\n", buf[1], buf[0]);
-	strncpy(buf, str, ARRAY_SIZE(buf));
 
 	return true;
 }

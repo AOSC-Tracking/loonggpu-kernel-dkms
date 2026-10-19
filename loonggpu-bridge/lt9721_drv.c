@@ -50,7 +50,7 @@ static const struct regmap_range_cfg lt9721_regmap_range_cfg[] = {
 	},
 };
 
-static bool lt9721_chip_id_verify(struct loonggpu_bridge_phy *phy, char *str)
+static bool lt9721_chip_id_verify(struct loonggpu_bridge_phy *phy)
 {
 	struct lt9721_device *lt9721_dev;
 	u8 version_val[2];
@@ -59,12 +59,10 @@ static bool lt9721_chip_id_verify(struct loonggpu_bridge_phy *phy, char *str)
 				version_val, CHIP_VERSION_LEN);
 	if (version_val[0] != 0x16) {
 		DRM_ERROR("Invalid lt9721 chip version {%02x}\n", version_val[0]);
-		strcpy(str, "Unknown");
 		return false;
 	}
 
 	phy->chip_version = version_val[1];
-	strncpy(str, version_val, ARRAY_SIZE(version_val));
 
 	lt9721_dev = phy->priv;
 	if (version_val[1] == 0x06)

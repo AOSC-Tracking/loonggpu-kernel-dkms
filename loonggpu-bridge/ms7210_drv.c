@@ -236,24 +236,23 @@ static struct bridge_phy_hdmi_aux_funcs ms7210_hdmi_aux_funcs = {
 /**
  * @section Device debugfs attribute
  */
-static bool ms7210_chip_id_verify(struct loonggpu_bridge_phy *phy, char *str);
+static bool ms7210_chip_id_verify(struct loonggpu_bridge_phy *phy);
 
 static ssize_t ms7210_test_case_show(struct device *dev,
 				     struct device_attribute *attr, char *buf)
 {
-	char name[32];
 	struct i2c_client *i2c;
 	struct loonggpu_bridge_phy *phy;
 
 	i2c = to_i2c_client(dev);
 	phy = (struct loonggpu_bridge_phy *)i2c_get_clientdata(i2c);
 
-	ms7210_chip_id_verify(phy, name);
+	ms7210_chip_id_verify(phy);
 
 	return 0;
 }
 
-static bool ms7210_chip_id_verify(struct loonggpu_bridge_phy *phy, char *str)
+static bool ms7210_chip_id_verify(struct loonggpu_bridge_phy *phy)
 {
 	unsigned int version_val[5] = {};
 
@@ -268,12 +267,10 @@ static bool ms7210_chip_id_verify(struct loonggpu_bridge_phy *phy, char *str)
 	    version_val[2] != MS7210_CHIP_ID2) {
 		DRM_ERROR("Invalid ms7210 chip version {%02x,%02x,%02x}\n",
 			  version_val[0], version_val[1], version_val[2]);
-		strcpy("Unknown", str);
 		return false;
 	}
 
 	phy->chip_version = version_val[0];
-	strcpy(str, MS7210_CHIP_NAME);
 	return true;
 }
 

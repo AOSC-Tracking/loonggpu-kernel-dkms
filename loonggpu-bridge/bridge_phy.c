@@ -1199,14 +1199,12 @@ static int bridge_phy_regmap_init(struct loonggpu_bridge_phy *phy)
 static int bridge_phy_chip_id_verify(struct loonggpu_bridge_phy *phy)
 {
 	int ret;
-	char str[NAME_SIZE_MAX] = "";
 
 	if (phy->misc_funcs && phy->misc_funcs->chip_id_verify) {
-		ret = phy->misc_funcs->chip_id_verify(phy, str);
+		ret = phy->misc_funcs->chip_id_verify(phy);
 		if (!ret)
-			DRM_ERROR("Failed to verify chip %s, return [%s]\n",
-				  phy->res->chip_name, str);
-		strncpy(phy->res->vendor_str, str, NAME_SIZE_MAX - 1);
+			DRM_ERROR("Failed to verify chip %s\n",
+				  phy->res->chip_name);
 		return ret;
 	}
 

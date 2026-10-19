@@ -673,19 +673,18 @@ static struct bridge_phy_hdmi_aux_funcs lt8618_hdmi_aux_funcs = {
 /**
  * @section Device debugfs attribute
  */
-static bool lt8618_chip_id_verify(struct loonggpu_bridge_phy *phy, char *str);
+static bool lt8618_chip_id_verify(struct loonggpu_bridge_phy *phy);
 
 static ssize_t lt8618_test_case_show(struct device *dev,
 				     struct device_attribute *attr, char *buf)
 {
-	char name[32];
 	struct i2c_client *i2c;
 	struct loonggpu_bridge_phy *phy;
 
 	i2c = to_i2c_client(dev);
 	phy = (struct loonggpu_bridge_phy *)i2c_get_clientdata(i2c);
 
-	lt8618_chip_id_verify(phy, name);
+	lt8618_chip_id_verify(phy);
 
 	return 0;
 }
@@ -764,7 +763,7 @@ write:
 	return count;
 }
 
-static bool lt8618_chip_id_verify(struct loonggpu_bridge_phy *phy, char *str)
+static bool lt8618_chip_id_verify(struct loonggpu_bridge_phy *phy)
 {
 	u8 version_val[3];
 	struct lt8618_device *lt8618_dev;
@@ -774,12 +773,10 @@ static bool lt8618_chip_id_verify(struct loonggpu_bridge_phy *phy, char *str)
 	if (version_val[0] != 0x17 || version_val[1] != 0x02) {
 		DRM_ERROR("Invalid lt8618 chip version {%02x,%02x,%02x}\n",
 			  version_val[0], version_val[1], version_val[2]);
-		strcpy("Unknown", str);
 		return false;
 	}
 
 	phy->chip_version = version_val[2];
-	strncpy(str, version_val, ARRAY_SIZE(version_val));
 
 	lt8618_dev = phy->priv;
 	if (version_val[2] == 0xE1)

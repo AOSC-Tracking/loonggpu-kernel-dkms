@@ -507,7 +507,7 @@ static int lt8718_get_modes(struct loonggpu_bridge_phy *phy,
         return count;
 }
 
-static bool lt8718_chip_id_verify(struct loonggpu_bridge_phy *phy, char *str)
+static bool lt8718_chip_id_verify(struct loonggpu_bridge_phy *phy)
 {
         struct lt8718_device *lt8718_dev;
         unsigned char version_val[2];
@@ -517,12 +517,10 @@ static bool lt8718_chip_id_verify(struct loonggpu_bridge_phy *phy, char *str)
 
         if (version_val[0] != 0x16) {
             DRM_ERROR("Invalid lt8718 chip version {%02x}\n", version_val[0]);
-            strcpy(str, "Unknown");
             return false;
         }
 
         phy->chip_version = version_val[1];
-        strncpy(str, version_val, ARRAY_SIZE(version_val));
         lt8718_dev = phy->priv;
         if (version_val[1] == 0x06)
             lt8718_dev->ver = LT8718_VER_1;

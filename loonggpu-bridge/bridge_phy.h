@@ -38,7 +38,6 @@ struct loonggpu_dc_bridge {
 	int display_pipe_index;
 	int encoder_obj;
 	char chip_name[NAME_SIZE_MAX];
-	char vendor_str[NAME_SIZE_MAX];
 	unsigned int i2c_bus_num;
 	unsigned short i2c_dev_addr;
 	unsigned short hotplug;
@@ -177,7 +176,7 @@ struct bridge_phy_cfg_funcs {
 };
 
 struct bridge_phy_misc_funcs {
-	bool (*chip_id_verify)(struct loonggpu_bridge_phy *phy, char *id);
+	bool (*chip_id_verify)(struct loonggpu_bridge_phy *phy);
 	int (*debugfs_init)(struct loonggpu_bridge_phy *phy);
 	void (*dpms_ctrl)(struct loonggpu_bridge_phy *phy, int mode);
 };
