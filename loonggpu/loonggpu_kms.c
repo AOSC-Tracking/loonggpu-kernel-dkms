@@ -379,9 +379,6 @@ static int loonggpu_info_ioctl(struct drm_device *dev, void *data, struct drm_fi
 		vram_gtt.vram_cpu_accessible_size = adev->gmc.visible_vram_size -
 			atomic64_read(&adev->visible_pin_size);
 		vram_gtt.gtt_size = lg_bdev_to_ttm_man(&adev->mman.bdev, TTM_PL_TT)->size;
-#if !defined(LG_DRM_DRM_BUDDY_H_PRESENT)
-		vram_gtt.gtt_size *= PAGE_SIZE;
-#endif
 		vram_gtt.gtt_size -= atomic64_read(&adev->gart_pin_size);
 		return copy_to_user(out, &vram_gtt,
 				    min((size_t)size, sizeof(vram_gtt))) ? -EFAULT : 0;
@@ -407,9 +404,6 @@ static int loonggpu_info_ioctl(struct drm_device *dev, void *data, struct drm_fi
 			mem.cpu_accessible_vram.usable_heap_size * 3 / 4;
 
 		mem.gtt.total_heap_size = lg_bdev_to_ttm_man(&adev->mman.bdev, TTM_PL_TT)->size;
-#if !defined(LG_DRM_DRM_BUDDY_H_PRESENT)
-		mem.gtt.total_heap_size *= PAGE_SIZE;
-#endif
 		mem.gtt.usable_heap_size = mem.gtt.total_heap_size -
 			atomic64_read(&adev->gart_pin_size);
 		mem.gtt.heap_usage =

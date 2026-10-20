@@ -629,14 +629,6 @@ static inline void lg_dc_mode_config_init_fb_base(struct loonggpu_device *adev)
 #define lg_get_bo_node_start(bo)	((struct drm_mm_node *)(bo->tbo.mem.mm_node))->start
 #endif
 
-#if defined(LG_DRM_DRM_BUDDY_H_PRESENT)
-#define lg_get_bo_buddy_start		loonggpu_res_first(bo->tbo.resource, 0, gobj->size, &cursor);
-#define lg_get_bo_start			cursor.start
-#else
-#define lg_get_bo_buddy_start
-#define lg_get_bo_start			lg_get_bo_node_start(bo)
-#endif
-
 static inline int lg_pci_set_dma_mask(struct pci_dev *pci_dev, struct device *dev, u64 mask)
 {
 #if defined(LG_PCI_SET_DMA_MASK) && defined(LG_LINUX_PCI_DMA_COMPAT_H_PRESENT)

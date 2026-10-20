@@ -1,7 +1,6 @@
 #ifndef __LOONGGPU_VRAM_MGR_HELPER_H__
 #define __LOONGGPU_VRAM_MGR_HELPER_H__
 
-#if defined(LG_DRM_DRM_BUDDY_H_PRESENT)
 static inline void lg_drm_buddy_free_list(lg_buddy_t *mm,
 					struct list_head *objects,
 					unsigned int flags)
@@ -44,25 +43,12 @@ bool loonggpu_vram_mgr_compatible(struct ttm_resource_manager *man,
 				const struct ttm_place *place,
 				size_t size);
 
-#define lg_vram_mgr_get_usage_size	list_for_each_entry(block, &vres->blocks, link) \
-						usage += loonggpu_vram_mgr_vis_size(adev, block);
-#else
-#define lg_vram_mgr_get_usage_size	for (usage = 0; nodes && pages; pages -= nodes->size, nodes++) \
-						usage += loonggpu_vram_mgr_vis_size(adev, nodes);
-#endif
-
 #if defined(LG_TTM_RESOURCE_MANAGER)
-#if defined(LG_DRM_DRM_BUDDY_H_PRESENT)
 #define lg_vram_mgr_func_setting	.alloc = loonggpu_vram_mgr_new_buddy, \
 					.free  = loonggpu_vram_mgr_del_buddy, \
 					.intersects = loonggpu_vram_mgr_intersects, \
 					.compatible = loonggpu_vram_mgr_compatible, \
 					.debug = loonggpu_vram_mgr_debug_buddy
-#else
-#define lg_vram_mgr_func_setting	.alloc = loonggpu_vram_mgr_new, \
-					.free  = loonggpu_vram_mgr_del, \
-					.debug = loonggpu_vram_mgr_debug
-#endif
 #else
 #define lg_vram_mgr_func_setting	.init = loonggpu_vram_mgr_init, \
 					.takedown = loonggpu_vram_mgr_fini, \
@@ -141,9 +127,7 @@ static inline void lg_vram_mgr_init_drv_ptr_used(lg_ttm_manager_t *man, struct l
 
 static inline void lg_loonggpu_vram_mgr_fini(struct loonggpu_device *adev)
 {
-#if defined(LG_DRM_DRM_BUDDY_H_PRESENT)
 	loonggpu_vram_mgr_fini_buddy(adev);
-#endif
 }
 
 static inline int lg_vram_mgr_fini_clean(lg_ttm_manager_t *man, struct loonggpu_vram_mgr *mgr)
@@ -173,48 +157,23 @@ static inline void lg_vram_mgr_fini_free(lg_ttm_manager_t *man, struct loonggpu_
 
 static inline void lg_vram_init_mgr(struct loonggpu_vram_mgr *mgr)
 {
-#if defined(LG_DRM_DRM_BUDDY_H_PRESENT)
 	mutex_init(&mgr->m_lock);
 	INIT_LIST_HEAD(&mgr->reservations_pending);
 	INIT_LIST_HEAD(&mgr->reserved_pages);
 	mgr->default_page_size = PAGE_SIZE;
-#else
-	spin_lock_init(&mgr->lock);
-#endif
 }
 
 static inline int lg_vram_init_mgr_mm(struct loonggpu_vram_mgr *mgr, u64 start, u64 size)
 {
-#if defined(LG_DRM_DRM_BUDDY_H_PRESENT)
 	return lg_buddy_init(&mgr->b_mm, size, PAGE_SIZE);
-#else
-	drm_mm_init(&mgr->mm, start, size);
-	return 0;
-#endif
 }
 
 static inline void lg_vram_mm_fini(struct loonggpu_vram_mgr *mgr)
 {
-#if defined(LG_DRM_DRM_BUDDY_H_PRESENT)
 	mutex_lock(&mgr->m_lock);
 	lg_buddy_fini(&mgr->b_mm);
 	mutex_unlock(&mgr->m_lock);
-#else
-	spin_lock(&mgr->lock);
-	drm_mm_takedown(&mgr->mm);
-	spin_unlock(&mgr->lock);
-#endif
 }
-
-#if defined(LG_DRM_DRM_BUDDY_H_PRESENT)
-#define lg_vram_mgr_vis_size_arg lg_buddy_block_t *block
-#define lg_vram_mgr_vis_size_start loonggpu_vram_mgr_block_start(block)
-#define lg_vram_mgr_vis_size_end start + loonggpu_vram_mgr_block_size(block)
-#else
-#define lg_vram_mgr_vis_size_arg struct drm_mm_node *node
-#define lg_vram_mgr_vis_size_start node->start << PAGE_SHIFT
-#define lg_vram_mgr_vis_size_end (node->size + node->start) << PAGE_SHIFT;
-#endif
 
 #if defined(LG_DRM_TTM_TTM_BO_H_PRESENT)
 #define lg_bo_to_mem bo->tbo.resource
@@ -222,5 +181,5 @@ static inline void lg_vram_mm_fini(struct loonggpu_vram_mgr *mgr)
 #define lg_bo_to_mem &bo->tbo.mem
 #endif
 u64 loonggpu_vram_mgr_vis_size(struct loonggpu_device *adev,
-				lg_vram_mgr_vis_size_arg);
+			       lg_buddy_block_t *block);
 #endif

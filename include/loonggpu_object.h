@@ -207,18 +207,11 @@ static inline bool loonggpu_bo_gpu_accessible(struct loonggpu_bo *bo)
 static inline bool loonggpu_bo_in_cpu_visible_vram(struct loonggpu_bo *bo)
 {
 	struct loonggpu_device *adev = loonggpu_ttm_adev(bo->tbo.bdev);
-#if defined(LG_DRM_DRM_BUDDY_H_PRESENT)
 	struct loonggpu_res_cursor cursor;
-#else
-	unsigned fpfn = adev->gmc.visible_vram_size >> PAGE_SHIFT;
-	struct drm_mm_node *node = bo->tbo.mem.mm_node;
-	unsigned long pages_left;
-#endif
 
 	if (!lg_tbo_to_mem(&bo->tbo) || lg_get_bo_mem_type(bo) != TTM_PL_VRAM)
 		return false;
 
-#if defined(LG_DRM_DRM_BUDDY_H_PRESENT)
 	loonggpu_res_first(bo->tbo.resource, 0, bo->tbo.base.size, &cursor);
 
 	while (cursor.remaining) {
@@ -227,11 +220,6 @@ static inline bool loonggpu_bo_in_cpu_visible_vram(struct loonggpu_bo *bo)
 
 		loonggpu_res_next(&cursor, cursor.size);
 	}
-#else
-	for (pages_left = bo->tbo.mem.num_pages; pages_left; pages_left -= node->size, node++)
-		if (node->start < fpfn)
-			return true;
-#endif
 	return false;
 }
 

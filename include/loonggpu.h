@@ -12,9 +12,7 @@
 #include <linux/pci.h>
 #include <linux/aer.h>
 #include <linux/hrtimer.h>
-#if defined(LG_DRM_DRM_BUDDY_H_PRESENT)
 #include <drm/drm_buddy.h>
-#endif
 #if defined (LG_DRM_TTM_TTM_BO_H_PRESENT)
 #include <drm/ttm/ttm_bo.h>
 #else

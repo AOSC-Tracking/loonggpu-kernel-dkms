@@ -234,10 +234,6 @@ static inline void lg_ttm_set_state_unbound(struct ttm_tt *ttm)
 #define lg_ttm_bo_driver_set_bind_unbind_destroy
 #endif
 
-#if defined(LG_DRM_DRM_BUDDY_H_PRESENT)
-
-#define lg_set_io_mem_pfn .io_mem_pfn = loonggpu_ttm_io_mem_pfn_buddy,
-#define lg_fill_buffer(bo, src_data, resv, f, delayed) loonggpu_fill_buffer_buddy(bo, src_data, resv, f, delayed);
 
 void loonggpu_res_first(struct ttm_resource *res,
 		     uint64_t start, uint64_t size,
@@ -275,10 +271,6 @@ to_loonggpu_vram_mgr_resource(struct ttm_resource *res)
 {
 	return container_of(res, struct loonggpu_vram_mgr_resource, base);
 }
-#else
-#define lg_set_io_mem_pfn .io_mem_pfn = loonggpu_ttm_io_mem_pfn,
-#define lg_fill_buffer(bo, src_data, resv, f, delayed) loonggpu_fill_buffer(bo, src_data, resv, f);
-#endif
 
 static inline int lg_ttm_sg_tt_init(
 			#if defined(LG_TTM_DMA_TT)

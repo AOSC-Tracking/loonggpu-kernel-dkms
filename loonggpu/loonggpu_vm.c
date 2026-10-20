@@ -1290,7 +1290,6 @@ static int loonggpu_vm_bo_split_mapping(struct loonggpu_device *ldev,
 	trace_loonggpu_vm_bo_update(mapping);
 	pfn = mapping->offset >> PAGE_SHIFT;
 
-#if defined(LG_DRM_DRM_BUDDY_H_PRESENT)
 	struct loonggpu_res_cursor cursor;
 	loonggpu_res_first(pages_addr ? NULL : res, mapping->offset,
 			(mapping->last - mapping->start + 1) * LOONGGPU_GPU_PAGE_SIZE, &cursor);
@@ -1330,52 +1329,6 @@ static int loonggpu_vm_bo_split_mapping(struct loonggpu_device *ldev,
 			break;
 	}
 
-#else
-	/* vram - find the node and pfn with mapping->offset */
-	if ((!pages_addr) && nodes) {
-		while (pfn >= nodes->size) {
-			pfn -= nodes->size;
-			++nodes;
-		}
-	}
-
-	do {
-		dma_addr_t *dma_addr;
-		u64 max_entries;
-		u64 addr, last;
-
-		if (pages_addr) {
-			addr = pfn << PAGE_SHIFT;
-			max_entries = LOONGGPU_VM_MAX_UPDATE_SIZE;
-			dma_addr = pages_addr;
-		} else if (nodes) {
-			addr = nodes->start << PAGE_SHIFT;
-			addr += pfn << PAGE_SHIFT;
-			addr += ldev->vm_manager.vram_base_offset;
-			max_entries = (nodes->size - pfn) * LOONGGPU_GPU_PAGES_IN_CPU_PAGE;
-			dma_addr = NULL;
-		} else {
-			addr = 0;
-			dma_addr = NULL;
-			max_entries = mapping->last - mapping->start + 1;
-		}
-
-		last = min(mapping->last, start + max_entries - 1);
-		r = loonggpu_vm_bo_update_mapping(ldev, exclusive, dma_addr, vm, start, last, flags, addr, fence);
-		if (r)
-			return r;
-
-		pfn += (last - start + 1) / LOONGGPU_GPU_PAGES_IN_CPU_PAGE;
-
-		if ((!pages_addr) && nodes && nodes->size == pfn) {
-			pfn = 0;
-			++nodes;
-		}
-
-		start = last + 1;
-
-	} while (unlikely(start != mapping->last + 1));
-#endif
 	return 0;
 }
 
@@ -1412,9 +1365,6 @@ int loonggpu_vm_bo_update(struct loonggpu_device *ldev,
 		exclusive = NULL;
 	} else {
 		mem = lg_tbo_to_mem(&bo->tbo);
-	#if !defined(LG_DRM_DRM_BUDDY_H_PRESENT)
-		nodes = mem->mm_node;
-	#endif
 		if (mem->mem_type == TTM_PL_TT) {
 			pages_addr = lg_tbo_to_dma_address(&bo->tbo);
 		}

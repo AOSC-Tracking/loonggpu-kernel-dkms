@@ -59,10 +59,10 @@ int loonggpu_vram_mgr_fini(lg_ttm_manager_t *man)
  * Calculate how many bytes of the MM node are inside visible VRAM
  */
 u64 loonggpu_vram_mgr_vis_size(struct loonggpu_device *adev,
-				   lg_vram_mgr_vis_size_arg)
+			       lg_buddy_block_t *block)
 {
-	uint64_t start = lg_vram_mgr_vis_size_start;
-	uint64_t end = lg_vram_mgr_vis_size_end;
+	uint64_t start = loonggpu_vram_mgr_block_start(block);
+	uint64_t end = start + loonggpu_vram_mgr_block_size(block);
 
 	if (start >= adev->gmc.visible_vram_size)
 		return 0;
@@ -83,13 +83,8 @@ u64 loonggpu_vram_mgr_bo_visible_size(struct loonggpu_bo *bo)
 {
 	struct loonggpu_device *adev = loonggpu_ttm_adev(bo->tbo.bdev);
 	lg_ttm_mem_t *mem = lg_bo_to_mem;
-#if defined(LG_DRM_DRM_BUDDY_H_PRESENT)
 	struct loonggpu_vram_mgr_resource *vres = to_loonggpu_vram_mgr_resource(mem);
 	lg_buddy_block_t *block;
-#else
-	struct drm_mm_node *nodes = mem->mm_node;
-	unsigned pages = mem->num_pages;
-#endif
 	u64 usage;
 
 	if (loonggpu_gmc_vram_full_visible(&adev->gmc))
@@ -98,148 +93,11 @@ u64 loonggpu_vram_mgr_bo_visible_size(struct loonggpu_bo *bo)
 	if (mem->start >= adev->gmc.visible_vram_size >> PAGE_SHIFT)
 		return 0;
 
-	lg_vram_mgr_get_usage_size
+	list_for_each_entry(block, &vres->blocks, link)
+		usage += loonggpu_vram_mgr_vis_size(adev, block);
+
 	return usage;
 }
-#if !defined(LG_DRM_DRM_BUDDY_H_PRESENT)
-/**
- * loonggpu_vram_mgr_new - allocate new ranges
- *
- * @man: TTM memory type manager
- * @tbo: TTM BO we need this range for
- * @place: placement flags and restrictions
- * @mem: the resulting mem object
- *
- * Allocate VRAM for the given BO.
- */
-static int loonggpu_vram_mgr_new(lg_ttm_manager_t *man,
-			       struct ttm_buffer_object *tbo,
-			       const struct ttm_place *place,
-			       lg_ttm_mem_t *mem)
-{
-	struct loonggpu_vram_mgr *mgr = lg_man_to_vram_mgr(man);
-	struct loonggpu_device *adev = lg_vram_mgr_man_to_loonggpu(man, mgr);
-	struct drm_mm *mm = &mgr->mm;
-	struct drm_mm_node *nodes;
-	enum drm_mm_insert_mode mode;
-	unsigned long lpfn, num_nodes, pages_per_node, pages_left;
-	uint64_t usage = 0, vis_usage = 0;
-	unsigned i;
-	int r;
-
-	lpfn = place->lpfn;
-	if (!lpfn)
-		lpfn = man->size;
-
-	if (place->flags & TTM_PL_FLAG_CONTIGUOUS ||
-	    loonggpu_vram_page_split == -1) {
-		pages_per_node = ~0ul;
-		num_nodes = 1;
-	} else {
-		pages_per_node = max((uint32_t)loonggpu_vram_page_split,
-				     mem->page_alignment);
-		num_nodes = DIV_ROUND_UP(mem->num_pages, pages_per_node);
-	}
-
-	nodes = kvmalloc_array(num_nodes, sizeof(*nodes),
-			       GFP_KERNEL | __GFP_ZERO);
-	if (!nodes)
-		return -ENOMEM;
-
-	mode = DRM_MM_INSERT_BEST;
-	if (place->flags & TTM_PL_FLAG_TOPDOWN)
-		mode = DRM_MM_INSERT_HIGH;
-
-	mem->start = 0;
-	pages_left = mem->num_pages;
-
-	spin_lock(&mgr->lock);
-	for (i = 0; i < num_nodes; ++i) {
-		unsigned long pages = min(pages_left, pages_per_node);
-		uint32_t alignment = mem->page_alignment;
-		unsigned long start;
-
-		if (pages == pages_per_node)
-			alignment = pages_per_node;
-
-		r = drm_mm_insert_node_in_range(mm, &nodes[i],
-						pages, alignment, 0,
-						place->fpfn, lpfn,
-						mode);
-		if (unlikely(r))
-			goto error;
-
-		usage += nodes[i].size << PAGE_SHIFT;
-		vis_usage += loonggpu_vram_mgr_vis_size(adev, &nodes[i]);
-
-		/* Calculate a virtual BO start address to easily check if
-		 * everything is CPU accessible.
-		 */
-		start = nodes[i].start + nodes[i].size;
-		if (start > mem->num_pages)
-			start -= mem->num_pages;
-		else
-			start = 0;
-		mem->start = max(mem->start, start);
-		pages_left -= pages;
-	}
-	spin_unlock(&mgr->lock);
-
-	atomic64_add(usage, &mgr->usage);
-	atomic64_add(vis_usage, &mgr->vis_usage);
-
-	mem->mm_node = nodes;
-
-	return 0;
-
-error:
-	while (i--)
-		drm_mm_remove_node(&nodes[i]);
-	spin_unlock(&mgr->lock);
-
-	kvfree(nodes);
-	return r == -ENOSPC ? 0 : r;
-}
-
-/**
- * loonggpu_vram_mgr_del - free ranges
- *
- * @man: TTM memory type manager
- * @tbo: TTM BO we need this range for
- * @place: placement flags and restrictions
- * @mem: TTM memory object
- *
- * Free the allocated VRAM again.
- */
-static void loonggpu_vram_mgr_del(lg_ttm_manager_t *man,
-				lg_ttm_mem_t *mem)
-{
-	struct loonggpu_vram_mgr *mgr = lg_man_to_vram_mgr(man);
-	struct loonggpu_device *adev = lg_vram_mgr_man_to_loonggpu(man, mgr);
-	struct drm_mm_node *nodes = mem->mm_node;
-	uint64_t usage = 0, vis_usage = 0;
-	unsigned pages = mem->num_pages;
-
-	if (!mem->mm_node)
-		return;
-
-	spin_lock(&mgr->lock);
-	while (pages) {
-		pages -= nodes->size;
-		drm_mm_remove_node(nodes);
-		usage += nodes->size << PAGE_SHIFT;
-		vis_usage += loonggpu_vram_mgr_vis_size(adev, nodes);
-		++nodes;
-	}
-	spin_unlock(&mgr->lock);
-
-	atomic64_sub(usage, &mgr->usage);
-	atomic64_sub(vis_usage, &mgr->vis_usage);
-
-	kvfree(mem->mm_node);
-	mem->mm_node = NULL;
-}
-#endif
 /**
  * loonggpu_vram_mgr_usage - how many bytes are used in this domain
  *
@@ -249,13 +107,7 @@ static void loonggpu_vram_mgr_del(lg_ttm_manager_t *man,
  */
 uint64_t loonggpu_vram_mgr_usage(lg_ttm_manager_t *man)
 {
-#if defined(LG_DRM_DRM_BUDDY_H_PRESENT)
 	return ttm_resource_manager_usage(man);
-#else
-	struct loonggpu_vram_mgr *mgr = lg_man_to_vram_mgr(man);
-
-	return atomic64_read(&mgr->usage);
-#endif
 }
 
 /**
@@ -272,29 +124,6 @@ uint64_t loonggpu_vram_mgr_vis_usage(lg_ttm_manager_t *man)
 	return atomic64_read(&mgr->vis_usage);
 }
 
-#if !defined(LG_DRM_DRM_BUDDY_H_PRESENT)
-/**
- * loonggpu_vram_mgr_debug - dump VRAM table
- *
- * @man: TTM memory type manager
- * @printer: DRM printer to use
- *
- * Dump the table content using printk.
- */
-static void loonggpu_vram_mgr_debug(lg_ttm_manager_t *man,
-				  struct drm_printer *printer)
-{
-	struct loonggpu_vram_mgr *mgr = lg_man_to_vram_mgr(man);
-
-	spin_lock(&mgr->lock);
-	drm_mm_print(&mgr->mm, printer);
-	spin_unlock(&mgr->lock);
-
-	drm_printf(printer, "man size:%llu pages, ram usage:%lluMB, vis usage:%lluMB\n",
-		   man->size, loonggpu_vram_mgr_usage(man) >> 20,
-		   loonggpu_vram_mgr_vis_usage(man) >> 20);
-}
-#endif
 const lg_ttm_mem_func_t loonggpu_vram_mgr_func = {
 	lg_vram_mgr_func_setting
 };

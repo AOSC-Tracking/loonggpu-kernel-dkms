@@ -285,14 +285,7 @@ static void loonggpu_gtt_mgr_del(lg_ttm_manager_t *man,
  */
 uint64_t loonggpu_gtt_mgr_usage(lg_ttm_manager_t *man)
 {
-#if defined(LG_DRM_DRM_BUDDY_H_PRESENT)
 	return ttm_resource_manager_usage(man);
-#else
-	struct loonggpu_gtt_mgr *mgr = lg_man_to_gtt_mgr(man);
-	s64 result = man->size - atomic64_read(&mgr->available);
-
-	return (result > 0 ? result : 0) * PAGE_SIZE;
-#endif
 }
 
 int loonggpu_gtt_mgr_recover(lg_ttm_manager_t *man)

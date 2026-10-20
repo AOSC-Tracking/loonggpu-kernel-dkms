@@ -499,7 +499,7 @@ static int loonggpu_bo_do_create(struct loonggpu_device *adev,
 		struct dma_fence *fence;
 
 		resv = to_dma_resv(bo);
-		r = lg_fill_buffer(bo, 0, resv, &fence, true);
+		r = loonggpu_fill_buffer_buddy(bo, 0, resv, &fence, true);
 		if (unlikely(r))
 			goto fail_unreserve;
 

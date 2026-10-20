@@ -1,7 +1,6 @@
 #include "loonggpu.h"
 #include "loonggpu_vram_mgr_helper.h"
 #include "loonggpu_ttm.h"
-#if defined(LG_DRM_DRM_BUDDY_H_PRESENT)
 
 struct loonggpu_vram_reservation {
 	u64 start;
@@ -448,4 +447,3 @@ bool loonggpu_vram_mgr_compatible(struct ttm_resource_manager *man,
 
 	return true;
 }
-#endif

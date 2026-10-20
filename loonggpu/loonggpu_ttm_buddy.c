@@ -5,7 +5,6 @@
 #include <drm/ttm/ttm_bo.h>
 #endif
 
-#if defined(LG_DRM_DRM_BUDDY_H_PRESENT)
 void loonggpu_res_first(struct ttm_resource *res,
 		     u64 start, u64 size,
 		     struct loonggpu_res_cursor *cur)
@@ -327,4 +326,3 @@ error:
 	return r;
 }
 
-#endif

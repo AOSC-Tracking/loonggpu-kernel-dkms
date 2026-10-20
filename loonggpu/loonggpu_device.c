@@ -1691,11 +1691,9 @@ static int loonggpu_zip_gem_bo_evict(int id, void *ptr, void *data)
 	domain = loonggpu_mem_type_to_domain(lg_get_bo_mem_type(bo));
 
 	if (bo->flags & LOONGGPU_GEM_CREATE_COMPRESSED_MASK && domain == LOONGGPU_GEM_DOMAIN_VRAM) {
-
 		loonggpu_bo_reserve(bo, false);
-
-		lg_get_bo_buddy_start
-		bo->node_offset = lg_get_bo_start;
+		loonggpu_res_first(bo->tbo.resource, 0, gobj->size, &cursor);
+		bo->node_offset = cursor.start;
 
 		for (i = 0; i < bo->placement.num_placement; i++) {
 			bo->placements[i].lpfn = 0;

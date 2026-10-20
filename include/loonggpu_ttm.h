@@ -39,9 +39,7 @@ typedef struct drm_buddy_block lg_buddy_block_t;
 
 struct loonggpu_vram_mgr {
         lg_loonggpu_vram_mgr_man
-	#if defined(LG_DRM_DRM_BUDDY_H_PRESENT)
 	lg_buddy_t b_mm;
-	#endif
 	struct mutex m_lock;
         struct drm_mm mm;
         spinlock_t lock;
@@ -154,7 +152,6 @@ int loonggpu_vram_mgr_init(lg_ttm_manager_t *man, unsigned long p_size);
 int loonggpu_gtt_mgr_init(lg_ttm_manager_t *man, unsigned long p_size);
 int loonggpu_vram_mgr_fini(lg_ttm_manager_t *man);
 int loonggpu_gtt_mgr_fini(lg_ttm_manager_t *man);
-#if defined(LG_DRM_DRM_BUDDY_H_PRESENT)
 int loonggpu_fill_buffer_buddy(struct loonggpu_bo *bo,
 			    uint32_t src_data,
 			    struct dma_resv *resv,
@@ -162,5 +159,4 @@ int loonggpu_fill_buffer_buddy(struct loonggpu_bo *bo,
 			    bool delayed);
 int loonggpu_vram_mgr_init_buddy(struct loonggpu_device *adev);
 void loonggpu_vram_mgr_fini_buddy(struct loonggpu_device *adev);
-#endif
 #endif /* __LOONGGPU_TTM_H__ */

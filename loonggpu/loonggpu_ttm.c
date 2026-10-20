@@ -292,13 +292,8 @@ int loonggpu_ttm_copy_mem_to_mem(struct loonggpu_device *adev,
 			       struct dma_fence **f)
 {
 	struct loonggpu_ring *ring = adev->mman.buffer_funcs_ring;
-#if defined(LG_DRM_DRM_BUDDY_H_PRESENT)
 	struct loonggpu_res_cursor src_mm, dst_mm;
-#else
-	struct drm_mm_node *src_mm, *dst_mm;
-#endif
-	uint64_t src_node_start, dst_node_start, src_node_size,
-		 dst_node_size, src_page_offset, dst_page_offset;
+	uint64_t src_node_start, dst_node_start, src_page_offset, dst_page_offset;
 	struct dma_fence *fence = NULL;
 	int r = 0;
 	const uint64_t GTT_MAX_BYTES = (LOONGGPU_GTT_MAX_TRANSFER_SIZE *
@@ -309,34 +304,16 @@ int loonggpu_ttm_copy_mem_to_mem(struct loonggpu_device *adev,
 		return -EINVAL;
 	}
 
-#if defined(LG_DRM_DRM_BUDDY_H_PRESENT)
 	loonggpu_res_first(src->mem, src->offset, size, &src_mm);
 	loonggpu_res_first(dst->mem, dst->offset, size, &dst_mm);
-#else
-	src_mm = loonggpu_find_mm_node(src->mem, &src->offset);
-	src_node_start = loonggpu_mm_node_addr(src->bo, src_mm, src->mem) +
-					     src->offset;
-	src_node_size = (src_mm->size << PAGE_SHIFT) - src->offset;
-	src_page_offset = src_node_start & (PAGE_SIZE - 1);
-	dst_mm = loonggpu_find_mm_node(dst->mem, &dst->offset);
-	dst_node_start = loonggpu_mm_node_addr(dst->bo, dst_mm, dst->mem) +
-					     dst->offset;
-	dst_node_size = (dst_mm->size << PAGE_SHIFT) - dst->offset;
-	dst_page_offset = dst_node_start & (PAGE_SIZE - 1);
-#endif
 
 	mutex_lock(&adev->mman.gtt_window_lock);
 
-#if defined(LG_DRM_DRM_BUDDY_H_PRESENT)
 	while (src_mm.remaining) {
-#else
-	while (size) {
-#endif
 		unsigned long cur_size;
 		uint64_t from = src_node_start, to = dst_node_start;
 		struct dma_fence *next;
 
-	#if defined(LG_DRM_DRM_BUDDY_H_PRESENT)
 		/* Copy size cannot exceed GTT_MAX_BYTES. So if src or dst
 		 * begins at an offset, then adjust the size accordingly
 		 */
@@ -367,68 +344,6 @@ int loonggpu_ttm_copy_mem_to_mem(struct loonggpu_device *adev,
 
 		loonggpu_res_next(&src_mm, cur_size);
 		loonggpu_res_next(&dst_mm, cur_size);
-	#else
-		cur_size = min3(min(src_node_size, dst_node_size), size,
-				GTT_MAX_BYTES);
-		if (cur_size + src_page_offset > GTT_MAX_BYTES ||
-			cur_size + dst_page_offset > GTT_MAX_BYTES)
-			cur_size -= max(src_page_offset, dst_page_offset);
-
-		/* Map only what needs to be accessed. Map src to window 0 and
-		 * dst to window 1
-		 */
-		if (src->mem->mem_type == TTM_PL_TT &&
-			!loonggpu_gtt_mgr_has_gart_addr(src->mem)) {
-			r = loonggpu_map_buffer(src->bo, src->mem, NULL,
-					PFN_UP(cur_size + src_page_offset),
-					src_node_start, 0, ring,
-					&from);
-			if (r)
-				goto error;
-			/* Adjust the offset because loonggpu_map_buffer returns
-			 * start of mapped page
-			 */
-			from += src_page_offset;
-		}
-
-		if (dst->mem->mem_type == TTM_PL_TT &&
-			!loonggpu_gtt_mgr_has_gart_addr(dst->mem)) {
-			r = loonggpu_map_buffer(dst->bo, dst->mem, NULL,
-					PFN_UP(cur_size + dst_page_offset),
-					dst_node_start, 1, ring,
-					&to);
-			if (r)
-				goto error;
-			to += dst_page_offset;
-		}
-		r = loonggpu_copy_buffer(ring, from, to, cur_size,
-			resv, &next, false, true);
-		if (r)
-			goto error;
-
-		dma_fence_put(fence);
-		fence = next;
-		size -= cur_size;
-		if (!size)
-			break;
-
-		src_node_size -= cur_size;
-		if (!src_node_size) {
-			src_node_start = loonggpu_mm_node_addr(src->bo, ++src_mm, src->mem);
-		src_node_size = (src_mm->size << PAGE_SHIFT);
-		} else {
-			src_node_start += cur_size;
-			src_page_offset = src_node_start & (PAGE_SIZE - 1);
-		}
-		dst_node_size -= cur_size;
-		if (!dst_node_size) {
-			dst_node_start = loonggpu_mm_node_addr(dst->bo, ++dst_mm, dst->mem);
-			dst_node_size = (dst_mm->size << PAGE_SHIFT);
-		} else {
-			dst_node_start += cur_size;
-			dst_page_offset = dst_node_start & (PAGE_SIZE - 1);
-		}
-	#endif
 	}
 error:
 	mutex_unlock(&adev->mman.gtt_window_lock);
@@ -619,12 +534,8 @@ static int loonggpu_ttm_io_mem_reserve(lg_ttm_device_t *bdev, lg_ttm_mem_t *mem)
 	lg_ttm_manager_t *man = lg_bdev_to_ttm_man(bdev, mem->mem_type);
 	struct loonggpu_device *adev = loonggpu_ttm_adev(bdev);
 
-#if defined(LG_DRM_DRM_BUDDY_H_PRESENT)
 	struct loonggpu_res_cursor cur;
 	loonggpu_res_first(mem, 0, mem->size, &cur);
-#else
-	struct drm_mm_node *mm_node = lg_res_to_drm_node(mem);
-#endif
 	mem->bus.addr = NULL;
 	mem->bus.offset = 0;
 	lg_set_bus_placement_base(mem, 0);
@@ -650,11 +561,7 @@ static int loonggpu_ttm_io_mem_reserve(lg_ttm_device_t *bdev, lg_ttm_mem_t *mem)
 		 * pages in ttm_mem_reg.
 		 */
 		if (adev->mman.aper_base_kaddr &&
-		#if defined(LG_DRM_DRM_BUDDY_H_PRESENT)
 			cur.size == mem->size
-		#else
-			mm_node->size == lg_mem_to_num_pages(mem)
-		#endif
 		   )
 			mem->bus.addr = (u8 *)adev->mman.aper_base_kaddr +
 					mem->bus.offset;
@@ -687,17 +594,11 @@ static unsigned long loonggpu_ttm_io_mem_pfn(struct ttm_buffer_object *bo,
 	unsigned long offset = (page_offset << PAGE_SHIFT);
 	struct loonggpu_device *adev = loonggpu_ttm_adev(bo->bdev);
 
-	#if defined(LG_DRM_DRM_BUDDY_H_PRESENT)
 	if (bo->resource->mem_type == LOONGGPU_PL_DOORBELL) {
 		struct loonggpu_res_cursor cursor;
 		loonggpu_res_first(bo->resource, 0, 0, &cursor);
 		return ((uint64_t)(adev->doorbell.base + cursor.start)) >> PAGE_SHIFT;
 	}
-	#else
-	if (bo->mem.mem_type == LOONGGPU_PL_DOORBELL)
-		return ((uint64_t)(adev->doorbell.base + 
-			(bo->mem.start << PAGE_SHIFT))) >> PAGE_SHIFT;
-	#endif
 	mm = loonggpu_find_mm_node(lg_tbo_to_mem(bo), &offset);
 	return (lg_get_bus_placement_base(lg_tbo_to_mem(bo), adev) >> PAGE_SHIFT) + mm->start +
 		(offset >> PAGE_SHIFT);
@@ -1491,7 +1392,6 @@ static int loonggpu_ttm_access_memory(struct ttm_buffer_object *bo,
 {
 	struct loonggpu_bo *abo = ttm_to_loonggpu_bo(bo);
 	struct loonggpu_device *adev = loonggpu_ttm_adev(abo->tbo.bdev);
-	struct drm_mm_node *nodes;
 	struct loonggpu_res_cursor __maybe_unused cursor;
 	uint32_t value = 0;
 	int ret = 0;
@@ -1504,13 +1404,8 @@ static int loonggpu_ttm_access_memory(struct ttm_buffer_object *bo,
 	if (adev->family_type < CHIP_LG200)
 		return -EPERM;
 
-#if defined(LG_DRM_DRM_BUDDY_H_PRESENT)
 	loonggpu_res_first(bo->resource, offset, len, &cursor);
 	pos = cursor.start;
-#else
-	nodes = loonggpu_find_mm_node(lg_tbo_to_mem(&abo->tbo), &offset);
-	pos = (nodes->start << PAGE_SHIFT) + offset;
-#endif
 
 	while (len && pos < adev->gmc.mc_vram_size) {
 		uint32_t bytes = 4 - (pos & 3);
@@ -1548,17 +1443,10 @@ static int loonggpu_ttm_access_memory(struct ttm_buffer_object *bo,
 		buf = (uint8_t *)buf + bytes;
 		pos += bytes;
 		len -= bytes;
-	#if defined(LG_DRM_DRM_BUDDY_H_PRESENT)
 		if (pos >= (cursor.start + cursor.size)) {
 			loonggpu_res_next(&cursor, cursor.size);
 			pos = cursor.start;
 		}
-	#else
-		if (pos >= (nodes->start + nodes->size) << PAGE_SHIFT) {
-			++nodes;
-			pos = (nodes->start << PAGE_SHIFT);
-		}
-	#endif
 	}
 
 	return ret;
@@ -1785,11 +1673,7 @@ int loonggpu_ttm_init(struct loonggpu_device *adev)
 		gtt_size = (uint64_t)loonggpu_gtt_size << 20;
 
 	/* Initialize GTT memory pool */
-#if defined(LG_DRM_DRM_BUDDY_H_PRESENT)
 	r = lg_gtt_mgr_init(adev, gtt_size);
-#else
-	r = lg_gtt_mgr_init(adev, gtt_size >> PAGE_SHIFT);
-#endif
 	if (r) {
 		DRM_ERROR("Failed initializing GTT heap.\n");
 		return r;
@@ -1889,11 +1773,7 @@ void loonggpu_ttm_set_buffer_funcs_status(struct loonggpu_device *adev, bool ena
 		size = adev->gmc.real_vram_size;
 	else
 		size = adev->gmc.visible_vram_size;
-#if defined(LG_DRM_DRM_BUDDY_H_PRESENT)
 	man->size = size;
-#else
-	man->size = size >> PAGE_SHIFT;
-#endif
 	adev->mman.buffer_funcs_enabled = enable;
 }
 
@@ -1934,15 +1814,11 @@ static int loonggpu_map_buffer(struct ttm_buffer_object *bo,
 	BUG_ON(adev->mman.buffer_funcs->copy_max_bytes <
 	       LOONGGPU_GTT_MAX_TRANSFER_SIZE * 8);
 
-#if defined(LG_DRM_DRM_BUDDY_H_PRESENT)
 	if (mem->start != LOONGGPU_BO_INVALID_OFFSET) {
 		*addr = loonggpu_ttm_domain_start(adev, mem->mem_type) + mm_cur->start;
 		return 0;
 	}
 	dma_offset = mm_cur->start >> PAGE_SHIFT;
-#else
-	dma_offset = offset >> PAGE_SHIFT;
-#endif
 	*addr = adev->gmc.gart_start;
 	*addr += (u64)window * LOONGGPU_GTT_MAX_TRANSFER_SIZE *
 		LOONGGPU_GPU_PAGE_SIZE;
