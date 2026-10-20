@@ -63,17 +63,12 @@ int loonggpu_gtt_mgr_fini(struct ttm_resource_manager *man)
  */
 bool loonggpu_gtt_mgr_has_gart_addr(struct ttm_resource *mem)
 {
-#if defined(LG_DRM_TTM_TTM_RANGE_MANAGER_H_PRESENT)
 	if (mem->mem_type != TTM_PL_TT)
 		return true;
 
 	struct ttm_range_mgr_node *node = to_ttm_range_mgr_node(mem);
 
         return drm_mm_node_allocated(&node->mm_nodes[0]);
-#else
-	struct drm_mm_node *node = lg_res_to_drm_node(mem);
-	return (node->start != LOONGGPU_BO_INVALID_OFFSET);
-#endif
 }
 
 /**
@@ -93,7 +88,7 @@ static int loonggpu_gtt_mgr_alloc(struct ttm_resource_manager *man,
 {
 	struct loonggpu_gtt_mgr *mgr = lg_man_to_gtt_mgr(man);
 	struct loonggpu_device *adev = lg_gtt_mgr_man_to_adev(man, mgr);
-	lg_loonggpu_gtt_node *node = lg_res_to_gtt_node(mem);
+	struct ttm_range_mgr_node *node = to_ttm_range_mgr_node(mem);
 	enum drm_mm_insert_mode mode;
 	unsigned long fpfn, lpfn;
 	int r;
@@ -142,7 +137,6 @@ static int loonggpu_gtt_mgr_new(struct ttm_resource_manager *man,
 			      const struct ttm_place *place,
 			      lg_gtt_mgr_new_mem_reg)
 {
-#if defined(LG_DRM_TTM_TTM_RANGE_MANAGER_H_PRESENT)
 	struct loonggpu_gtt_mgr *mgr = container_of(man, struct loonggpu_gtt_mgr, manager);
 	uint32_t num_pages = PFN_UP(tbo->base.size);
 	struct ttm_range_mgr_node *node;
@@ -183,54 +177,6 @@ err_free:
 	ttm_resource_fini(man, &node->base);
 	kfree(node);
 	return r;
-#else
-	struct loonggpu_gtt_mgr *mgr = lg_man_to_gtt_mgr(man);
-	lg_loonggpu_gtt_node *gtt_node;
-	struct drm_mm_node *mm_node;
-	int r;
-	uint32_t num_pages = lg_gtt_get_pages(tbo, mem);
-
-	spin_lock(&mgr->lock);
-	if ((lg_gtt_mgr_new_check_mem || lg_tbo_to_mem(tbo)->mem_type != TTM_PL_TT) &&
-		atomic64_read(&mgr->available) < num_pages) {
-		spin_unlock(&mgr->lock);
-		return LG_GTT_MGR_NEW_RET_VAL;
-	}
-	atomic64_sub(num_pages, &mgr->available);
-	spin_unlock(&mgr->lock);
-
-	lg_alloc_gtt_node(gtt_node);
-	if (!gtt_node) {
-		r = -ENOMEM;
-		goto err_out;
-	}
-
-	lg_ttm_resource_init(tbo, place, gtt_node);
-	mm_node = lg_gtt_node_to_drm_node(gtt_node);
-	mm_node->start = LOONGGPU_BO_INVALID_OFFSET;
-	mm_node->size = num_pages;
-	lg_gtt_node_set_tbo(tbo)
-	lg_gtt_node_set_mm_node(gtt_node)
-
-	if (place->fpfn || place->lpfn || place->flags & TTM_PL_FLAG_TOPDOWN) {
-		r = loonggpu_gtt_mgr_alloc(man, tbo, place, lg_gtt_mgr_alloc_arg);
-		if (unlikely(r)) {
-			kfree(gtt_node);
-			lg_gtt_node_set_mm_node(NULL)
-			r = 0;
-			goto err_out;
-		}
-	} else {
-		lg_gtt_node_set_mm_start(mm_node->start)
-	}
-
-	lg_gtt_mgr_set_res_ptr
-	return 0;
-err_out:
-	atomic64_add(num_pages, &mgr->available);
-	lg_ttm_resource_fini(man, gtt_node);
-	return r;
-#endif
 }
 
 /**
@@ -247,12 +193,10 @@ static void loonggpu_gtt_mgr_del(struct ttm_resource_manager *man,
 			       struct ttm_resource *mem)
 {
 	struct loonggpu_gtt_mgr *mgr = lg_man_to_gtt_mgr(man);
-	lg_loonggpu_gtt_node *node = lg_res_to_gtt_node(mem);
-	struct drm_mm_node *mm_node;
+	struct ttm_range_mgr_node *node = to_ttm_range_mgr_node(mem);
 
 	if (!node)
 		return;
-#if defined(LG_DRM_TTM_TTM_RANGE_MANAGER_H_PRESENT)
 	spin_lock(&mgr->lock);
 	if (drm_mm_node_allocated(&node->mm_nodes[0]))
 		drm_mm_remove_node(&node->mm_nodes[0]);
@@ -260,17 +204,6 @@ static void loonggpu_gtt_mgr_del(struct ttm_resource_manager *man,
 
 	ttm_resource_fini(man, mem);
 	kfree(node);
-#else
-	mm_node = lg_gtt_node_to_drm_node(node);
-	spin_lock(&mgr->lock);
-	if (mm_node->start != LOONGGPU_BO_INVALID_OFFSET)
-		drm_mm_remove_node(mm_node);
-	spin_unlock(&mgr->lock);
-	atomic64_add(lg_gtt_del_mgr_num_pages, &mgr->available);
-	lg_ttm_resource_fini(man, node);
-	kfree(node);
-	lg_gtt_node_set_mm_node(NULL)
-#endif
 }
 
 /**
@@ -288,14 +221,14 @@ uint64_t loonggpu_gtt_mgr_usage(struct ttm_resource_manager *man)
 int loonggpu_gtt_mgr_recover(struct ttm_resource_manager *man)
 {
 	struct loonggpu_gtt_mgr *mgr = lg_man_to_gtt_mgr(man);
-	lg_loonggpu_gtt_node *node;
+	struct ttm_range_mgr_node *node;
 	struct drm_mm_node *mm_node;
 	int r = 0;
 
 	spin_lock(&mgr->lock);
 	drm_mm_for_each_node(mm_node, &mgr->mm) {
 		node = lg_drm_node_to_gtt_node(mm_node);
-		r = loonggpu_ttm_recover_gart(lg_gtt_node_to_tbo(node));
+		r = loonggpu_ttm_recover_gart(node->base.bo);
 		if (r)
 			break;
 	}

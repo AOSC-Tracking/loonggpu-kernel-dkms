@@ -172,12 +172,6 @@ static inline uint64_t lg_loonggpu_ttm_alloc_gart_get_bo_offset(struct loonggpu_
 #endif
 }
 
-#if defined(LG_TTM_RANGE_MGR_NODE) && defined(LG_DRM_TTM_TTM_RANGE_MANAGER_H_PRESENT)
-#define lg_loonggpu_gtt_node struct ttm_range_mgr_node
-#else
-#define lg_loonggpu_gtt_node struct loonggpu_gtt_node
-#endif
-
 #if defined(LG_MAN_FUNC_ALLOC_HAS_RES)
 #define lg_gtt_mgr_new_mem_reg struct ttm_resource **mem
 #define lg_gtt_mgr_alloc_arg &gtt_node->base
@@ -190,98 +184,19 @@ static inline uint64_t lg_loonggpu_ttm_alloc_gart_get_bo_offset(struct loonggpu_
 #define lg_gtt_get_pages(tbo, mem) mem->num_pages
 #endif
 
-#if defined(LG_TTM_RANGE_MGR_NODE) && defined(LG_DRM_TTM_TTM_RANGE_MANAGER_H_PRESENT)
-	#define lg_alloc_gtt_node(gtt_node)\
-	gtt_node = kzalloc(struct_size(gtt_node, mm_nodes, 1), GFP_KERNEL);
-#else
-	#define lg_alloc_gtt_node(gtt_node)\
-	gtt_node = kzalloc(sizeof(*gtt_node), GFP_KERNEL);
-#endif
-
-
-static inline lg_loonggpu_gtt_node *lg_res_to_gtt_node(struct ttm_resource *mem)
-{
-#if defined(LG_TTM_RANGE_MGR_NODE) && defined(LG_DRM_TTM_TTM_RANGE_MANAGER_H_PRESENT)
-	return to_ttm_range_mgr_node(mem);
-#else
-	return mem->mm_node;
-#endif
-}
-
 static inline struct drm_mm_node *lg_res_to_drm_node(struct ttm_resource *mem)
 {
-#if defined(LG_TTM_RANGE_MGR_NODE) && defined(LG_DRM_TTM_TTM_RANGE_MANAGER_H_PRESENT)
 	return &to_ttm_range_mgr_node(mem)->mm_nodes[0];
-#else
-	return &((struct loonggpu_gtt_node *)(mem->mm_node))->node;
-#endif
 }
 
-static inline void lg_clear_drm_node(struct drm_mm_node *node)
+static inline struct drm_mm_node *lg_gtt_node_to_drm_node(struct ttm_range_mgr_node *gtt_node)
 {
-#if defined(LG_TTM_RANGE_MGR_NODE) && defined(LG_DRM_TTM_TTM_RANGE_MANAGER_H_PRESENT)
-	memset(node, 0, sizeof(*node));
-#else
-	node = NULL;
-#endif
-}
-
-static inline struct drm_mm_node *lg_gtt_node_to_drm_node(lg_loonggpu_gtt_node *gtt_node)
-{
-#if defined(LG_TTM_RANGE_MGR_NODE) && defined(LG_DRM_TTM_TTM_RANGE_MANAGER_H_PRESENT)
 	return &gtt_node->mm_nodes[0];
-#else
-	return &gtt_node->node;
-#endif
 }
 
-#if defined(LG_TTM_RANGE_MGR_NODE) && defined(LG_DRM_TTM_TTM_RANGE_MANAGER_H_PRESENT)
-#define lg_gtt_node_set_tbo(tbo)
-#define lg_gtt_node_set_mm_node(node)
-#define lg_gtt_node_set_mm_start(val) gtt_node->base.start = val;
-#define lg_gtt_del_mgr_num_pages mm_node->size
-#define lg_gtt_mgr_new_check_mem tbo->resource
-#else
-#define lg_gtt_node_set_tbo(tbo) gtt_node->tbo = tbo;
-#define lg_gtt_node_set_mm_node(node) mem->mm_node = node;
-#define lg_gtt_node_set_mm_start(val) mem->start = val;
-#define lg_gtt_del_mgr_num_pages mem->num_pages
-#define lg_gtt_mgr_new_check_mem &tbo->mem == mem
-#endif
-
-static inline void lg_ttm_resource_init(struct ttm_buffer_object *bo,
-					const struct ttm_place *place,
-					lg_loonggpu_gtt_node *node)
+static inline struct ttm_range_mgr_node *lg_drm_node_to_gtt_node(struct drm_mm_node *mm_node)
 {
-#if defined(LG_TTM_RANGE_MGR_NODE) && defined(LG_DRM_TTM_TTM_RESOURCE_H_PRESENT)
-	ttm_resource_init(bo, place, &node->base);
-#endif
-}
-
-static inline void lg_ttm_resource_fini(struct ttm_resource_manager *man,
-					lg_loonggpu_gtt_node *node)
-{
-#if defined(LG_TTM_RANGE_MGR_NODE) && defined(LG_DRM_TTM_TTM_RESOURCE_H_PRESENT)
-	ttm_resource_fini(man, &node->base);
-#endif
-}
-
-static inline lg_loonggpu_gtt_node *lg_drm_node_to_gtt_node(struct drm_mm_node *mm_node)
-{
-#if defined(LG_TTM_RANGE_MGR_NODE) && defined(LG_DRM_TTM_TTM_RESOURCE_H_PRESENT)
 	return container_of(mm_node, struct ttm_range_mgr_node, mm_nodes[0]);
-#else
-	return container_of(mm_node, struct loonggpu_gtt_node, node);
-#endif
-}
-
-static inline struct ttm_buffer_object *lg_gtt_node_to_tbo(lg_loonggpu_gtt_node *node)
-{
-#if defined(LG_TTM_RANGE_MGR_NODE) && defined(LG_DRM_TTM_TTM_RESOURCE_H_PRESENT)
-	return node->base.bo;
-#else
-	return node->tbo;
-#endif
 }
 
 static inline int lg_ttm_resource_manager_evict_all(struct loonggpu_device *adev, int type)

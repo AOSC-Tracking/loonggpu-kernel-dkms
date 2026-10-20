@@ -1197,15 +1197,6 @@ static inline struct pwm_device *lg_pwm_request(struct device *dev,
 #endif
 }
 
-static inline unsigned long lg_get_man_size(struct ttm_resource_manager *man)
-{
-#if defined(LG_DRM_TTM_TTM_RESOURCE_H_PRESENT)
-	return man->size;
-#else
-	return man->size << PAGE_SHIFT;
-#endif
-}
-
 static inline unsigned long lg_get_tbo_res_size(struct ttm_buffer_object *bo)
 {
 	return PFN_UP(bo->resource->size) << PAGE_SHIFT;

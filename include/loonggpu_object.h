@@ -4,9 +4,7 @@
 #include "loonggpu_drm.h"
 #include "loonggpu.h"
 #include "loonggpu_helper.h"
-#if defined(LG_DRM_TTM_TTM_RANGE_MANAGER_H_PRESENT)
 #include <drm/ttm/ttm_range_manager.h>
-#endif
 #include "loonggpu_gtt_mgr_helper.h"
 
 #define LOONGGPU_BO_INVALID_OFFSET	LONG_MAX

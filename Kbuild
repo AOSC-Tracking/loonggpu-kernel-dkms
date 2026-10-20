@@ -250,8 +250,6 @@ LG_HEADER_PRESENCE_TESTS = \
  drm/ttm/ttm_bo_api.h \
  drm/ttm/ttm_caching.h \
  drm/ttm/ttm_bo_driver.h \
- drm/ttm/ttm_range_manager.h \
- drm/ttm/ttm_resource.h \
  drm/drm_irq.h \
  drm/ttm/ttm_page_alloc.h \
  drm/ttm/ttm_module.h \

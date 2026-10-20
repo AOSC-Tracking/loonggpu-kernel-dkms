@@ -2594,20 +2594,6 @@ compile_test() {
             compile_check_conftest "$CODE" "LG_DRM_PLANE_HELPER_DESTROY" "" "type"
         ;;
 
-        ttm_range_mgr_node)
-            #
-            # Determine if ttm_range_mgr_node structure exists.
-            #
-            # Changed by commit 3eb7d96e94150304011d214750b45766cf62d9c9 ("drm/ttm:
-            # flip over the range manager to self allocated nodes") in v5.13-rc1
-            #
-            CODE="
-            #include <drm/ttm/ttm_range_manager.h>
-            struct ttm_range_mgr_node node;
-            "
-            compile_check_conftest "$CODE" "LG_TTM_RANGE_MGR_NODE" "" "types"
-        ;;
-
         ttm_resource_manager_func_alloc_has_res_arg)
             #
             # Determine if ttm_resource_manager_func->alloc() has res member.

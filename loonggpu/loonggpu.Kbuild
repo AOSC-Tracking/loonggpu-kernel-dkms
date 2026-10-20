@@ -150,7 +150,6 @@ LG_CONFTEST_TYPE_COMPILE_TESTS += pci_set_dma_mask
 LG_CONFTEST_TYPE_COMPILE_TESTS += ttm_device_has_lru_lock
 LG_CONFTEST_TYPE_COMPILE_TESTS += dma_resv_get_excl
 LG_CONFTEST_TYPE_COMPILE_TESTS += drm_plane_helper_destroy
-LG_CONFTEST_TYPE_COMPILE_TESTS += ttm_range_mgr_node
 LG_CONFTEST_TYPE_COMPILE_TESTS += ttm_resource_manager_func_alloc_has_res_arg
 LG_CONFTEST_TYPE_COMPILE_TESTS += bo_pin_count
 LG_CONFTEST_TYPE_COMPILE_TESTS += get_user_pages_remote_has_vmas

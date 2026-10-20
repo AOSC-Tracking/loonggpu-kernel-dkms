@@ -397,7 +397,7 @@ static bool loonggpu_bo_validate_size(struct loonggpu_device *adev,
 	if (domain & LOONGGPU_GEM_DOMAIN_GTT) {
 		man = lg_bdev_to_ttm_man(&adev->mman.bdev, TTM_PL_TT);
 
-		if (size < lg_get_man_size(man))
+		if (size < man->size)
 			return true;
 		else
 			goto fail;
@@ -405,7 +405,7 @@ static bool loonggpu_bo_validate_size(struct loonggpu_device *adev,
 
 	if (domain & LOONGGPU_GEM_DOMAIN_VRAM) {
 		man = lg_bdev_to_ttm_man(&adev->mman.bdev, TTM_PL_VRAM);
-		if (size < lg_get_man_size(man))
+		if (size < man->size)
 			return true;
 		else
 			goto fail;
