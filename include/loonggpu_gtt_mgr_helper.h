@@ -6,7 +6,7 @@ struct loonggpu_gtt_node {
 	struct ttm_buffer_object *tbo;
 };
 
-static inline lg_ttm_mem_t *lg_tbo_to_mem(struct ttm_buffer_object *tbo)
+static inline struct ttm_resource *lg_tbo_to_mem(struct ttm_buffer_object *tbo)
 {
 #if defined(LG_DRM_TTM_TTM_BO_H_PRESENT)
 	return tbo->resource;
@@ -15,7 +15,7 @@ static inline lg_ttm_mem_t *lg_tbo_to_mem(struct ttm_buffer_object *tbo)
 #endif
 }
 
-static inline void lg_tbo_set_mem(struct ttm_buffer_object *tbo, lg_ttm_mem_t *new_mem)
+static inline void lg_tbo_set_mem(struct ttm_buffer_object *tbo, struct ttm_resource *new_mem)
 {
 #if defined(LG_DRM_TTM_TTM_BO_H_PRESENT)
 	tbo->resource = new_mem;
@@ -24,81 +24,37 @@ static inline void lg_tbo_set_mem(struct ttm_buffer_object *tbo, lg_ttm_mem_t *n
 #endif
 }
 
-static inline struct loonggpu_device *lg_gtt_mgr_man_to_adev(lg_ttm_manager_t *man,
-						struct loonggpu_gtt_mgr *gtt_mgr)
+static inline
+struct loonggpu_device *lg_gtt_mgr_man_to_adev(struct ttm_resource_manager *man,
+					       struct loonggpu_gtt_mgr *mgr)
 {
-#if defined(LG_TTM_RESOURCE_MANAGER)
-	return container_of(gtt_mgr, struct loonggpu_device, mman.gtt_mgr);
-#else
-	return loonggpu_ttm_adev(man->bdev);
-#endif
+	return container_of(mgr, struct loonggpu_device, mman.gtt_mgr);
 }
 
-static inline void lg_gtt_mgr_set_man_priv(lg_ttm_manager_t *man,
-					   struct loonggpu_gtt_mgr *mgr)
-{
-#if !defined(LG_TTM_RESOURCE_MANAGER)
-	man->priv = mgr;
-#endif
-}
-
-static inline void lg_gtt_mgr_fini_free_mgr(struct loonggpu_gtt_mgr *mgr)
-{
-#if !defined(LG_TTM_RESOURCE_MANAGER)
-	kfree(mgr);
-#endif
-}
-
-#if defined(LG_TTM_RESOURCE_MANAGER)
 #define lg_gtt_mgr_set_funcs	.alloc = loonggpu_gtt_mgr_new, \
 				.free = loonggpu_gtt_mgr_del, \
 				.debug = loonggpu_gtt_mgr_debug
-#else
-#define lg_gtt_mgr_set_funcs	.init = loonggpu_gtt_mgr_init, \
-				.takedown = loonggpu_gtt_mgr_fini, \
-				.get_node = loonggpu_gtt_mgr_new, \
-				.put_node = loonggpu_gtt_mgr_del, \
-				.debug = loonggpu_gtt_mgr_debug
-#endif
 
-static inline lg_ttm_manager_t *lg_bdev_to_ttm_man(lg_ttm_device_t *bdev, int mem_type)
+static inline struct ttm_resource_manager *lg_bdev_to_ttm_man(lg_ttm_device_t *bdev, int mem_type)
 {
-#if defined(LG_TTM_RESOURCE_MANAGER)
 	return ttm_manager_type(bdev, mem_type);
-#else
-	return &bdev->man[mem_type];
-#endif
 }
 
 static inline uint64_t lg_bdev_to_gpu_offset(lg_ttm_device_t *bdev, int mem_type)
 {
-#if defined(LG_TTM_RESOURCE_MANAGER)
 	return loonggpu_ttm_domain_start(loonggpu_ttm_adev(bdev), mem_type);
-#else
-	return bdev->man[mem_type].gpu_offset;
-#endif
 }
 
-static inline struct loonggpu_gtt_mgr *lg_man_to_gtt_mgr(lg_ttm_manager_t *man)
+static inline struct loonggpu_gtt_mgr *lg_man_to_gtt_mgr(struct ttm_resource_manager *man)
 {
-#if defined(LG_TTM_RESOURCE_MANAGER)
 	return container_of(man, struct loonggpu_gtt_mgr, manager);
-#else
-	return man->priv;
-#endif
 }
 
-#if defined(LG_TTM_RESOURCE_MANAGER)
 #define lg_gtt_mgr_init_mgr(man, mgr)  mgr = container_of(man, struct loonggpu_gtt_mgr, manager);
-#else
-#define lg_gtt_mgr_init_mgr(man, mgr)	mgr = kzalloc(sizeof(*mgr), GFP_KERNEL); \
-					if (!mgr)                                \
-						return -ENOMEM;
-#endif
 
-static inline void lg_gtt_mgr_func_setting(lg_ttm_manager_t *man,
+static inline void lg_gtt_mgr_func_setting(struct ttm_resource_manager *man,
 					   struct loonggpu_device *adev,
-                                           const lg_ttm_mem_func_t *loonggpu_gtt_mgr_func,
+                                           const struct ttm_resource_manager_func *loonggpu_gtt_mgr_func,
 					   unsigned long size)
 {
 #if !defined(LG_DRM_TTM_TTM_BO_API_H_PRESENT)
@@ -112,7 +68,7 @@ static inline void lg_gtt_mgr_func_setting(lg_ttm_manager_t *man,
 #endif
 }
 
-static inline void lg_ttm_resource_manager_init(lg_ttm_manager_t *man,
+static inline void lg_ttm_resource_manager_init(struct ttm_resource_manager *man,
                                                 struct loonggpu_device *adev,
                                                 unsigned long size)
 {
@@ -125,7 +81,7 @@ static inline void lg_ttm_resource_manager_init(lg_ttm_manager_t *man,
 #endif
 }
 
-static inline void lg_gtt_mgr_init_set_man_and_used(lg_ttm_manager_t *man,
+static inline void lg_gtt_mgr_init_set_man_and_used(struct ttm_resource_manager *man,
 					lg_ttm_device_t *bdev)
 {
 #if !defined(LG_DRM_TTM_TTM_BO_API_H_PRESENT)
@@ -143,7 +99,7 @@ static inline int lg_gtt_mgr_init(struct loonggpu_device *adev, uint64_t gtt_siz
 #endif
 }
 
-static inline int lg_gtt_mgr_fini_set_used_clean_list(lg_ttm_manager_t *man,
+static inline int lg_gtt_mgr_fini_set_used_clean_list(struct ttm_resource_manager *man,
 					lg_ttm_device_t *bdev)
 {
 #if !defined(LG_TTM_BO_CLEAN_MM)
@@ -157,7 +113,7 @@ static inline int lg_gtt_mgr_fini_set_used_clean_list(lg_ttm_manager_t *man,
 	return 0;
 }
 
-static inline void lg_gtt_mgr_fini_clean_up(lg_ttm_manager_t *man,
+static inline void lg_gtt_mgr_fini_clean_up(struct ttm_resource_manager *man,
 					lg_ttm_device_t *bdev)
 {
 #if !defined(LG_DRM_TTM_TTM_BO_API_H_PRESENT)
@@ -188,7 +144,7 @@ static inline void lg_ttm_bo_clean_mm(struct loonggpu_device *adev, int type)
 #define LG_GTT_MGR_NEW_RET_VAL 0
 #endif
 
-static inline phys_addr_t lg_get_bus_placement_base(lg_ttm_mem_t *mem, struct loonggpu_device *adev)
+static inline phys_addr_t lg_get_bus_placement_base(struct ttm_resource *mem, struct loonggpu_device *adev)
 {
 #if defined(LG_TTM_BUS_PLACEMENT_HAS_SIZE)
 	return mem->bus.base;
@@ -223,12 +179,12 @@ static inline uint64_t lg_loonggpu_ttm_alloc_gart_get_bo_offset(struct loonggpu_
 #endif
 
 #if defined(LG_MAN_FUNC_ALLOC_HAS_RES)
-#define lg_gtt_mgr_new_mem_reg lg_ttm_mem_t **mem
+#define lg_gtt_mgr_new_mem_reg struct ttm_resource **mem
 #define lg_gtt_mgr_alloc_arg &gtt_node->base
 #define lg_gtt_mgr_set_res_ptr *mem = &gtt_node->base;
 #define lg_gtt_get_pages(tbo, mem) PFN_UP(tbo->base.size)
 #else
-#define lg_gtt_mgr_new_mem_reg lg_ttm_mem_t *mem
+#define lg_gtt_mgr_new_mem_reg struct ttm_resource *mem
 #define lg_gtt_mgr_alloc_arg mem
 #define lg_gtt_mgr_set_res_ptr
 #define lg_gtt_get_pages(tbo, mem) mem->num_pages
@@ -243,7 +199,7 @@ static inline uint64_t lg_loonggpu_ttm_alloc_gart_get_bo_offset(struct loonggpu_
 #endif
 
 
-static inline lg_loonggpu_gtt_node *lg_res_to_gtt_node(lg_ttm_mem_t *mem)
+static inline lg_loonggpu_gtt_node *lg_res_to_gtt_node(struct ttm_resource *mem)
 {
 #if defined(LG_TTM_RANGE_MGR_NODE) && defined(LG_DRM_TTM_TTM_RANGE_MANAGER_H_PRESENT)
 	return to_ttm_range_mgr_node(mem);
@@ -252,7 +208,7 @@ static inline lg_loonggpu_gtt_node *lg_res_to_gtt_node(lg_ttm_mem_t *mem)
 #endif
 }
 
-static inline struct drm_mm_node *lg_res_to_drm_node(lg_ttm_mem_t *mem)
+static inline struct drm_mm_node *lg_res_to_drm_node(struct ttm_resource *mem)
 {
 #if defined(LG_TTM_RANGE_MGR_NODE) && defined(LG_DRM_TTM_TTM_RANGE_MANAGER_H_PRESENT)
 	return &to_ttm_range_mgr_node(mem)->mm_nodes[0];
@@ -302,7 +258,7 @@ static inline void lg_ttm_resource_init(struct ttm_buffer_object *bo,
 #endif
 }
 
-static inline void lg_ttm_resource_fini(lg_ttm_manager_t *man,
+static inline void lg_ttm_resource_fini(struct ttm_resource_manager *man,
 					lg_loonggpu_gtt_node *node)
 {
 #if defined(LG_TTM_RANGE_MGR_NODE) && defined(LG_DRM_TTM_TTM_RESOURCE_H_PRESENT)
@@ -330,8 +286,8 @@ static inline struct ttm_buffer_object *lg_gtt_node_to_tbo(lg_loonggpu_gtt_node 
 
 static inline int lg_ttm_resource_manager_evict_all(struct loonggpu_device *adev, int type)
 {
-#if defined(LG_TTM_RESOURCE_MANAGER_EVICT_ALL) && defined(LG_TTM_RESOURCE_MANAGER)
-	lg_ttm_manager_t *man = lg_bdev_to_ttm_man(&adev->mman.bdev, type);
+#if defined(LG_TTM_RESOURCE_MANAGER_EVICT_ALL)
+	struct ttm_resource_manager *man = lg_bdev_to_ttm_man(&adev->mman.bdev, type);
 	return ttm_resource_manager_evict_all(&adev->mman.bdev, man);
 #else
 	return ttm_bo_evict_mm(&adev->mman.bdev, type);

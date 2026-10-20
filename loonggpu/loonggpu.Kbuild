@@ -124,7 +124,6 @@ LG_CONFTEST_TYPE_COMPILE_TESTS += drm_crtc_helper_funcs
 LG_CONFTEST_TYPE_COMPILE_TESTS += drm_driver_has_get_vblank_timestamp
 LG_CONFTEST_TYPE_COMPILE_TESTS += drm_fb_helper_init_has_max_conn_count
 LG_CONFTEST_TYPE_COMPILE_TESTS += drm_prime_pages_to_sg
-LG_CONFTEST_TYPE_COMPILE_TESTS += ttm_resource_manager
 LG_CONFTEST_TYPE_COMPILE_TESTS += ttm_bus_placement_has_size
 LG_CONFTEST_TYPE_COMPILE_TESTS += get_user_pages_remote_has_tsk
 LG_CONFTEST_TYPE_COMPILE_TESTS += ttm_buffer_obj_has_offset

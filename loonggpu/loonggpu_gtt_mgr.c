@@ -9,7 +9,7 @@
  *
  * Allocate and initialize the GTT manager.
  */
-int loonggpu_gtt_mgr_init(lg_ttm_manager_t *man,
+int loonggpu_gtt_mgr_init(struct ttm_resource_manager *man,
 			       unsigned long p_size)
 {
 	struct loonggpu_device *adev;
@@ -25,7 +25,6 @@ int loonggpu_gtt_mgr_init(lg_ttm_manager_t *man,
 	drm_mm_init(&mgr->mm, start, size);
 	spin_lock_init(&mgr->lock);
 	atomic64_set(&mgr->available, p_size);
-	lg_gtt_mgr_set_man_priv(man, mgr);
 	lg_gtt_mgr_init_set_man_and_used(man, &adev->mman.bdev);
 	return 0;
 }
@@ -38,7 +37,7 @@ int loonggpu_gtt_mgr_init(lg_ttm_manager_t *man,
  * Destroy and free the GTT manager, returns -EBUSY if ranges are still
  * allocated inside it.
  */
-int loonggpu_gtt_mgr_fini(lg_ttm_manager_t *man)
+int loonggpu_gtt_mgr_fini(struct ttm_resource_manager *man)
 {
 	int ret;
 	struct loonggpu_gtt_mgr *mgr = lg_man_to_gtt_mgr(man);
@@ -51,8 +50,6 @@ int loonggpu_gtt_mgr_fini(lg_ttm_manager_t *man)
 	spin_lock(&mgr->lock);
 	drm_mm_takedown(&mgr->mm);
 	spin_unlock(&mgr->lock);
-	lg_gtt_mgr_fini_free_mgr(mgr);
-	lg_gtt_mgr_set_man_priv(man, NULL);
 	lg_gtt_mgr_fini_clean_up(man, &adev->mman.bdev);
 	return 0;
 }
@@ -64,7 +61,7 @@ int loonggpu_gtt_mgr_fini(lg_ttm_manager_t *man)
  *
  * Check if a mem object has already address space allocated.
  */
-bool loonggpu_gtt_mgr_has_gart_addr(lg_ttm_mem_t *mem)
+bool loonggpu_gtt_mgr_has_gart_addr(struct ttm_resource *mem)
 {
 #if defined(LG_DRM_TTM_TTM_RANGE_MANAGER_H_PRESENT)
 	if (mem->mem_type != TTM_PL_TT)
@@ -89,10 +86,10 @@ bool loonggpu_gtt_mgr_has_gart_addr(lg_ttm_mem_t *mem)
  *
  * Allocate the address space for a node.
  */
-static int loonggpu_gtt_mgr_alloc(lg_ttm_manager_t *man,
+static int loonggpu_gtt_mgr_alloc(struct ttm_resource_manager *man,
 				struct ttm_buffer_object *tbo,
 				const struct ttm_place *place,
-				lg_ttm_mem_t *mem)
+				struct ttm_resource *mem)
 {
 	struct loonggpu_gtt_mgr *mgr = lg_man_to_gtt_mgr(man);
 	struct loonggpu_device *adev = lg_gtt_mgr_man_to_adev(man, mgr);
@@ -140,7 +137,7 @@ static int loonggpu_gtt_mgr_alloc(lg_ttm_manager_t *man,
  *
  * Dummy, allocate the node but no space for it yet.
  */
-static int loonggpu_gtt_mgr_new(lg_ttm_manager_t *man,
+static int loonggpu_gtt_mgr_new(struct ttm_resource_manager *man,
 			      struct ttm_buffer_object *tbo,
 			      const struct ttm_place *place,
 			      lg_gtt_mgr_new_mem_reg)
@@ -246,8 +243,8 @@ err_out:
  *
  * Free the allocated GTT again.
  */
-static void loonggpu_gtt_mgr_del(lg_ttm_manager_t *man,
-			       lg_ttm_mem_t *mem)
+static void loonggpu_gtt_mgr_del(struct ttm_resource_manager *man,
+			       struct ttm_resource *mem)
 {
 	struct loonggpu_gtt_mgr *mgr = lg_man_to_gtt_mgr(man);
 	lg_loonggpu_gtt_node *node = lg_res_to_gtt_node(mem);
@@ -283,12 +280,12 @@ static void loonggpu_gtt_mgr_del(lg_ttm_manager_t *man,
  *
  * Return how many bytes are used in the GTT domain
  */
-uint64_t loonggpu_gtt_mgr_usage(lg_ttm_manager_t *man)
+uint64_t loonggpu_gtt_mgr_usage(struct ttm_resource_manager *man)
 {
 	return ttm_resource_manager_usage(man);
 }
 
-int loonggpu_gtt_mgr_recover(lg_ttm_manager_t *man)
+int loonggpu_gtt_mgr_recover(struct ttm_resource_manager *man)
 {
 	struct loonggpu_gtt_mgr *mgr = lg_man_to_gtt_mgr(man);
 	lg_loonggpu_gtt_node *node;
@@ -315,7 +312,7 @@ int loonggpu_gtt_mgr_recover(lg_ttm_manager_t *man)
  *
  * Dump the table content using printk.
  */
-static void loonggpu_gtt_mgr_debug(lg_ttm_manager_t *man,
+static void loonggpu_gtt_mgr_debug(struct ttm_resource_manager *man,
 				 struct drm_printer *printer)
 {
 	struct loonggpu_gtt_mgr *mgr = lg_man_to_gtt_mgr(man);
@@ -329,6 +326,8 @@ static void loonggpu_gtt_mgr_debug(lg_ttm_manager_t *man,
 		   loonggpu_gtt_mgr_usage(man) >> 20);
 }
 
-const lg_ttm_mem_func_t loonggpu_gtt_mgr_func = {
-	lg_gtt_mgr_set_funcs
+const struct ttm_resource_manager_func loonggpu_gtt_mgr_func = {
+	.alloc = loonggpu_gtt_mgr_new,
+	.free = loonggpu_gtt_mgr_del,
+	.debug = loonggpu_gtt_mgr_debug,
 };

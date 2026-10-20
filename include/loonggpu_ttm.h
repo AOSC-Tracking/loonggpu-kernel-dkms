@@ -5,7 +5,6 @@
 #include "loonggpu_ttm_helper.h"
 
 #include "loonggpu_dma_resv_helper.h"
-#include "loonggpu_ttm_resource_helper.h"
 
 #define LOONGGPU_PL_DOORBELL	(TTM_PL_PRIV + 0)
 
@@ -38,7 +37,7 @@ typedef struct drm_buddy_block lg_buddy_block_t;
 #endif
 
 struct loonggpu_vram_mgr {
-        lg_loonggpu_vram_mgr_man
+        struct ttm_resource_manager manager;
 	lg_buddy_t b_mm;
 	struct mutex m_lock;
         struct drm_mm mm;
@@ -51,7 +50,7 @@ struct loonggpu_vram_mgr {
 };
 
 struct loonggpu_gtt_mgr {
-        lg_loonggpu_gtt_mgr_man
+        struct ttm_resource_manager manager;
         struct drm_mm mm;
         spinlock_t lock;
         atomic64_t available;
@@ -80,27 +79,29 @@ struct loonggpu_mman {
 	/* Scheduler entity for buffer moves */
 	struct drm_sched_entity			entity;
 
+	struct loonggpu_vram_mgr vram_mgr;
+	struct loonggpu_gtt_mgr gtt_mgr;
+
 	/* members for compatible */
 	LG_LOONGGPU_MMAN_COMPAT_MEMBERS
-	LG_LOONGGPU_VRAM_GTT_MGR_COMPAT_MEMBERS
 };
 
 struct loonggpu_copy_mem {
 	struct ttm_buffer_object	*bo;
-	lg_ttm_mem_t			*mem;
+	struct ttm_resource			*mem;
 	unsigned long			offset;
 };
 
-extern const lg_ttm_mem_func_t loonggpu_gtt_mgr_func;
-extern const lg_ttm_mem_func_t loonggpu_vram_mgr_func;
+extern const struct ttm_resource_manager_func loonggpu_gtt_mgr_func;
+extern const struct ttm_resource_manager_func loonggpu_vram_mgr_func;
 
-bool loonggpu_gtt_mgr_has_gart_addr(lg_ttm_mem_t *mem);
-uint64_t loonggpu_gtt_mgr_usage(lg_ttm_manager_t *man);
-int loonggpu_gtt_mgr_recover(lg_ttm_manager_t *man);
+bool loonggpu_gtt_mgr_has_gart_addr(struct ttm_resource *mem);
+uint64_t loonggpu_gtt_mgr_usage(struct ttm_resource_manager *man);
+int loonggpu_gtt_mgr_recover(struct ttm_resource_manager *man);
 
 u64 loonggpu_vram_mgr_bo_visible_size(struct loonggpu_bo *bo);
-uint64_t loonggpu_vram_mgr_usage(lg_ttm_manager_t *man);
-uint64_t loonggpu_vram_mgr_vis_usage(lg_ttm_manager_t *man);
+uint64_t loonggpu_vram_mgr_usage(struct ttm_resource_manager *man);
+uint64_t loonggpu_vram_mgr_vis_usage(struct ttm_resource_manager *man);
 
 int loonggpu_ttm_init(struct loonggpu_device *adev);
 void loonggpu_ttm_late_init(struct loonggpu_device *adev);
@@ -145,13 +146,13 @@ bool loonggpu_ttm_tt_userptr_invalidated(struct ttm_tt *ttm,
 bool loonggpu_ttm_tt_userptr_needs_pages(struct ttm_tt *ttm);
 bool loonggpu_ttm_tt_is_readonly(struct ttm_tt *ttm);
 uint64_t loonggpu_ttm_tt_pte_flags(struct loonggpu_device *adev, struct ttm_tt *ttm,
-				 lg_ttm_mem_t *mem);
+				 struct ttm_resource *mem);
 int loonggpu_ttm_tt_get_userptr(const struct ttm_buffer_object *tbo,
 		uint64_t *user_addr);
-int loonggpu_vram_mgr_init(lg_ttm_manager_t *man, unsigned long p_size);
-int loonggpu_gtt_mgr_init(lg_ttm_manager_t *man, unsigned long p_size);
-int loonggpu_vram_mgr_fini(lg_ttm_manager_t *man);
-int loonggpu_gtt_mgr_fini(lg_ttm_manager_t *man);
+int loonggpu_vram_mgr_init(struct ttm_resource_manager *man, unsigned long p_size);
+int loonggpu_gtt_mgr_init(struct ttm_resource_manager *man, unsigned long p_size);
+int loonggpu_vram_mgr_fini(struct ttm_resource_manager *man);
+int loonggpu_gtt_mgr_fini(struct ttm_resource_manager *man);
 int loonggpu_fill_buffer_buddy(struct loonggpu_bo *bo,
 			    uint32_t src_data,
 			    struct dma_resv *resv,

@@ -1,6 +1,5 @@
 #ifndef __LOONGGPU_TTM_HELPER_H__
 #define __LOONGGPU_TTM_HELPER_H__
-#include "loonggpu_ttm_resource_helper.h"
 #include <drm/ttm/ttm_tt.h>
 #if defined(LG_DRM_TTM_TTM_DEVICE_H_PRESENT)
 #include <drm/ttm/ttm_device.h>
@@ -11,7 +10,7 @@ unsigned long loonggpu_ttm_io_mem_pfn_buddy(struct ttm_buffer_object *bo,
 					unsigned long page_offset);
 
 struct loonggpu_vram_mgr_resource {
-	lg_ttm_mem_t base;
+	struct ttm_resource base;
 	struct list_head blocks;
 	unsigned long flags;
 };
@@ -80,7 +79,7 @@ static inline void lg_ttm_dma_tt_fini(
 #endif
 }
 
-int loonggpu_ttm_backend_bind(lg_ttm_backend_func_arg, lg_ttm_mem_t *bo_mem);
+int loonggpu_ttm_backend_bind(lg_ttm_backend_func_arg, struct ttm_resource *bo_mem);
 
 #if defined(LG_TTM_BO_DEVICE_INIT_HAS_GLOB_ARG)
 #define LG_LOONGGPU_MMAN_COMPAT_MEMBERS \
@@ -98,46 +97,25 @@ int loonggpu_ttm_backend_bind(lg_ttm_backend_func_arg, lg_ttm_mem_t *bo_mem);
 extern int lg_loonggpu_ttm_global_init(struct loonggpu_device *adev);
 extern void lg_loonggpu_ttm_global_fini(struct loonggpu_device *adev);
 
-static inline void lg_init_mem_type_system(lg_ttm_manager_t *man)
+static inline void lg_init_mem_type_system(struct ttm_resource_manager *man)
 {
-#if !defined(LG_TTM_RESOURCE_MANAGER)
-	/* System memory */
-	man->flags = TTM_MEMTYPE_FLAG_MAPPABLE;
-	man->available_caching = TTM_PL_MASK_CACHING;
-	man->default_caching = TTM_PL_FLAG_CACHED;
-#endif
 }
 
-static inline void lg_init_mem_type_gtt(lg_ttm_manager_t *man,
-				const lg_ttm_mem_func_t *func,
+static inline void lg_init_mem_type_gtt(struct ttm_resource_manager *man,
+				const struct ttm_resource_manager_func *func,
 				u64 gart_start)
 {
-#if !defined(LG_TTM_RESOURCE_MANAGER)
-	/* GTT memory */
-	man->func = func;
-	man->gpu_offset = gart_start;
-	man->available_caching = TTM_PL_MASK_CACHING;
-	man->default_caching = TTM_PL_FLAG_CACHED;
-	man->flags = TTM_MEMTYPE_FLAG_MAPPABLE | TTM_MEMTYPE_FLAG_CMA;
-#endif
 }
 
-static inline void lg_init_mem_type_vram(lg_ttm_manager_t *man,
-					const lg_ttm_mem_func_t *func,
+static inline void lg_init_mem_type_vram(struct ttm_resource_manager *man,
+					const struct ttm_resource_manager_func *func,
 					u64 vram_start)
 {
-#if !defined(LG_TTM_RESOURCE_MANAGER)
-	man->func = func;
-	man->gpu_offset = vram_start;
-	man->flags = TTM_MEMTYPE_FLAG_FIXED | TTM_MEMTYPE_FLAG_MAPPABLE;
-	man->available_caching = TTM_PL_FLAG_UNCACHED | TTM_PL_FLAG_WC;
-	man->default_caching = TTM_PL_FLAG_WC;
-#endif
 }
 
 static inline int lg_ttm_bo_pipeline_move(struct ttm_buffer_object *bo,
 					  struct dma_fence *fence,
-					  bool evict, lg_ttm_mem_t *new_mem)
+					  bool evict, struct ttm_resource *new_mem)
 {
 	int r;
 
@@ -152,7 +130,7 @@ static inline int lg_ttm_bo_pipeline_move(struct ttm_buffer_object *bo,
 	return r;
 }
 
-static inline void lg_ttm_bo_mem_put(struct ttm_buffer_object *bo, lg_ttm_mem_t *mem)
+static inline void lg_ttm_bo_mem_put(struct ttm_buffer_object *bo, struct ttm_resource *mem)
 {
 #if defined(LG_TTM_BO_MEM_PUT) && defined(LG_DRM_TTM_TTM_BO_DRIVER_H_PRESENT)
 	ttm_bo_mem_put(bo, mem);
@@ -163,21 +141,21 @@ static inline void lg_ttm_bo_mem_put(struct ttm_buffer_object *bo, lg_ttm_mem_t 
 #endif
 }
 
-static inline void lg_set_bus_placement_base(lg_ttm_mem_t *mem, phys_addr_t base)
+static inline void lg_set_bus_placement_base(struct ttm_resource *mem, phys_addr_t base)
 {
 #if defined(LG_TTM_BUS_PLACEMENT_HAS_SIZE)
 	mem->bus.base = base;
 #endif
 }
 
-static inline void lg_set_bus_placement_size(lg_ttm_mem_t *mem, unsigned long size)
+static inline void lg_set_bus_placement_size(struct ttm_resource *mem, unsigned long size)
 {
 #if defined(LG_TTM_BUS_PLACEMENT_HAS_SIZE)
 	mem->bus.size = size;
 #endif
 }
 
-static inline void lg_add_bus_placement_offset(lg_ttm_mem_t *mem, phys_addr_t offset)
+static inline void lg_add_bus_placement_offset(struct ttm_resource *mem, phys_addr_t offset)
 {
 #if !defined(LG_TTM_BUS_PLACEMENT_HAS_SIZE)
 	mem->bus.offset += offset;
@@ -319,7 +297,7 @@ static inline int lg_ttm_bo_evict_mm(lg_ttm_device_t *bdev, int type)
 }
 
 static inline int lg_ttm_bo_mem_space(struct ttm_buffer_object *bo, struct ttm_placement *placement,
-				     lg_ttm_mem_t *mem, struct ttm_operation_ctx *ctx)
+				     struct ttm_resource *mem, struct ttm_operation_ctx *ctx)
 {
 #if defined(LG_TTM_BO_MEM_SPACE_MEM_ARG_DOUBLE_PTR)
 	return ttm_bo_mem_space(bo, placement, &mem, ctx);

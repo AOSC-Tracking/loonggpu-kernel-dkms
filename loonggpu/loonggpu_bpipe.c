@@ -296,7 +296,7 @@ int bpipe_map_vram_buffer(struct loonggpu_bo *bo,
 					uint64_t *addr)
 {
 	struct loonggpu_device *adev = ring->adev;
-	lg_ttm_mem_t *mem = lg_tbo_to_mem(&bo->tbo);
+	struct ttm_resource *mem = lg_tbo_to_mem(&bo->tbo);
 	struct drm_mm_node *mm_node = lg_res_to_drm_node(mem);
 	uint64_t node_start, node_size, page_offset;
 	unsigned num_pages = 0;

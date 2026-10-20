@@ -1828,21 +1828,6 @@ compile_test() {
             compile_check_conftest "$CODE" "LG_TTM_FBDEV_MMAP" "" "functions"
         ;;
 
-	ttm_resource_manager)
-            #
-            # Determine if ttm_resource_manager structure exists.
-            #
-            # Changed by commit b2458726b38cb69f3da3677dbdf53e47af0e8792 ("drm/ttm:
-            # give resource functions their own [ch] files") in v5.9-rc1
-            #
-            CODE="
-            #include <drm/ttm/ttm_resource.h>
-            void conftest_ttm_resource_manager(struct ttm_resource_manager *man) {
-                return;
-            }"
-            compile_check_conftest "$CODE" "LG_TTM_RESOURCE_MANAGER" "" "types"
-        ;;
-
         ttm_bo_init_mm)
             #
             # Determine if the ttm_bo_init_mm function exists.

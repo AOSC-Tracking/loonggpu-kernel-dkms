@@ -1273,7 +1273,7 @@ error_free:
  * 0 for success, -EINVAL for failure.
  */
 static int loonggpu_vm_bo_split_mapping(struct loonggpu_device *ldev,
-				      lg_ttm_mem_t *res,
+				      struct ttm_resource *res,
 				      struct dma_fence *exclusive,
 				      dma_addr_t *pages_addr,
 				      struct loonggpu_vm *vm,
@@ -1352,7 +1352,7 @@ int loonggpu_vm_bo_update(struct loonggpu_device *ldev,
 	struct loonggpu_vm *vm = bo_va->base.vm;
 	struct loonggpu_bo_va_mapping *mapping;
 	dma_addr_t *pages_addr = NULL;
-	lg_ttm_mem_t *mem;
+	struct ttm_resource *mem;
 	struct drm_mm_node *nodes = NULL;
 	struct dma_fence *exclusive, **last_update;
 	lg_dma_resv_t *bo_resv, *root_resv;

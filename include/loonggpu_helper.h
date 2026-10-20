@@ -699,7 +699,7 @@ static inline void lg_spin_lock_glob_unlock(lg_ttm_global_t *glob,
 #endif
 
 #if defined(LG_DRM_TTM_TTM_DEVICE_H_PRESENT)
-#define lg_bo_move_ttm_mem_place_arg lg_ttm_mem_t *new_mem, struct ttm_place *hop
+#define lg_bo_move_ttm_mem_place_arg struct ttm_resource *new_mem, struct ttm_place *hop
 #define lg_define_ttm_bo_driver static struct ttm_device_funcs loonggpu_bo_driver = { \
 						.ttm_tt_create = &loonggpu_ttm_tt_create, \
 						.ttm_tt_populate = &loonggpu_ttm_tt_populate, \
@@ -713,7 +713,7 @@ static inline void lg_spin_lock_glob_unlock(lg_ttm_global_t *glob,
 						.access_memory = &loonggpu_ttm_access_memory, \
 						};
 #else
-#define lg_bo_move_ttm_mem_place_arg lg_ttm_mem_t *new_mem
+#define lg_bo_move_ttm_mem_place_arg struct ttm_resource *new_mem
 #define lg_define_ttm_bo_driver static struct ttm_bo_driver loonggpu_bo_driver = { \
 					.ttm_tt_create = &loonggpu_ttm_tt_create, \
 					.ttm_tt_populate = &loonggpu_ttm_tt_populate, \
@@ -748,7 +748,7 @@ static void lg_loonggpu_ttm_bo_device_fini(struct loonggpu_device *adev)
 #define lg_set_file_mmap_ops .mmap = drm_gem_mmap,
 #endif
 
-static inline void lg_mem_bus_caching(lg_ttm_mem_t *mem)
+static inline void lg_mem_bus_caching(struct ttm_resource *mem)
 {
 #if defined(LG_DRM_TTM_TTM_CACHING_H_PRESENT)
 	mem->bus.caching = ttm_write_combined;
@@ -992,7 +992,7 @@ static inline void lg_set_tbo_moving_fence(struct ttm_buffer_object *tbo, struct
 }
 
 static inline void lg_ttm_move_null(struct ttm_buffer_object *tbo,
-			lg_ttm_mem_t *old_mem, lg_ttm_mem_t *new_mem)
+			struct ttm_resource *old_mem, struct ttm_resource *new_mem)
 {
 #if defined(LG_DRM_TTM_TTM_BO_H_PRESENT)
 	ttm_bo_move_null(tbo, new_mem);
@@ -1021,7 +1021,7 @@ static inline lg_dma_resv_t *lg_tbo_to_ttm_resv(struct ttm_buffer_object *tbo)
 #endif
 }
 
-static inline uint64_t lg_mem_to_size(lg_ttm_mem_t *mem)
+static inline uint64_t lg_mem_to_size(struct ttm_resource *mem)
 {
 #if defined(LG_TTM_RES_HAS_NUM_PAGES)
 	return mem->num_pages << PAGE_SHIFT;
@@ -1030,7 +1030,7 @@ static inline uint64_t lg_mem_to_size(lg_ttm_mem_t *mem)
 #endif
 }
 
-static inline uint64_t lg_mem_to_num_pages(lg_ttm_mem_t *mem)
+static inline uint64_t lg_mem_to_num_pages(struct ttm_resource *mem)
 {
 #if defined(LG_TTM_RES_HAS_NUM_PAGES)
 	return mem->num_pages;
@@ -1049,7 +1049,7 @@ static inline uint64_t lg_tbo_to_size(struct ttm_buffer_object *tbo)
 }
 
 static inline int lg_ttm_bo_move_ttm(struct ttm_buffer_object *tbo,
-			struct ttm_operation_ctx *ctx, lg_ttm_mem_t *new_mem)
+			struct ttm_operation_ctx *ctx, struct ttm_resource *new_mem)
 {
 #if defined(LG_DRM_TTM_TTM_BO_H_PRESENT)
 	return 0;
@@ -1197,7 +1197,7 @@ static inline struct pwm_device *lg_pwm_request(struct device *dev,
 #endif
 }
 
-static inline unsigned long lg_get_man_size(lg_ttm_manager_t *man)
+static inline unsigned long lg_get_man_size(struct ttm_resource_manager *man)
 {
 #if defined(LG_DRM_TTM_TTM_RESOURCE_H_PRESENT)
 	return man->size;
@@ -1208,11 +1208,7 @@ static inline unsigned long lg_get_man_size(lg_ttm_manager_t *man)
 
 static inline unsigned long lg_get_tbo_res_size(struct ttm_buffer_object *bo)
 {
-#if defined(LG_TTM_RESOURCE_MANAGER)
 	return PFN_UP(bo->resource->size) << PAGE_SHIFT;
-#else
-	return bo->mem.num_pages << PAGE_SHIFT;
-#endif
 }
 
 #if defined(LG_TTM_BUFFER_OBJECT_HAS_BASE) || defined(LG_DRM_TTM_TTM_BO_H_PRESENT)

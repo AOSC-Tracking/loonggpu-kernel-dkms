@@ -45,7 +45,7 @@
 #define mmMM_DATA          0x1
 
 static int loonggpu_map_buffer(struct ttm_buffer_object *bo,
-			     lg_ttm_mem_t *mem, struct loonggpu_res_cursor *src_mm, unsigned num_pages,
+			     struct ttm_resource *mem, struct loonggpu_res_cursor *src_mm, unsigned num_pages,
 			     uint64_t offset, unsigned window,
 			     struct loonggpu_ring *ring,
 			     uint64_t *addr);
@@ -70,7 +70,7 @@ static int loonggpu_invalidate_caches(lg_ttm_device_t *bdev, uint32_t flags)
  * initialized.
  */
 static int loonggpu_init_mem_type(lg_ttm_device_t *bdev, uint32_t type,
-				lg_ttm_manager_t *man)
+				struct ttm_resource_manager *man)
 {
 	struct loonggpu_device *adev;
 
@@ -90,13 +90,6 @@ static int loonggpu_init_mem_type(lg_ttm_device_t *bdev, uint32_t type,
 		lg_init_mem_type_vram(man, &loonggpu_vram_mgr_func, adev->gmc.vram_start);
 		break;
 	case LOONGGPU_PL_DOORBELL:
-#if !defined(LG_TTM_RESOURCE_MANAGER)
-		man->func = &ttm_bo_manager_func;
-		man->gpu_offset = adev->doorbell.base;
-		man->flags = TTM_MEMTYPE_FLAG_FIXED | TTM_MEMTYPE_FLAG_MAPPABLE;
-		man->available_caching = TTM_PL_FLAG_UNCACHED;
-		man->default_caching = TTM_PL_FLAG_UNCACHED;
-#endif
 		break;
 	default:
 		DRM_ERROR("Unsupported memory type %u\n", (unsigned)type);
@@ -227,9 +220,9 @@ static int loonggpu_verify_access(struct ttm_buffer_object *bo, struct file *fil
  * Assign the memory from new_mem to the memory of the buffer object bo.
  */
 static void loonggpu_move_null(struct ttm_buffer_object *bo,
-			     lg_ttm_mem_t *new_mem)
+			     struct ttm_resource *new_mem)
 {
-	lg_ttm_mem_t *old_mem = lg_tbo_to_mem(bo);
+	struct ttm_resource *old_mem = lg_tbo_to_mem(bo);
 
 	lg_ttm_move_null(bo, old_mem, new_mem);
 }
@@ -244,7 +237,7 @@ static void loonggpu_move_null(struct ttm_buffer_object *bo,
  */
 static uint64_t loonggpu_mm_node_addr(struct ttm_buffer_object *bo,
 				    struct drm_mm_node *mm_node,
-				    lg_ttm_mem_t *mem)
+				    struct ttm_resource *mem)
 {
 	uint64_t addr = 0;
 
@@ -263,7 +256,7 @@ static uint64_t loonggpu_mm_node_addr(struct ttm_buffer_object *bo,
  * @offset: The offset that drm_mm_node is used for finding.
  *
  */
-static struct drm_mm_node *loonggpu_find_mm_node(lg_ttm_mem_t *mem,
+static struct drm_mm_node *loonggpu_find_mm_node(struct ttm_resource *mem,
 					       unsigned long *offset)
 {
 	struct drm_mm_node *mm_node = lg_res_to_drm_node(mem);
@@ -361,8 +354,8 @@ error:
  */
 static int loonggpu_move_blit(struct ttm_buffer_object *bo,
 			    bool evict,
-			    lg_ttm_mem_t *new_mem,
-			    lg_ttm_mem_t *old_mem)
+			    struct ttm_resource *new_mem,
+			    struct ttm_resource *old_mem)
 {
 	struct loonggpu_device *adev = loonggpu_ttm_adev(bo->bdev);
 	struct loonggpu_copy_mem src, dst;
@@ -407,7 +400,7 @@ static int loonggpu_bo_move(struct ttm_buffer_object *bo, bool evict,
 {
 	struct loonggpu_device *adev;
 	struct loonggpu_bo *abo;
-	lg_ttm_mem_t *old_mem = lg_tbo_to_mem(bo);
+	struct ttm_resource *old_mem = lg_tbo_to_mem(bo);
 	int r;
 
 	if (new_mem->mem_type == TTM_PL_TT) {
@@ -529,9 +522,8 @@ int loonggpu_ttm_tt_get_userptr(const struct ttm_buffer_object *tbo,
  *
  * Called by ttm_mem_io_reserve() ultimately via ttm_bo_vm_fault()
  */
-static int loonggpu_ttm_io_mem_reserve(lg_ttm_device_t *bdev, lg_ttm_mem_t *mem)
+static int loonggpu_ttm_io_mem_reserve(lg_ttm_device_t *bdev, struct ttm_resource *mem)
 {
-	lg_ttm_manager_t *man = lg_bdev_to_ttm_man(bdev, mem->mem_type);
 	struct loonggpu_device *adev = loonggpu_ttm_adev(bdev);
 
 	struct loonggpu_res_cursor cur;
@@ -541,10 +533,6 @@ static int loonggpu_ttm_io_mem_reserve(lg_ttm_device_t *bdev, lg_ttm_mem_t *mem)
 	lg_set_bus_placement_base(mem, 0);
 	lg_set_bus_placement_size(mem, lg_mem_to_size(mem));
 	mem->bus.is_iomem = false;
-#if defined(TTM_MEMTYPE_FLAG_MAPPABLE)
-	if (!(man->flags & TTM_MEMTYPE_FLAG_MAPPABLE))
-		return -EINVAL;
-#endif
 	switch (mem->mem_type) {
 	case TTM_PL_SYSTEM:
 		/* system memory */
@@ -583,7 +571,7 @@ static int loonggpu_ttm_io_mem_reserve(lg_ttm_device_t *bdev, lg_ttm_mem_t *mem)
 	return 0;
 }
 
-static void loonggpu_ttm_io_mem_free(lg_ttm_device_t *bdev, lg_ttm_mem_t *mem)
+static void loonggpu_ttm_io_mem_free(lg_ttm_device_t *bdev, struct ttm_resource *mem)
 {
 }
 
@@ -831,7 +819,7 @@ int loonggpu_ttm_gart_bind(struct loonggpu_device *adev,
  * This handles binding GTT memory to the device address space.
  */
 int loonggpu_ttm_backend_bind(lg_ttm_backend_func_arg,
-				   lg_ttm_mem_t *bo_mem)
+				   struct ttm_resource *bo_mem)
 {
 	struct loonggpu_device *adev = loonggpu_ttm_adev(lg_ttm_backend_func_get_bdev);
 	struct loonggpu_ttm_tt *gtt = (void *)ttm;
@@ -881,9 +869,9 @@ int loonggpu_ttm_alloc_gart(struct ttm_buffer_object *bo)
 	struct ttm_operation_ctx ctx = { false, false };
 	struct loonggpu_ttm_tt *gtt = (void *)bo->ttm;
 #if defined(LG_TTM_BO_MEM_SPACE_MEM_ARG_DOUBLE_PTR)
-	lg_ttm_mem_t *tmp;
+	struct ttm_resource *tmp;
 #else
-	lg_ttm_mem_t tmp;
+	struct ttm_resource tmp;
 #endif
 	struct ttm_placement placement;
 	struct ttm_place placements;
@@ -1304,7 +1292,7 @@ bool loonggpu_ttm_tt_is_readonly(struct ttm_tt *ttm)
  * @mem: The memory registry backing this ttm_tt object
  */
 uint64_t loonggpu_ttm_tt_pte_flags(struct loonggpu_device *adev, struct ttm_tt *ttm,
-				 lg_ttm_mem_t *mem)
+				 struct ttm_resource *mem)
 {
 	uint64_t flags = 0;
 
@@ -1740,7 +1728,7 @@ void loonggpu_ttm_fini(struct loonggpu_device *adev)
  */
 void loonggpu_ttm_set_buffer_funcs_status(struct loonggpu_device *adev, bool enable)
 {
-	lg_ttm_manager_t *man = lg_bdev_to_ttm_man(&adev->mman.bdev, TTM_PL_VRAM);
+	struct ttm_resource_manager *man = lg_bdev_to_ttm_man(&adev->mman.bdev, TTM_PL_VRAM);
 	uint64_t size;
 	int r;
 
@@ -1795,7 +1783,7 @@ int loonggpu_mmap(struct file *filp, struct vm_area_struct *vma)
 }
 #endif
 static int loonggpu_map_buffer(struct ttm_buffer_object *bo,
-			     lg_ttm_mem_t *mem, struct loonggpu_res_cursor *mm_cur, unsigned num_pages,
+			     struct ttm_resource *mem, struct loonggpu_res_cursor *mm_cur, unsigned num_pages,
 			     uint64_t offset, unsigned window,
 			     struct loonggpu_ring *ring,
 			     uint64_t *addr)
@@ -2035,7 +2023,7 @@ static int loonggpu_mm_dump_table(struct seq_file *m, void *data)
 	unsigned ttm_pl = *(int *)node->info_ent->data;
 	struct drm_device *dev = node->minor->dev;
 	struct loonggpu_device *adev = dev->dev_private;
-	lg_ttm_manager_t *man = lg_bdev_to_ttm_man(&adev->mman.bdev, ttm_pl);
+	struct ttm_resource_manager *man = lg_bdev_to_ttm_man(&adev->mman.bdev, ttm_pl);
 	struct drm_printer p = drm_seq_file_printer(m);
 
 	man->func->debug(man, &p);

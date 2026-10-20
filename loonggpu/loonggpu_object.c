@@ -388,7 +388,7 @@ void loonggpu_bo_free_kernel(struct loonggpu_bo **bo, u64 *gpu_addr,
 static bool loonggpu_bo_validate_size(struct loonggpu_device *adev,
 					  unsigned long size, u32 domain)
 {
-	lg_ttm_manager_t *man = NULL;
+	struct ttm_resource_manager *man = NULL;
 
 	/*
 	 * If GTT is part of requested domains the check must succeed to
@@ -1239,11 +1239,11 @@ int loonggpu_bo_get_metadata(struct loonggpu_bo *bo, void *buffer,
  */
 void loonggpu_bo_move_notify(struct ttm_buffer_object *bo,
 			   bool evict,
-			   lg_ttm_mem_t *new_mem)
+			   struct ttm_resource *new_mem)
 {
 	struct loonggpu_device *adev = loonggpu_ttm_adev(bo->bdev);
 	struct loonggpu_bo *abo;
-	lg_ttm_mem_t *old_mem = lg_tbo_to_mem(bo);
+	struct ttm_resource *old_mem = lg_tbo_to_mem(bo);
 
 	if (!loonggpu_bo_is_loonggpu_bo(bo))
 		return;

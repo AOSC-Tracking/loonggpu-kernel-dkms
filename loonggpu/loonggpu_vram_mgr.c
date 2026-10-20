@@ -9,7 +9,7 @@
  *
  * Allocate and initialize the VRAM manager.
  */
-int loonggpu_vram_mgr_init(lg_ttm_manager_t *man,
+int loonggpu_vram_mgr_init(struct ttm_resource_manager *man,
 				unsigned long p_size)
 {
 	int r;
@@ -36,7 +36,7 @@ int loonggpu_vram_mgr_init(lg_ttm_manager_t *man,
  * Destroy and free the VRAM manager, returns -EBUSY if ranges are still
  * allocated inside it.
  */
-int loonggpu_vram_mgr_fini(lg_ttm_manager_t *man)
+int loonggpu_vram_mgr_fini(struct ttm_resource_manager *man)
 {
 	struct loonggpu_vram_mgr *mgr = lg_man_to_vram_mgr(man);
 	int ret;
@@ -82,7 +82,7 @@ u64 loonggpu_vram_mgr_vis_size(struct loonggpu_device *adev,
 u64 loonggpu_vram_mgr_bo_visible_size(struct loonggpu_bo *bo)
 {
 	struct loonggpu_device *adev = loonggpu_ttm_adev(bo->tbo.bdev);
-	lg_ttm_mem_t *mem = lg_bo_to_mem;
+	struct ttm_resource *mem = lg_bo_to_mem;
 	struct loonggpu_vram_mgr_resource *vres = to_loonggpu_vram_mgr_resource(mem);
 	lg_buddy_block_t *block;
 	u64 usage;
@@ -105,7 +105,7 @@ u64 loonggpu_vram_mgr_bo_visible_size(struct loonggpu_bo *bo)
  *
  * Returns how many bytes are used in this domain.
  */
-uint64_t loonggpu_vram_mgr_usage(lg_ttm_manager_t *man)
+uint64_t loonggpu_vram_mgr_usage(struct ttm_resource_manager *man)
 {
 	return ttm_resource_manager_usage(man);
 }
@@ -117,13 +117,13 @@ uint64_t loonggpu_vram_mgr_usage(lg_ttm_manager_t *man)
  *
  * Returns how many bytes are used in the visible part of VRAM
  */
-uint64_t loonggpu_vram_mgr_vis_usage(lg_ttm_manager_t *man)
+uint64_t loonggpu_vram_mgr_vis_usage(struct ttm_resource_manager *man)
 {
 	struct loonggpu_vram_mgr *mgr = lg_man_to_vram_mgr(man);
 
 	return atomic64_read(&mgr->vis_usage);
 }
 
-const lg_ttm_mem_func_t loonggpu_vram_mgr_func = {
+const struct ttm_resource_manager_func loonggpu_vram_mgr_func = {
 	lg_vram_mgr_func_setting
 };

@@ -271,7 +271,7 @@ int loonggpu_bo_get_metadata(struct loonggpu_bo *bo, void *buffer,
 			   uint64_t *flags);
 void loonggpu_bo_move_notify(struct ttm_buffer_object *bo,
 			   bool evict,
-			   lg_ttm_mem_t *new_mem);
+			   struct ttm_resource *new_mem);
 int loonggpu_bo_fault_reserve_notify(struct ttm_buffer_object *bo);
 void loonggpu_bo_fence(struct loonggpu_bo *bo, struct dma_fence *fence,
 		     bool shared);

@@ -43,53 +43,29 @@ bool loonggpu_vram_mgr_compatible(struct ttm_resource_manager *man,
 				const struct ttm_place *place,
 				size_t size);
 
-#if defined(LG_TTM_RESOURCE_MANAGER)
 #define lg_vram_mgr_func_setting	.alloc = loonggpu_vram_mgr_new_buddy, \
 					.free  = loonggpu_vram_mgr_del_buddy, \
 					.intersects = loonggpu_vram_mgr_intersects, \
 					.compatible = loonggpu_vram_mgr_compatible, \
 					.debug = loonggpu_vram_mgr_debug_buddy
-#else
-#define lg_vram_mgr_func_setting	.init = loonggpu_vram_mgr_init, \
-					.takedown = loonggpu_vram_mgr_fini, \
-					.get_node = loonggpu_vram_mgr_new, \
-					.put_node = loonggpu_vram_mgr_del, \
-					.debug    = loonggpu_vram_mgr_debug
-#endif
 
-static inline struct loonggpu_vram_mgr *lg_man_to_vram_mgr(lg_ttm_manager_t *man)
+static inline struct loonggpu_vram_mgr *lg_man_to_vram_mgr(struct ttm_resource_manager *man)
 {
-#if defined(LG_TTM_RESOURCE_MANAGER)
 	return container_of(man, struct loonggpu_vram_mgr, manager);
-#else
-	return man->priv;
-#endif
 }
 
 static inline struct loonggpu_device *vram_mgr_to_loonggpu_device(struct loonggpu_vram_mgr *mgr)
 {
-#if defined(LG_TTM_RESOURCE_MANAGER)
 	return container_of(mgr, struct loonggpu_device, mman.vram_mgr);
-#endif
 	return NULL;
 }
 
-static inline struct loonggpu_device *lg_vram_mgr_man_to_loonggpu(lg_ttm_manager_t *man, struct loonggpu_vram_mgr *mgr)
+static inline struct loonggpu_device *lg_vram_mgr_man_to_loonggpu(struct ttm_resource_manager *man, struct loonggpu_vram_mgr *mgr)
 {
-#if !defined(LG_TTM_RESOURCE_MANAGER)
-	return loonggpu_ttm_adev(man->bdev);
-#else
 	return vram_mgr_to_loonggpu_device(mgr);
-#endif
 }
 
-#if defined(LG_TTM_RESOURCE_MANAGER)
 #define lg_vram_mgr_init_mgr(man, mgr)	mgr = container_of(man, struct loonggpu_vram_mgr, manager);
-#else
-#define lg_vram_mgr_init_mgr(man, mgr)	mgr = kzalloc(sizeof(*mgr), GFP_KERNEL); \
-					if (!mgr) \
-						return -ENOMEM;
-#endif
 
 static inline int lg_vram_mgr_init(struct loonggpu_device *adev)
 {
@@ -101,8 +77,8 @@ static inline int lg_vram_mgr_init(struct loonggpu_device *adev)
 #endif
 }
 
-static inline void lg_vram_mgr_init_man_func(lg_ttm_manager_t *man, struct loonggpu_device *adev, u64 size,
-					     const lg_ttm_mem_func_t *func)
+static inline void lg_vram_mgr_init_man_func(struct ttm_resource_manager *man, struct loonggpu_device *adev, u64 size,
+					     const struct ttm_resource_manager_func *func)
 {
 #if !(defined(LG_TTM_BO_INIT_MM) && defined(LG_DRM_TTM_TTM_BO_API_H_PRESENT))
 	man->func = func;
@@ -114,7 +90,7 @@ static inline void lg_vram_mgr_init_man_func(lg_ttm_manager_t *man, struct loong
 #endif
 }
 
-static inline void lg_vram_mgr_init_drv_ptr_used(lg_ttm_manager_t *man, struct loonggpu_vram_mgr *mgr)
+static inline void lg_vram_mgr_init_drv_ptr_used(struct ttm_resource_manager *man, struct loonggpu_vram_mgr *mgr)
 {
 #if defined(LG_TTM_BO_INIT_MM) && defined(LG_DRM_TTM_TTM_BO_API_H_PRESENT)
 	man->priv = mgr;
@@ -130,7 +106,7 @@ static inline void lg_loonggpu_vram_mgr_fini(struct loonggpu_device *adev)
 	loonggpu_vram_mgr_fini_buddy(adev);
 }
 
-static inline int lg_vram_mgr_fini_clean(lg_ttm_manager_t *man, struct loonggpu_vram_mgr *mgr)
+static inline int lg_vram_mgr_fini_clean(struct ttm_resource_manager *man, struct loonggpu_vram_mgr *mgr)
 {
 #if defined(LG_TTM_BO_CLEAN_MM) && defined(LG_DRM_TTM_TTM_BO_API_H_PRESENT)
 	return 0;
@@ -144,7 +120,7 @@ static inline int lg_vram_mgr_fini_clean(lg_ttm_manager_t *man, struct loonggpu_
 #endif
 }
 
-static inline void lg_vram_mgr_fini_free(lg_ttm_manager_t *man, struct loonggpu_vram_mgr *mgr)
+static inline void lg_vram_mgr_fini_free(struct ttm_resource_manager *man, struct loonggpu_vram_mgr *mgr)
 {
 #if defined(LG_TTM_BO_CLEAN_MM) && defined(LG_DRM_TTM_TTM_BO_API_H_PRESENT)
 	kfree(mgr);
