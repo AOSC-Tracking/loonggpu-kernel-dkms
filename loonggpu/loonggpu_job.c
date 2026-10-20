@@ -65,8 +65,7 @@ int loonggpu_job_alloc_with_ib(struct loonggpu_device *adev, unsigned size,
 
 	r = loonggpu_ib_get(adev, NULL, size, &(*job)->ibs[0]);
 	if (r) {
-		if (&adev->mman.entity)
-			drm_sched_job_cleanup(&(*job)->base);
+		drm_sched_job_cleanup(&(*job)->base);
 		kfree(*job);
 	} else
 		(*job)->vm_pd_addr = adev->gart.table_addr;
