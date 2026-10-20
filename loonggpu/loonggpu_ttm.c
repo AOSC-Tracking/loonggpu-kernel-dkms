@@ -1321,31 +1321,18 @@ static bool loonggpu_ttm_bo_eviction_valuable(struct ttm_buffer_object *bo,
 {
 	struct loonggpu_bo *gbo = ttm_to_loonggpu_bo(bo);
 	struct dma_fence *f;
-	int i;
 
 	/* If bo is a KCD BO, check if the bo belongs to the current process.
 	 * If true, then return false as any KCD process needs all its BOs to
 	 * be resident to run successfully
 	 */
-#if defined(dma_resv_for_each_fence)
 	struct dma_resv_iter resv_cursor;
 	dma_resv_for_each_fence(&resv_cursor, bo->base.resv,
 				DMA_RESV_USAGE_BOOKKEEP, f) {
 		if (lgkcd_fence_check_mm(f, current->mm))
 			return false;
 	}
-#else
-	lg_dma_resv_list_t *flist;
-	flist = lg_dma_resv_get_list(lg_tbo_to_resv(bo));
-	if (flist) {
-		for (i = 0; i < flist->shared_count; ++i) {
-			f = rcu_dereference_protected(flist->shared[i],
-				reservation_object_held(bo->resv));
-			if (lgkcd_fence_check_mm(f, current->mm))
-				return false;
-		}
-	}
-#endif
+
 	if (!loonggpu_bo_is_loonggpu_bo(bo))
                 return ttm_bo_eviction_valuable(bo, place);
 

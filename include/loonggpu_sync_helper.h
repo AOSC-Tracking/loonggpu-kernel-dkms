@@ -56,7 +56,6 @@ static inline int lg_loonggpu_sync_resv(struct loonggpu_device *adev,
                      enum loonggpu_sync_mode mode,
                      void *owner, bool explicit_sync)
 {
-#if defined(dma_resv_for_each_fence)
         struct dma_resv_iter cursor;
         struct dma_fence *f;
         int r;
@@ -78,56 +77,6 @@ static inline int lg_loonggpu_sync_resv(struct loonggpu_device *adev,
                 }
         }
         return 0;
-#else
-        lg_dma_resv_list_t *flist;
-        struct dma_fence *f;
-        void *fence_owner;
-        unsigned i;
-        int r = 0;
-
-        /* always sync to the exclusive fence */
-        f = lg_dma_resv_get_excl(resv);
-        r = loonggpu_sync_fence(adev, sync, f, false);
-
-        flist = lg_dma_resv_get_list(resv);
-        if (!flist || r)
-                return r;
-
-        for (i = 0; i < flist->shared_count; ++i) {
-                f = rcu_dereference_protected(flist->shared[i],
-                                              lg_dma_resv_held(resv));
-                /* We only want to trigger KCD eviction fences on
-                 * evict or move jobs. Skip KCD fences otherwise.
-                 */
-                fence_owner = loonggpu_sync_get_owner(f);
-                if (fence_owner == LOONGGPU_FENCE_OWNER_KCD &&
-                    owner != LOONGGPU_FENCE_OWNER_UNDEFINED)
-                        continue;
-
-                if (loonggpu_sync_same_dev(adev, f)) {
-                        /* VM updates are only interesting
-                         * for other VM updates and moves.
-                         */
-                        if ((owner != LOONGGPU_FENCE_OWNER_UNDEFINED) &&
-                            (fence_owner != LOONGGPU_FENCE_OWNER_UNDEFINED) &&
-                            ((owner == LOONGGPU_FENCE_OWNER_VM) !=
-                             (fence_owner == LOONGGPU_FENCE_OWNER_VM)))
-                                continue;
-
-                        /* Ignore fence from the same owner and explicit one as
-                         * long as it isn't undefined.
-                         */
-                        if (owner != LOONGGPU_FENCE_OWNER_UNDEFINED &&
-                            (fence_owner == owner || explicit_sync))
-                                continue;
-                }
-
-                r = loonggpu_sync_fence(adev, sync, f, false);
-                if (r)
-                        break;
-        }
-        return r;
-#endif
 }
 
 #endif /* LG_SYNC_HELPER_H */
