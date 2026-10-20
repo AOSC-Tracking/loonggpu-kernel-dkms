@@ -487,12 +487,6 @@ static inline void lg_drm_sched_job_arm(struct drm_sched_job *job)
 #define LG_DMA_RESV_USAGE_READ		0
 #endif
 
-#if defined(LG_ATOMIC_CHECK_HAS_DRM_ATOMIC_STATE)
-#define lg_dc_plane_atomic_check_args	struct drm_plane *plane, struct drm_atomic_state *state
-#else
-#define lg_dc_plane_atomic_check_args	struct drm_plane *plane, struct drm_plane_state *state
-#endif
-
 #if defined(LG_VGA_CLIENT_REGISTER_HAS_COOKIE)
 #define lg_vga_set_decode_args void *cookie, bool state
 #define lg_vga_set_decode_get_adev cookie
@@ -656,7 +650,7 @@ typedef struct ttm_bo_global lg_ttm_global_t;
 #if defined(LG_ATOMIC_CHECK_HAS_CRTC_STATE_ARG)
 typedef struct drm_crtc_state lg_atomic_check_state_arg;
 #else
-typedef struct drm_atomic_state lg_atomic_check_state_arg;
+typedef struct drm_atomic_commit lg_atomic_check_state_arg;
 #endif
 
 static inline lg_ttm_global_t *lg_get_ttm_bo_glob(lg_ttm_device_t *bdev)

@@ -32,6 +32,8 @@
 #include <drm/drm_ioctl.h>
 #include <drm/gpu_scheduler.h>
 
+#include "drm_atomic_commit_compat.h"
+
 #include "loonggpu_shared.h"
 #include "loonggpu_mode.h"
 #include "loonggpu_ih.h"
