@@ -1567,31 +1567,6 @@ compile_test() {
             fi
         ;;
 
-        drm_connector_for_each_possible_encoder)
-            #
-            # Determine if the funcion drm_connector_for_each_possible_encoder() has no 'i'.
-            #
-            # Changed by commit 62afb4ad425af2bc6ac6ff6d697825ae47c25211 ("drm/connector:
-            # Allow max possible encoders to attach to a connector") in v5.4-rc1.
-            #
-            CODE="
-            #include <drm/drm_connector.h>
-            #if defined (LG_DRM_DRMP_H_PRESENT)
-            #include <drm/drmP.h>
-            #endif
-            struct drm_encoder * conftest_drm_connector_for_each_possible_encoder(struct drm_connector *con,
-										struct drm_encoder *enc) {
-		int i;
-
-                drm_connector_for_each_possible_encoder(con, enc, i)
-			return enc;
-
-		return NULL;
-            }"
-
-            compile_check_conftest "$CODE" "LG_DRM_CONNECTOR_FOR_EACH_POSSIBLE_ENCODER_HAS_I" "" "types"
-        ;;
-
         drm_bridge_attach)
             #
             # Determine if the drm_bridge_attach() function has the flags argument.

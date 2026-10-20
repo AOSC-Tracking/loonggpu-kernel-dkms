@@ -304,14 +304,6 @@ static inline void lg_loongson_screen_state(bool state)
 #endif
 }
 
-#if defined(LG_DRM_CONNECTOR_FOR_EACH_POSSIBLE_ENCODER_HAS_I)
-#define lg_drm_connector_for_each_possible_encoder(connector, encoder, __i)\
-	drm_connector_for_each_possible_encoder(connector, encoder, __i)
-#else
-#define lg_drm_connector_for_each_possible_encoder(connector, encoder, __i)\
-	drm_connector_for_each_possible_encoder(connector, encoder)
-#endif
-
 static inline struct i2c_client *lg_i2c_new_device(struct i2c_adapter *adap,
 						   struct i2c_board_info const *info)
 {
