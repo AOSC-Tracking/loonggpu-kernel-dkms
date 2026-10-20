@@ -231,8 +231,8 @@ u32 video_get_syncnt(struct loonggpu_device *adev, int link)
 int video_get_scanoutpos(struct loonggpu_device *adev, int crtc_num,
 				  u32 *vbl, u32 *position)
 {
-	position = 0;
-	vbl = 0;
+	*position = 0;
+	*vbl = 0;
 
 	return 0;
 }

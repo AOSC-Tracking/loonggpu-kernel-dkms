@@ -532,10 +532,10 @@ int dc_crtc_get_scanoutpos(struct loonggpu_device *adev, int crtc_num,
 	int reg_val = 0;
 
 	if (IS_ERR_OR_NULL(dc) || (crtc_num >= dc->links))
-		return false;
+		return -EINVAL;
 
 	if (IS_ERR_OR_NULL(dc->link_info[crtc_num].crtc))
-		return false;
+		return -EINVAL;
 
 	if ((crtc_num < 0) || (crtc_num >= adev->mode_info.num_crtc))
 		return -EINVAL;
@@ -547,8 +547,8 @@ int dc_crtc_get_scanoutpos(struct loonggpu_device *adev, int crtc_num,
 		h_position = (reg_val & 0xffff);
 		v_position = (reg_val >> 16);
 
-		position = 0;
-		vbl = 0;
+		*position = 0;
+		*vbl = 0;
 	}
 
 	return 0;
