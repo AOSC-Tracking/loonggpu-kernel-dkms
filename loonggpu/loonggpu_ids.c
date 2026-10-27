@@ -167,10 +167,9 @@ bool loonggpu_vmid_had_gpu_reset(struct loonggpu_device *adev,
  * Try to find an idle VMID, if none is idle add a fence to wait to the sync
  * object. Returns -ENOMEM when we are out of memory.
  */
-static int loonggpu_vmid_grab_idle(struct loonggpu_vm *vm,
-				 struct loonggpu_ring *ring,
-				 struct loonggpu_sync *sync,
-				 struct loonggpu_vmid **idle)
+static int loonggpu_vmid_grab_idle(struct loonggpu_ring *ring,
+				   struct loonggpu_sync *sync,
+				   struct loonggpu_vmid **idle)
 {
 	struct loonggpu_device *adev = ring->adev;
 	struct loonggpu_vmid_mgr *id_mgr = &adev->vm_manager.id_mgr;
@@ -377,7 +376,7 @@ int loonggpu_vmid_grab(struct loonggpu_vm *vm, struct loonggpu_ring *ring,
 	int r = 0;
 
 	mutex_lock(&id_mgr->lock);
-	r = loonggpu_vmid_grab_idle(vm, ring, sync, &idle);
+	r = loonggpu_vmid_grab_idle(ring, sync, &idle);
 	if (r || !idle)
 		goto error;
 
