@@ -177,7 +177,7 @@ static int loonggpu_vmid_grab_idle(struct loonggpu_ring *ring,
 	unsigned i;
 	int r;
 
-	if (ring->vmid_wait && !dma_fence_is_signaled(ring->vmid_wait))
+	if (!dma_fence_is_signaled(ring->vmid_wait))
 		return loonggpu_sync_fence(adev, sync, ring->vmid_wait, false);
 
 	fences = kmalloc_array(id_mgr->num_ids, sizeof(void *), GFP_KERNEL);

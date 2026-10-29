@@ -209,6 +209,7 @@ int loonggpu_ring_init(struct loonggpu_device *adev, struct loonggpu_ring *ring,
 	}
 
 	ring->max_dw = max_dw;
+	ring->vmid_wait = dma_fence_get_stub();
 	INIT_LIST_HEAD(&ring->lru_list);
 	loonggpu_ring_lru_touch(adev, ring);
 
