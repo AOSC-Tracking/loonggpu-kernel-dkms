@@ -424,12 +424,6 @@ void loonggpu_ctx_mgr_entity_flush(struct loonggpu_ctx_mgr *mgr)
 
 	mutex_lock(&mgr->lock);
 	idr_for_each_entry(idp, ctx, id) {
-
-		if (!ctx->adev) {
-			mutex_unlock(&mgr->lock);
-			return;
-		}
-
 		for (i = 0; i < ctx->adev->num_rings; i++) {
 			max_wait = drm_sched_entity_flush(&ctx->rings[i].entity,
 							  max_wait);
@@ -447,10 +441,6 @@ void loonggpu_ctx_mgr_entity_fini(struct loonggpu_ctx_mgr *mgr)
 	idp = &mgr->ctx_handles;
 
 	idr_for_each_entry(idp, ctx, id) {
-
-		if (!ctx->adev)
-			return;
-
 		for (i = 0; i < ctx->adev->num_rings; i++) {
 			if (kref_read(&ctx->refcount) == 1)
 				drm_sched_entity_fini(&ctx->rings[i].entity);
