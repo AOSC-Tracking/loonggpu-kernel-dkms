@@ -1231,9 +1231,6 @@ static int loonggpu_cs_submit(struct loonggpu_cs_parser *p,
 	priority = job->base.s_priority;
 	lg_drm_sched_entity_push_job(&job->base, entity);
 
-	ring = to_loonggpu_ring(entity->rq->sched);
-	loonggpu_ring_priority_get(ring, priority);
-
 	ttm_eu_fence_buffer_objects(&p->ticket, &p->validated, p->fence);
 	loonggpu_mn_unlock(p->mn);
 

@@ -133,9 +133,6 @@ struct loonggpu_ring_funcs {
 					uint32_t reg0, uint32_t reg1,
 					uint32_t ref, uint32_t mask);
 	void (*emit_tmz)(struct loonggpu_ring *ring, bool start);
-	/* priority functions */
-	void (*set_priority) (struct loonggpu_ring *ring,
-			      enum drm_sched_priority priority);
 };
 
 struct loonggpu_ring {
@@ -172,11 +169,6 @@ struct loonggpu_ring {
 	unsigned		vm_inv_eng;
 	struct dma_fence	*vmid_wait;
 
-	atomic_t		num_jobs[LG_DRM_SCHED_PRIORITY_MAX];
-	struct mutex		priority_mutex;
-	/* protected by priority_mutex */
-	int			priority;
-
 #if defined(CONFIG_DEBUG_FS)
 	struct dentry *ent;
 #endif
@@ -187,10 +179,6 @@ void loonggpu_ring_insert_nop(struct loonggpu_ring *ring, uint32_t count);
 void loonggpu_ring_generic_pad_ib(struct loonggpu_ring *ring, struct loonggpu_ib *ib);
 void loonggpu_ring_commit(struct loonggpu_ring *ring);
 void loonggpu_ring_undo(struct loonggpu_ring *ring);
-void loonggpu_ring_priority_get(struct loonggpu_ring *ring,
-			      enum drm_sched_priority priority);
-void loonggpu_ring_priority_put(struct loonggpu_ring *ring,
-			      enum drm_sched_priority priority);
 int loonggpu_ring_init(struct loonggpu_device *adev, struct loonggpu_ring *ring,
 		     unsigned ring_size, struct loonggpu_irq_src *irq_src,
 		     unsigned irq_type);

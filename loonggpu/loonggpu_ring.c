@@ -126,80 +126,6 @@ void loonggpu_ring_undo(struct loonggpu_ring *ring)
 }
 
 /**
- * loonggpu_ring_priority_put - restore a ring's priority
- *
- * @ring: loonggpu_ring structure holding the information
- * @priority: target priority
- *
- * Release a request for executing at @priority
- */
-void loonggpu_ring_priority_put(struct loonggpu_ring *ring,
-			      enum drm_sched_priority priority)
-{
-	int i;
-
-	if (!ring->funcs->set_priority)
-		return;
-
-	if (atomic_dec_return(&ring->num_jobs[priority]) > 0)
-		return;
-
-	/* no need to restore if the job is already at the lowest priority */
-	if (priority == DRM_SCHED_PRIORITY_NORMAL)
-		return;
-
-	mutex_lock(&ring->priority_mutex);
-	/* something higher prio is executing, no need to decay */
-	if (ring->priority > priority)
-		goto out_unlock;
-
-	/* decay priority to the next level with a job available */
-#if !defined(LG_DRM_SCHED_PRIORITY_MIN)
-	for (i = priority; i <= LG_DRM_SCHED_PRIORITY_LOW; i++) {
-#else
-	for (i = priority; i >= LG_DRM_SCHED_PRIORITY_LOW; i--) {
-#endif
-		if (i == DRM_SCHED_PRIORITY_NORMAL
-				|| atomic_read(&ring->num_jobs[i])) {
-			ring->priority = i;
-			ring->funcs->set_priority(ring, i);
-			break;
-		}
-	}
-
-out_unlock:
-	mutex_unlock(&ring->priority_mutex);
-}
-
-/**
- * loonggpu_ring_priority_get - change the ring's priority
- *
- * @ring: loonggpu_ring structure holding the information
- * @priority: target priority
- *
- * Request a ring's priority to be raised to @priority (refcounted).
- */
-void loonggpu_ring_priority_get(struct loonggpu_ring *ring,
-			      enum drm_sched_priority priority)
-{
-	if (!ring->funcs->set_priority)
-		return;
-
-	if (atomic_inc_return(&ring->num_jobs[priority]) <= 0)
-		return;
-
-	mutex_lock(&ring->priority_mutex);
-	if (priority <= ring->priority)
-		goto out_unlock;
-
-	ring->priority = priority;
-	ring->funcs->set_priority(ring, priority);
-
-out_unlock:
-	mutex_unlock(&ring->priority_mutex);
-}
-
-/**
  * loonggpu_ring_init - init driver ring struct.
  *
  * @adev: loonggpu_device pointer
@@ -214,7 +140,7 @@ int loonggpu_ring_init(struct loonggpu_device *adev, struct loonggpu_ring *ring,
 		     unsigned max_dw, struct loonggpu_irq_src *irq_src,
 		     unsigned irq_type)
 {
-	int r, i;
+	int r;
 	int sched_hw_submission = loonggpu_sched_hw_submission;
 
 	if (ring->adev == NULL) {
@@ -283,13 +209,8 @@ int loonggpu_ring_init(struct loonggpu_device *adev, struct loonggpu_ring *ring,
 	}
 
 	ring->max_dw = max_dw;
-	ring->priority = DRM_SCHED_PRIORITY_NORMAL;
-	mutex_init(&ring->priority_mutex);
 	INIT_LIST_HEAD(&ring->lru_list);
 	loonggpu_ring_lru_touch(adev, ring);
-
-	for (i = 0; i < LG_DRM_SCHED_PRIORITY_MAX; ++i)
-		atomic_set(&ring->num_jobs[i], 0);
 
 	if (loonggpu_debugfs_ring_init(adev, ring)) {
 		DRM_ERROR("Failed to register debugfs file for rings !\n");

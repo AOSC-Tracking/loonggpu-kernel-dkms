@@ -88,12 +88,10 @@ void loonggpu_job_free_resources(struct loonggpu_job *job)
 
 static void loonggpu_job_free_cb(struct drm_sched_job *s_job)
 {
-	struct loonggpu_ring *ring = to_loonggpu_ring(s_job->sched);
 	struct loonggpu_job *job = to_loonggpu_job(s_job);
 
 	lg_drm_sched_job_cleanup(s_job);
 
-	loonggpu_ring_priority_put(ring, s_job->s_priority);
 	dma_fence_put(job->fence);
 	loonggpu_sync_free(&job->sync);
 	loonggpu_sync_free(&job->sched_sync);
@@ -114,7 +112,6 @@ int loonggpu_job_submit(struct loonggpu_job *job, struct drm_sched_entity *entit
 		      void *owner, struct dma_fence **f)
 {
 	enum drm_sched_priority priority;
-	struct loonggpu_ring *ring;
 	int r;
 
 	if (!f)
@@ -130,9 +127,6 @@ int loonggpu_job_submit(struct loonggpu_job *job, struct drm_sched_entity *entit
 	loonggpu_job_free_resources(job);
 	priority = job->base.s_priority;
 	lg_drm_sched_entity_push_job(&job->base, entity);
-
-	ring = to_loonggpu_ring(entity->rq->sched);
-	loonggpu_ring_priority_get(ring, priority);
 
 	return 0;
 }
