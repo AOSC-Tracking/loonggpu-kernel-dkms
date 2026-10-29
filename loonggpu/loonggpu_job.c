@@ -167,9 +167,7 @@ static struct dma_fence *loonggpu_job_dependency(struct drm_sched_job *sched_job
 	}
 
 	while (fence == NULL && vm && !job->vmid) {
-		r = loonggpu_vmid_grab(vm, ring, &job->sync,
-				     &job->base.s_fence->finished,
-				     job);
+		r = loonggpu_vmid_grab(vm, ring, &job->sync, job);
 		if (r)
 			DRM_ERROR("Error getting VM ID (%d)\n", r);
 

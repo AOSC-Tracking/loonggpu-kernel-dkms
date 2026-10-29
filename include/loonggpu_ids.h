@@ -50,8 +50,8 @@ bool loonggpu_vmid_had_gpu_reset(struct loonggpu_device *adev,
 int loonggpu_vmid_alloc_reserved(struct loonggpu_device *adev, struct loonggpu_vm *vm);
 void loonggpu_vmid_free_reserved(struct loonggpu_device *adev, struct loonggpu_vm *vm);
 int loonggpu_vmid_grab(struct loonggpu_vm *vm, struct loonggpu_ring *ring,
-		     struct loonggpu_sync *sync, struct dma_fence *fence,
-		     struct loonggpu_job *job);
+		       struct loonggpu_sync *sync,
+		       struct loonggpu_job *job);
 void loonggpu_vmid_reset(struct loonggpu_device *adev, unsigned vmid);
 void loonggpu_vmid_reset_all(struct loonggpu_device *adev);
 

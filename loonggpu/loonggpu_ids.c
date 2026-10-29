@@ -235,11 +235,10 @@ static int loonggpu_vmid_grab_idle(struct loonggpu_ring *ring,
  * Try to assign a reserved VMID.
  */
 static int loonggpu_vmid_grab_reserved(struct loonggpu_vm *vm,
-				     struct loonggpu_ring *ring,
-				     struct loonggpu_sync *sync,
-				     struct dma_fence *fence,
-				     struct loonggpu_job *job,
-				     struct loonggpu_vmid **id)
+				       struct loonggpu_ring *ring,
+				       struct loonggpu_sync *sync,
+				       struct loonggpu_job *job,
+				       struct loonggpu_vmid **id)
 {
 	struct loonggpu_device *adev = ring->adev;
 	uint64_t fence_context = adev->fence_context + ring->idx;
@@ -274,7 +273,8 @@ static int loonggpu_vmid_grab_reserved(struct loonggpu_vm *vm,
 	/* Good we can use this VMID. Remember this submission as
 	* user of the VMID.
 	*/
-	r = loonggpu_sync_fence(ring->adev, &(*id)->active, fence, false);
+	r = loonggpu_sync_fence(ring->adev, &(*id)->active,
+				&job->base.s_fence->finished, false);
 	if (r)
 		return r;
 
@@ -299,11 +299,10 @@ static int loonggpu_vmid_grab_reserved(struct loonggpu_vm *vm,
  * Try to reuse a VMID for this submission.
  */
 static int loonggpu_vmid_grab_used(struct loonggpu_vm *vm,
-				 struct loonggpu_ring *ring,
-				 struct loonggpu_sync *sync,
-				 struct dma_fence *fence,
-				 struct loonggpu_job *job,
-				 struct loonggpu_vmid **id)
+				   struct loonggpu_ring *ring,
+				   struct loonggpu_sync *sync,
+				   struct loonggpu_job *job,
+				   struct loonggpu_vmid **id)
 {
 	struct loonggpu_device *adev = ring->adev;
 	struct loonggpu_vmid_mgr *id_mgr = &adev->vm_manager.id_mgr;
@@ -337,7 +336,9 @@ static int loonggpu_vmid_grab_used(struct loonggpu_vm *vm,
 		/* Good, we can use this VMID. Remember this submission as
 		 * user of the VMID.
 		 */
-		r = loonggpu_sync_fence(ring->adev, &(*id)->active, fence, false);
+		r = loonggpu_sync_fence(ring->adev, &(*id)->active,
+					&job->base.s_fence->finished,
+					false);
 		if (r)
 			return r;
 
@@ -366,8 +367,8 @@ static int loonggpu_vmid_grab_used(struct loonggpu_vm *vm,
  * Allocate an id for the vm, adding fences to the sync obj as necessary.
  */
 int loonggpu_vmid_grab(struct loonggpu_vm *vm, struct loonggpu_ring *ring,
-		     struct loonggpu_sync *sync, struct dma_fence *fence,
-		     struct loonggpu_job *job)
+		       struct loonggpu_sync *sync,
+		       struct loonggpu_job *job)
 {
 	struct loonggpu_device *adev = ring->adev;
 	struct loonggpu_vmid_mgr *id_mgr = &adev->vm_manager.id_mgr;
@@ -381,11 +382,11 @@ int loonggpu_vmid_grab(struct loonggpu_vm *vm, struct loonggpu_ring *ring,
 		goto error;
 
 	if (vm->reserved_vmid) {
-		r = loonggpu_vmid_grab_reserved(vm, ring, sync, fence, job, &id);
+		r = loonggpu_vmid_grab_reserved(vm, ring, sync, job, &id);
 		if (r || !id)
 			goto error;
 	} else {
-		r = loonggpu_vmid_grab_used(vm, ring, sync, fence, job, &id);
+		r = loonggpu_vmid_grab_used(vm, ring, sync, job, &id);
 		if (r)
 			goto error;
 
@@ -397,7 +398,8 @@ int loonggpu_vmid_grab(struct loonggpu_vm *vm, struct loonggpu_ring *ring,
 
 			/* Remember this submission as user of the VMID */
 			r = loonggpu_sync_fence(ring->adev, &id->active,
-					      fence, false);
+						&job->base.s_fence->finished,
+						false);
 			if (r)
 				goto error;
 
