@@ -765,10 +765,12 @@ static int loonggpu_flush(struct file *f, fl_owner_t id)
 {
 	struct drm_file *file_priv = f->private_data;
 	struct loonggpu_fpriv *fpriv = file_priv->driver_priv;
+	long timeout = MAX_WAIT_SCHED_ENTITY_Q_EMPTY;
 
-	loonggpu_ctx_mgr_entity_flush(&fpriv->ctx_mgr);
+	timeout = loonggpu_ctx_mgr_entity_flush(&fpriv->ctx_mgr, timeout);
+	timeout = loonggpu_vm_wait_idle(&fpriv->vm, timeout);
 
-	return 0;
+	return timeout >= 0 ? 0 : timeout;
 }
 
 static const struct file_operations loonggpu_driver_kms_fops = {

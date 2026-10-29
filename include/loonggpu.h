@@ -764,7 +764,8 @@ int loonggpu_ctx_wait_prev_fence(struct loonggpu_ctx *ctx, unsigned ring_id);
 
 void loonggpu_ctx_mgr_init(struct loonggpu_ctx_mgr *mgr);
 void loonggpu_ctx_mgr_entity_fini(struct loonggpu_ctx_mgr *mgr);
-void loonggpu_ctx_mgr_entity_flush(struct loonggpu_ctx_mgr *mgr);
+long loonggpu_ctx_mgr_entity_flush(struct loonggpu_ctx_mgr *mgr,
+				   long timeout);
 void loonggpu_ctx_mgr_fini(struct loonggpu_ctx_mgr *mgr);
 
 

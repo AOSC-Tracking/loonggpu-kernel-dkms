@@ -2134,6 +2134,11 @@ void loonggpu_vm_adjust_size(struct loonggpu_device *ldev, u32 min_vm_size,
 		 ldev->vm_manager.block_size);
 }
 
+long loonggpu_vm_wait_idle(struct loonggpu_vm *vm, long timeout)
+{
+	return drm_sched_entity_flush(&vm->entity, timeout);
+}
+
 /**
  * loonggpu_vm_init - initialize a vm instance
  *

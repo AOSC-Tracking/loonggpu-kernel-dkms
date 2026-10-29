@@ -286,6 +286,7 @@ int loonggpu_vm_set_pasid(struct loonggpu_device *adev, struct loonggpu_vm *vm,
 			u32 pasid);
 int loonggpu_vm_make_compute(struct loonggpu_device *adev, struct loonggpu_vm *vm);
 void loonggpu_vm_release_compute(struct loonggpu_device *adev, struct loonggpu_vm *vm);
+long loonggpu_vm_wait_idle(struct loonggpu_vm *vm, long timeout);
 int loonggpu_vm_init(struct loonggpu_device *adev, struct loonggpu_vm *vm,
 		   int vm_context, unsigned int pasid);
 void loonggpu_vm_fini(struct loonggpu_device *adev, struct loonggpu_vm *vm);

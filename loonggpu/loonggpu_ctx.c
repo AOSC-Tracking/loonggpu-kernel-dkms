@@ -413,23 +413,24 @@ void loonggpu_ctx_mgr_init(struct loonggpu_ctx_mgr *mgr)
 	idr_init(&mgr->ctx_handles);
 }
 
-void loonggpu_ctx_mgr_entity_flush(struct loonggpu_ctx_mgr *mgr)
+long loonggpu_ctx_mgr_entity_flush(struct loonggpu_ctx_mgr *mgr,
+				   long timeout)
 {
 	struct loonggpu_ctx *ctx;
 	struct idr *idp;
 	uint32_t id, i;
-	long max_wait = MAX_WAIT_SCHED_ENTITY_Q_EMPTY;
 
 	idp = &mgr->ctx_handles;
 
 	mutex_lock(&mgr->lock);
 	idr_for_each_entry(idp, ctx, id) {
 		for (i = 0; i < ctx->adev->num_rings; i++) {
-			max_wait = drm_sched_entity_flush(&ctx->rings[i].entity,
-							  max_wait);
+			timeout = drm_sched_entity_flush(&ctx->rings[i].entity,
+							 timeout);
 		}
 	}
 	mutex_unlock(&mgr->lock);
+	return timeout;
 }
 
 void loonggpu_ctx_mgr_entity_fini(struct loonggpu_ctx_mgr *mgr)
