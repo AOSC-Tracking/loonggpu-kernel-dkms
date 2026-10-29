@@ -1853,7 +1853,7 @@ int loonggpu_copy_buffer(struct loonggpu_ring *ring, uint64_t src_offset,
 	unsigned i;
 	int r;
 
-	if (direct_submit && !ring->ready) {
+	if (!direct_submit && !ring->ready) {
 		DRM_ERROR("Trying to move memory with ring turned off.\n");
 		return -EINVAL;
 	}
