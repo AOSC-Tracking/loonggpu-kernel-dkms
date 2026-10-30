@@ -2157,8 +2157,6 @@ int loonggpu_vm_init(struct loonggpu_device *ldev, struct loonggpu_vm *vm,
 {
 	struct loonggpu_bo_param bp;
 	struct loonggpu_bo *root;
-	const unsigned align = min((unsigned)LOONGGPU_VM_PTB_ALIGN_SIZE,
-		LOONGGPU_VM_PTE_COUNT(ldev) * loonggpu_get_pde_pte_size(ldev));
 	unsigned ring_instance;
 	struct loonggpu_ring *ring;
 	struct drm_sched_rq *rq;
@@ -2209,7 +2207,7 @@ int loonggpu_vm_init(struct loonggpu_device *ldev, struct loonggpu_vm *vm,
 	size = loonggpu_vm_bo_size(ldev, ldev->vm_manager.root_level);
 	memset(&bp, 0, sizeof(bp));
 	bp.size = size;
-	bp.byte_align = align;
+	bp.byte_align = LOONGGPU_GPU_PAGE_SIZE;
 	bp.domain = LOONGGPU_GEM_DOMAIN_VRAM;
 	bp.flags = flags;
 	bp.type = ttm_bo_type_kernel;

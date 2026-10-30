@@ -23,9 +23,6 @@ struct loonggpu_bo_list_entry;
 /* The number of PTEs a block contains */
 #define LOONGGPU_VM_PTE_COUNT(adev) (1 << (adev)->vm_manager.block_size)
 
-/* PTBs (Page Table Blocks) need to be aligned to 32K */
-#define LOONGGPU_VM_PTB_ALIGN_SIZE   32768
-
 /* Reserve 8MB VRAM for page tables */
 #define LOONGGPU_VM_RESERVED_VRAM		(8ULL << 20)
 
