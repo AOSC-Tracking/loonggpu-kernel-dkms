@@ -250,10 +250,11 @@ int loonggpu_vm_validate_pt_bos(struct loonggpu_device *ldev, struct loonggpu_vm
 	list_for_each_entry_safe(bo_base, tmp, &vm->evicted, vm_status) {
 		struct loonggpu_bo *bo = bo_base->bo;
 
+		r = validate(param, bo);
+		if (r)
+			break;
+
 		if (bo->parent) {
-			r = validate(param, bo);
-			if (r)
-				break;
 			lg_spin_lock_glob_lock(glob, ldev);
 			lg_ttm_bo_move_to_lru_tail(lg_ttm_bo_move_pass_args(&bo->tbo, NULL));
 			if (bo->shadow)
