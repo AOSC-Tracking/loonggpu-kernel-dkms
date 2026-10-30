@@ -22,7 +22,6 @@ struct loonggpu_job {
 	struct dma_fence	*fence; /* the hw fence */
 	uint32_t		preamble_status;
 	uint32_t		num_ibs;
-	void			*owner;
 	bool                    vm_needs_flush;
 	uint64_t		vm_pd_addr;
 	unsigned		vmid;

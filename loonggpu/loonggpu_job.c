@@ -122,7 +122,6 @@ int loonggpu_job_submit(struct loonggpu_job *job, struct drm_sched_entity *entit
 		return r;
 	lg_drm_sched_job_arm(&job->base);
 
-	job->owner = owner;
 	*f = dma_fence_get(&job->base.s_fence->finished);
 	loonggpu_job_free_resources(job);
 	priority = job->base.s_priority;

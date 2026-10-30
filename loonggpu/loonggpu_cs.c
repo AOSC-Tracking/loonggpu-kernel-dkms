@@ -1201,7 +1201,6 @@ static int loonggpu_cs_submit(struct loonggpu_cs_parser *p,
 		}
 	}
 
-	job->owner = p->filp;
 	p->fence = dma_fence_get(&job->base.s_fence->finished);
 
 	r = loonggpu_ctx_add_fence(p->ctx, ring, p->fence, &seq);
