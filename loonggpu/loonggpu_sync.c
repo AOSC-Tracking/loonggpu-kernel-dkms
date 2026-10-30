@@ -164,10 +164,28 @@ int loonggpu_sync_resv(struct loonggpu_device *adev,
 		     enum loonggpu_sync_mode mode,
 		     void *owner, bool explicit_sync)
 {
+	struct dma_resv_iter cursor;
+	struct dma_fence *f;
+	int r;
+
 	if (resv == NULL)
 		return -EINVAL;
 
-	return lg_loonggpu_sync_resv(adev, sync, resv, mode, owner, explicit_sync);
+	dma_resv_for_each_fence(&cursor, resv, DMA_RESV_USAGE_BOOKKEEP, f) {
+		dma_fence_chain_for_each(f, f) {
+			struct dma_fence *tmp = dma_fence_chain_contained(f);
+			if (loonggpu_sync_test_fence(adev, mode, owner,
+						     tmp)) {
+				r = loonggpu_sync_fence(adev, sync, f,
+							explicit_sync);
+				dma_fence_put(f);
+				if (r)
+					return r;
+				break;
+			}
+		}
+	}
+	return 0;
 }
 
 /**

@@ -1366,7 +1366,7 @@ static int loonggpu_bo_sync_wait_resv(struct loonggpu_device *adev,
 	int r;
 
 	loonggpu_sync_create(&sync);
-	lg_loonggpu_sync_resv(adev, &sync, resv, sync_mode, owner, explicit);
+	loonggpu_sync_resv(adev, &sync, resv, sync_mode, owner, explicit);
 	r = loonggpu_sync_wait(&sync, intr);
 	loonggpu_sync_free(&sync);
 
