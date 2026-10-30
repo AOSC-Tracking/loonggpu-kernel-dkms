@@ -23,7 +23,7 @@ enum loonggpu_sync_mode {
  */
 struct loonggpu_sync {
 	DECLARE_HASHTABLE(fences, 4);
-	struct dma_fence	*last_vm_update;
+	uint64_t	last_vm_update;
 };
 
 void loonggpu_sync_create(struct loonggpu_sync *sync);

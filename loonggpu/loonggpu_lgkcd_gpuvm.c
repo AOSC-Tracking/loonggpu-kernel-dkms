@@ -577,11 +577,7 @@ static int sync_vm_fence(struct loonggpu_device *adev, struct loonggpu_sync *syn
 	 * sync->last_vm_update. Fortunately we don't need it for
 	 * KCD's purposes, so we can just drop that fence.
 	 */
-	if (sync->last_vm_update) {
-		dma_fence_put(sync->last_vm_update);
-		sync->last_vm_update = NULL;
-	}
-
+	sync->last_vm_update = 0;
 	return ret;
 }
 

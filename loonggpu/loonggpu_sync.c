@@ -20,7 +20,7 @@ static struct kmem_cache *loonggpu_sync_slab;
 void loonggpu_sync_create(struct loonggpu_sync *sync)
 {
 	hash_init(sync->fences);
-	sync->last_vm_update = NULL;
+	sync->last_vm_update = 0;
 }
 
 /**
@@ -133,7 +133,7 @@ int loonggpu_sync_fence(struct loonggpu_device *adev, struct loonggpu_sync *sync
 		return 0;
 	if (loonggpu_sync_same_dev(adev, f) &&
 	    loonggpu_sync_get_owner(f) == LOONGGPU_FENCE_OWNER_VM)
-		loonggpu_sync_keep_later(&sync->last_vm_update, f);
+		sync->last_vm_update = max(sync->last_vm_update, f->seqno);
 
 	if (loonggpu_sync_add_later(sync, f, explicit))
 		return 0;
@@ -274,8 +274,7 @@ int loonggpu_sync_clone(struct loonggpu_sync *source, struct loonggpu_sync *clon
 		}
 	}
 
-	dma_fence_put(clone->last_vm_update);
-	clone->last_vm_update = dma_fence_get(source->last_vm_update);
+	clone->last_vm_update = source->last_vm_update;
 
 	return 0;
 }
@@ -317,8 +316,6 @@ void loonggpu_sync_free(struct loonggpu_sync *sync)
 		dma_fence_put(e->fence);
 		kmem_cache_free(loonggpu_sync_slab, e);
 	}
-
-	dma_fence_put(sync->last_vm_update);
 }
 
 /**
