@@ -774,7 +774,7 @@ static void loonggpu_cs_parser_fini(struct loonggpu_cs_parser *parser, int error
 	loonggpu_bo_unref(&parser->uf_entry.robj);
 }
 
-static int loonggpu_bo_vm_update_pte(struct loonggpu_cs_parser *p)
+static int loonggpu_cs_vm_handling(struct loonggpu_cs_parser *p)
 {
 	struct loonggpu_fpriv *fpriv = p->filp->driver_priv;
 	struct loonggpu_device *adev = p->adev;
@@ -783,6 +783,9 @@ static int loonggpu_bo_vm_update_pte(struct loonggpu_cs_parser *p)
 	struct loonggpu_bo_va *bo_va;
 	struct loonggpu_bo *bo;
 	int r;
+
+	if (!p->job->vm)
+		return loonggpu_cs_sync_rings(p);
 
 	r = loonggpu_vm_clear_freed(adev, vm, NULL);
 	if (r)
@@ -831,6 +834,12 @@ static int loonggpu_bo_vm_update_pte(struct loonggpu_cs_parser *p)
 	if (r)
 		return r;
 
+	r = lg_dma_resv_reserve_shared(to_dma_resv(vm->root.base.bo), 1);
+	if (r)
+		return r;
+
+	p->job->vm_pd_addr = loonggpu_bo_gpu_offset(vm->root.base.bo);
+
 	if (loonggpu_vm_debug) {
 		/* Invalidate all BOs to test for userspace bugs */
 		loonggpu_bo_list_for_each_entry(e, p->bo_list) {
@@ -840,28 +849,6 @@ static int loonggpu_bo_vm_update_pte(struct loonggpu_cs_parser *p)
 
 			loonggpu_vm_bo_invalidate(adev, e->robj, false);
 		}
-	}
-
-	return r;
-}
-
-static int loonggpu_cs_ib_vm_chunk(struct loonggpu_device *adev,
-				 struct loonggpu_cs_parser *p)
-{
-	struct loonggpu_fpriv *fpriv = p->filp->driver_priv;
-	struct loonggpu_vm *vm = &fpriv->vm;
-	int r;
-
-	if (p->job->vm) {
-		p->job->vm_pd_addr = loonggpu_bo_gpu_offset(vm->root.base.bo);
-
-		r = loonggpu_bo_vm_update_pte(p);
-		if (r)
-			return r;
-
-		r = lg_dma_resv_reserve_shared(to_dma_resv(vm->root.base.bo), 1);
-		if (r)
-			return r;
 	}
 
 	return loonggpu_cs_sync_rings(p);
@@ -1293,7 +1280,7 @@ int loonggpu_cs_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 	for (i = 0; i < parser.job->num_ibs; i++)
 		trace_loonggpu_cs(&parser, i);
 
-	r = loonggpu_cs_ib_vm_chunk(adev, &parser);
+	r = loonggpu_cs_vm_handling(&parser);
 	if (r)
 		goto out;
 
