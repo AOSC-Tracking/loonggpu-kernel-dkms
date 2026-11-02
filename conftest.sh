@@ -2251,26 +2251,6 @@ compile_test() {
             compile_check_conftest "$CODE" "LG_DRM_SCHED_ENTITY_PUSH_JOB_REMOVES_ENTITY" "" "types"
         ;;
 
-        ttm_bo_mem_space)
-            #
-            # Determine if ttm_bo_mem_space function has **mem member.
-            #
-            # Changed by commit bfa3357ef9abc9d56a2910222d2deeb9f15c91ff ("drm/ttm:
-            # allocate resource object instead of embedding it v2") in v5.13-rc5
-            #
-            CODE="
-            #include <drm/ttm/ttm_bo.h>
-
-            typeof(ttm_bo_mem_space) conftest_ttm_bo_mem_space;
-            int conftest_ttm_bo_mem_space(struct ttm_buffer_object *bo,
-                                          struct ttm_placement *placement,
-                                          struct ttm_resource **mem,
-                                          struct ttm_operation_ctx *ctx) {
-                return 0;
-            }"
-            compile_check_conftest "$CODE" "LG_TTM_BO_MEM_SPACE_MEM_ARG_DOUBLE_PTR" "" "types"
-        ;;
-
         dma_resv_wait_timeout)
             #
             # Determine if the dma_resv_wait_timeout function exists.

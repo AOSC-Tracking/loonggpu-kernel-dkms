@@ -296,16 +296,6 @@ static inline int lg_ttm_bo_evict_mm(lg_ttm_device_t *bdev, int type)
 #endif
 }
 
-static inline int lg_ttm_bo_mem_space(struct ttm_buffer_object *bo, struct ttm_placement *placement,
-				     struct ttm_resource *mem, struct ttm_operation_ctx *ctx)
-{
-#if defined(LG_TTM_BO_MEM_SPACE_MEM_ARG_DOUBLE_PTR)
-	return ttm_bo_mem_space(bo, placement, &mem, ctx);
-#else
-	return ttm_bo_mem_space(bo, placement, mem, ctx);
-#endif
-}
-
 static inline void lg_bdev_set_no_retry(lg_ttm_device_t *bdev, bool flag)
 {
 #if !defined(LG_DRM_TTM_TTM_DEVICE_H_PRESENT)

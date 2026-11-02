@@ -868,11 +868,7 @@ int loonggpu_ttm_alloc_gart(struct ttm_buffer_object *bo)
 	struct loonggpu_device *adev = loonggpu_ttm_adev(bo->bdev);
 	struct ttm_operation_ctx ctx = { false, false };
 	struct loonggpu_ttm_tt *gtt = (void *)bo->ttm;
-#if defined(LG_TTM_BO_MEM_SPACE_MEM_ARG_DOUBLE_PTR)
 	struct ttm_resource *tmp;
-#else
-	struct ttm_resource tmp;
-#endif
 	struct ttm_placement placement;
 	struct ttm_place placements;
 	uint64_t flags;
@@ -883,12 +879,7 @@ int loonggpu_ttm_alloc_gart(struct ttm_buffer_object *bo)
 		return 0;
 
 	/* allocate GTT space */
-#if defined(LG_TTM_BO_MEM_SPACE_MEM_ARG_DOUBLE_PTR)
 	tmp = lg_tbo_to_mem(bo);
-#else
-	tmp = bo->mem;
-	tmp.mm_node = NULL;
-#endif
 	placement.num_placement = 1;
 	placement.placement = &placements;
 	lg_ttm_placement_set_busy_place(&placement, &placements, 1);
@@ -908,34 +899,18 @@ int loonggpu_ttm_alloc_gart(struct ttm_buffer_object *bo)
 		return r;
 
 	/* compute PTE flags for this buffer object */
-#if defined(LG_TTM_BO_MEM_SPACE_MEM_ARG_DOUBLE_PTR)
 	flags = loonggpu_ttm_tt_pte_flags(adev, bo->ttm, tmp);
-#else
-	flags = loonggpu_ttm_tt_pte_flags(adev, bo->ttm, &tmp);
-#endif
 
 	/* Bind pages */
-#if defined(LG_TTM_BO_MEM_SPACE_MEM_ARG_DOUBLE_PTR)
 	gtt->offset = (u64)tmp->start << PAGE_SHIFT;
-#else
-	gtt->offset = (u64)tmp.start << PAGE_SHIFT;
-#endif
 	r = loonggpu_ttm_gart_bind(adev, bo, flags);
 	if (unlikely(r)) {
-#if defined(LG_TTM_BO_MEM_SPACE_MEM_ARG_DOUBLE_PTR)
 		lg_ttm_bo_mem_put(bo, tmp);
-#else
-		lg_ttm_bo_mem_put(bo, &tmp);
-#endif
 		return r;
 	}
 
 	lg_ttm_bo_mem_put(bo, lg_tbo_to_mem(bo));
-#if defined(LG_TTM_BO_MEM_SPACE_MEM_ARG_DOUBLE_PTR)
 	lg_tbo_set_mem(bo, tmp);
-#else
-	lg_tbo_set_mem(bo, &tmp);
-#endif
 	lg_loonggpu_ttm_alloc_gart_set_bo_offset(bo);
 
 	return 0;
@@ -1497,9 +1472,8 @@ static int loonggpu_ttm_fw_reserve_vram_init(struct loonggpu_device *adev)
 		}
 
 		lg_ttm_bo_mem_put(&bo->tbo, lg_tbo_to_mem(&bo->tbo));
-		r = lg_ttm_bo_mem_space(&bo->tbo, &bo->placement,
-					lg_tbo_to_mem(&bo->tbo),
-					&ctx);
+		r = ttm_bo_mem_space(&bo->tbo, &bo->placement,
+				     &bo->tbo.resource, &ctx);
 		if (r)
 			goto error_pin;
 

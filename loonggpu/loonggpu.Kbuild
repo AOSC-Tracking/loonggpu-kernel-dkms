@@ -163,7 +163,6 @@ LG_CONFTEST_TYPE_COMPILE_TESTS += drm_sched_priority_has_unset
 LG_CONFTEST_TYPE_COMPILE_TESTS += drm_driver_has_gem_free
 LG_CONFTEST_TYPE_COMPILE_TESTS += vgacon_text_force
 LG_CONFTEST_TYPE_COMPILE_TESTS += ttm_resource_has_num_pages
-LG_CONFTEST_TYPE_COMPILE_TESTS += ttm_bo_mem_space
 LG_CONFTEST_TYPE_COMPILE_TESTS += ttm_buffer_object_has_resv
 LG_CONFTEST_TYPE_COMPILE_TESTS += drm_device_has_pdev
 LG_CONFTEST_TYPE_COMPILE_TESTS += ttm_buffer_object_has_mem
