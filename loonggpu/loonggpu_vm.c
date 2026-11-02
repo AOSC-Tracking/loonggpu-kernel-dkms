@@ -822,6 +822,18 @@ static int loonggpu_vm_wait_pd(struct loonggpu_device *ldev, struct loonggpu_vm 
 	return r;
 }
 
+static void loonggpu_vm_update_func(struct loonggpu_pte_update_params *params,
+				    struct loonggpu_bo *bo,
+				    uint64_t pe, uint64_t addr,
+				    unsigned count, uint32_t incr,
+				    uint64_t flags)
+{
+	if (bo->shadow)
+		params->func(params, bo->shadow, pe, addr, count, incr,
+			     flags);
+	params->func(params, bo, pe, addr, count, incr, flags);
+}
+
 /*
  * loonggpu_vm_update_pde - update a single level in the hierarchy
  *
@@ -849,9 +861,7 @@ static void loonggpu_vm_update_pde(struct loonggpu_pte_update_params *params,
 	flags = LOONGGPU_PTE_PRESENT;
 	loonggpu_gmc_get_vm_pde(params->ldev, level, &pt, &flags);
 	pde = (entry - parent->entries) * loonggpu_get_pde_pte_size(params->ldev);
-	if (bo->shadow)
-		params->func(params, bo->shadow, pde, pt, 1, 0, flags);
-	params->func(params, bo, pde, pt, 1, 0, flags);
+	loonggpu_vm_update_func(params, bo, pde, pt, 1, 0, flags);
 }
 
 /*
@@ -1078,11 +1088,8 @@ static int loonggpu_vm_update_ptes(struct loonggpu_pte_update_params *params,
 
 		pt = entry->base.bo;
 		pe_start = (addr & mask) * loonggpu_get_pde_pte_size(params->ldev);
-		if (pt->shadow)
-			params->func(params, pt->shadow, pe_start, dst, nptes,
-				     LOONGGPU_GPU_PAGE_SIZE, flags);
-		params->func(params, pt, pe_start, dst, nptes,
-			     LOONGGPU_GPU_PAGE_SIZE, flags);
+		loonggpu_vm_update_func(params, pt, pe_start, dst, nptes,
+					LOONGGPU_GPU_PAGE_SIZE, flags);
 	}
 
 	return 0;
