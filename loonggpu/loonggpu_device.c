@@ -1638,7 +1638,7 @@ static int loonggpu_zip_gem_bo_validate(int id, void *ptr, void *data)
 	struct ttm_operation_ctx ctx = { false, false };
 	unsigned domain;
 
-	domain = loonggpu_mem_type_to_domain(lg_get_bo_mem_type(bo));
+	domain = loonggpu_mem_type_to_domain(bo->tbo.resource->mem_type);
 
 	if (bo->flags & LOONGGPU_GEM_CREATE_COMPRESSED_MASK) {
 
@@ -1655,7 +1655,7 @@ static int loonggpu_zip_gem_bo_validate(int id, void *ptr, void *data)
 			unsigned fpfn, lpfn;
 
 			fpfn = bo->node_offset;
-			lpfn = bo->node_offset + lg_tbo_to_num_pages(&bo->tbo);
+			lpfn = bo->node_offset + PFN_UP(bo->tbo.base.size);
 
 			if (fpfn > bo->placements[i].fpfn)
 				bo->placements[i].fpfn = fpfn;
@@ -1688,7 +1688,7 @@ static int loonggpu_zip_gem_bo_evict(int id, void *ptr, void *data)
 	struct loonggpu_res_cursor __maybe_unused cursor;
 	unsigned domain;
 
-	domain = loonggpu_mem_type_to_domain(lg_get_bo_mem_type(bo));
+	domain = loonggpu_mem_type_to_domain(bo->tbo.resource->mem_type);
 
 	if (bo->flags & LOONGGPU_GEM_CREATE_COMPRESSED_MASK && domain == LOONGGPU_GEM_DOMAIN_VRAM) {
 		loonggpu_bo_reserve(bo, false);
@@ -2094,7 +2094,7 @@ static int loonggpu_device_recover_vram_from_shadow(struct loonggpu_device *adev
 	r = loonggpu_bo_reserve(bo, true);
 	if (r)
 		return r;
-	domain = loonggpu_mem_type_to_domain(lg_get_bo_mem_type(bo));
+	domain = loonggpu_mem_type_to_domain(bo->tbo.resource->mem_type);
 	/* if bo has been evicted, then no need to recover */
 	if (domain == LOONGGPU_GEM_DOMAIN_VRAM) {
 		r = loonggpu_bo_validate(bo->shadow);

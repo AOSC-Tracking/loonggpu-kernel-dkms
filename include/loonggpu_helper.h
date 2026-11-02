@@ -13,11 +13,7 @@
 #include <drm/drm_bridge.h>
 #include <drm/drm_vblank.h>
 #include <drm/drm_fb_helper.h>
-#if defined(LG_DRM_TTM_TTM_BO_H_PRESENT)
 #include <drm/ttm/ttm_bo.h>
-#else
-#include <drm/ttm/ttm_bo_api.h>
-#endif
 #include <linux/pwm.h>
 #include "loonggpu.h"
 #if defined(LG_LINUX_APERTURE_H_PRESENT)
@@ -615,14 +611,6 @@ static inline void lg_dc_mode_config_init_fb_base(struct loonggpu_device *adev)
 #endif
 }
 
-#if defined(LG_DRM_TTM_TTM_BO_H_PRESENT)
-#define lg_get_bo_mem_type(bo)		bo->tbo.resource->mem_type
-#define lg_get_bo_node_start(bo)	to_ttm_range_mgr_node(bo->tbo.resource)->mm_nodes->start
-#else
-#define lg_get_bo_mem_type(bo)		bo->tbo.mem.mem_type
-#define lg_get_bo_node_start(bo)	((struct drm_mm_node *)(bo->tbo.mem.mm_node))->start
-#endif
-
 static inline int lg_pci_set_dma_mask(struct pci_dev *pci_dev, struct device *dev, u64 mask)
 {
 #if defined(LG_PCI_SET_DMA_MASK) && defined(LG_LINUX_PCI_DMA_COMPAT_H_PRESENT)
@@ -851,20 +839,6 @@ static void lg_unmap_page(struct loonggpu_device *adev)
 #endif
 }
 
-#if defined(LG_DRM_TTM_TTM_BO_H_PRESENT)
-#define lg_ttm_bo_init_reserved ttm_bo_init_reserved(&adev->mman.bdev, \
-						&bo->tbo, bp->type, \
-						&bo->placement, page_align, &ctx, \
-						NULL, bp->resv, &loonggpu_bo_destroy)
-#else
-#define lg_ttm_bo_init_reserved ttm_bo_init_reserved(&adev->mman.bdev, \
-						&bo->tbo, size, bp->type, \
-						&bo->placement, \
-						page_align, \
-						&ctx, acc_size, \
-						NULL, bp->resv, &loonggpu_bo_destroy)
-#endif
-
 static inline size_t lg_ttm_bo_dma_acc_size(struct loonggpu_device *adev, unsigned long bo_size,
 				unsigned struct_size)
 {
@@ -977,44 +951,6 @@ static inline void lg_drm_irq_uninstall(struct drm_device *ddev, int irq)
 #endif
 }
 
-static inline void lg_set_tbo_moving_fence(struct ttm_buffer_object *tbo, struct dma_fence *fence)
-{
-#if !defined(LG_DRM_TTM_TTM_BO_H_PRESENT)
-	dma_fence_put(tbo->moving);
-	tbo->moving = dma_fence_get(fence);
-#endif
-}
-
-static inline void lg_ttm_move_null(struct ttm_buffer_object *tbo,
-			struct ttm_resource *old_mem, struct ttm_resource *new_mem)
-{
-#if defined(LG_DRM_TTM_TTM_BO_H_PRESENT)
-	ttm_bo_move_null(tbo, new_mem);
-#else
-	BUG_ON(old_mem->mm_node != NULL);
-	*old_mem = *new_mem;
-	new_mem->mm_node = NULL;
-#endif
-}
-
-static inline lg_dma_resv_t *lg_tbo_to_resv(struct ttm_buffer_object *tbo)
-{
-#if defined(LG_DRM_TTM_TTM_BO_H_PRESENT) || !defined(LG_TBO_HAS_RESV)
-	return tbo->base.resv;
-#else
-	return tbo->resv;
-#endif
-}
-
-static inline lg_dma_resv_t *lg_tbo_to_ttm_resv(struct ttm_buffer_object *tbo)
-{
-#if defined(LG_DRM_TTM_TTM_BO_H_PRESENT) || !defined(LG_TBO_HAS_RESV)
-	return &tbo->base._resv;
-#else
-	return &tbo->ttm_resv;
-#endif
-}
-
 static inline uint64_t lg_mem_to_size(struct ttm_resource *mem)
 {
 #if defined(LG_TTM_RES_HAS_NUM_PAGES)
@@ -1030,25 +966,6 @@ static inline uint64_t lg_mem_to_num_pages(struct ttm_resource *mem)
 	return mem->num_pages;
 #else
 	return mem->size >> PAGE_SHIFT;
-#endif
-}
-
-static inline uint64_t lg_tbo_to_size(struct ttm_buffer_object *tbo)
-{
-#if defined(LG_DRM_TTM_TTM_BO_H_PRESENT)
-	return tbo->base.size;
-#else
-	return tbo->num_pages << PAGE_SHIFT;
-#endif
-}
-
-static inline int lg_ttm_bo_move_ttm(struct ttm_buffer_object *tbo,
-			struct ttm_operation_ctx *ctx, struct ttm_resource *new_mem)
-{
-#if defined(LG_DRM_TTM_TTM_BO_H_PRESENT)
-	return 0;
-#else
-	return ttm_bo_move_ttm(tbo, ctx, new_mem);
 #endif
 }
 
@@ -1195,12 +1112,6 @@ static inline unsigned long lg_get_tbo_res_size(struct ttm_buffer_object *bo)
 {
 	return PFN_UP(bo->resource->size) << PAGE_SHIFT;
 }
-
-#if defined(LG_TTM_BUFFER_OBJECT_HAS_BASE) || defined(LG_DRM_TTM_TTM_BO_H_PRESENT)
-#define lg_gbo_to_gem_obj(bo) bo->tbo.base
-#else
-#define lg_gbo_to_gem_obj(bo) bo->gem_base
-#endif
 
 static inline void lg_drm_syncobj_add_point(struct drm_syncobj *syncobj,
 						void *chain,

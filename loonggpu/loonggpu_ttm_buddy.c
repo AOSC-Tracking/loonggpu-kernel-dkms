@@ -1,9 +1,7 @@
 #include "loonggpu.h"
 #include "loonggpu_ttm_helper.h"
 #include "loonggpu_gtt_mgr_helper.h"
-#if defined(LG_DRM_TTM_TTM_BO_H_PRESENT)
 #include <drm/ttm/ttm_bo.h>
-#endif
 
 void loonggpu_res_first(struct ttm_resource *res,
 		     u64 start, u64 size,

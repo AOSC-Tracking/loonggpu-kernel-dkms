@@ -13,13 +13,7 @@
 #include <linux/aer.h>
 #include <linux/hrtimer.h>
 #include <drm/drm_buddy.h>
-#if defined (LG_DRM_TTM_TTM_BO_H_PRESENT)
 #include <drm/ttm/ttm_bo.h>
-#else
-#include <drm/ttm/ttm_bo_api.h>
-#include <drm/ttm/ttm_bo_driver.h>
-#include <drm/ttm/ttm_module.h>
-#endif
 #include <drm/ttm/ttm_placement.h>
 #include <drm/ttm/ttm_execbuf_util.h>
 
@@ -311,11 +305,7 @@ struct loonggpu_cs_post_dep {
  */
 
 #define LOONGGPU_GEM_DOMAIN_MAX		0x3
-#if defined(LG_TTM_BUFFER_OBJECT_HAS_BASE) || defined(LG_DRM_TTM_TTM_BO_H_PRESENT)
 #define gem_to_loonggpu_bo(gobj) container_of((gobj), struct loonggpu_bo, tbo.base)
-#else
-#define gem_to_loonggpu_bo(gobj) container_of((gobj), struct loonggpu_bo, gem_base)
-#endif
 
 void loonggpu_gem_object_free(struct drm_gem_object *obj);
 int loonggpu_gem_object_open(struct drm_gem_object *obj,

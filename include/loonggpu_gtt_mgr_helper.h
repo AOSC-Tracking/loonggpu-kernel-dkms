@@ -6,24 +6,6 @@ struct loonggpu_gtt_node {
 	struct ttm_buffer_object *tbo;
 };
 
-static inline struct ttm_resource *lg_tbo_to_mem(struct ttm_buffer_object *tbo)
-{
-#if defined(LG_DRM_TTM_TTM_BO_H_PRESENT)
-	return tbo->resource;
-#else
-	return &tbo->mem;
-#endif
-}
-
-static inline void lg_tbo_set_mem(struct ttm_buffer_object *tbo, struct ttm_resource *new_mem)
-{
-#if defined(LG_DRM_TTM_TTM_BO_H_PRESENT)
-	tbo->resource = new_mem;
-#else
-	tbo->mem = *new_mem;
-#endif
-}
-
 static inline
 struct loonggpu_device *lg_gtt_mgr_man_to_adev(struct ttm_resource_manager *man,
 					       struct loonggpu_gtt_mgr *mgr)
@@ -156,8 +138,8 @@ static inline phys_addr_t lg_get_bus_placement_base(struct ttm_resource *mem, st
 static inline void lg_loonggpu_ttm_alloc_gart_set_bo_offset(struct ttm_buffer_object *bo)
 {
 #if defined(LG_TTM_BUFFER_OBJ_HAS_OFFSET)
-	bo->offset = (lg_tbo_to_mem(bo)->start << PAGE_SHIFT) +
-		lg_bdev_to_ttm_man(bo->bdev, lg_tbo_to_mem(bo)->mem_type)->gpu_offset;
+	bo->offset = (bo->resource->start << PAGE_SHIFT) +
+		lg_bdev_to_ttm_man(bo->bdev, bo->resource->mem_type)->gpu_offset;
 #endif
 }
 
@@ -167,8 +149,8 @@ static inline uint64_t lg_loonggpu_ttm_alloc_gart_get_bo_offset(struct loonggpu_
 #if defined(LG_TTM_BUFFER_OBJ_HAS_OFFSET)
 	return bo->offset;
 #else
-	return (lg_tbo_to_mem(bo)->start << PAGE_SHIFT) +
-		loonggpu_ttm_domain_start(adev, lg_tbo_to_mem(bo)->mem_type);
+	return (bo->resource->start << PAGE_SHIFT) +
+		loonggpu_ttm_domain_start(adev, bo->resource->mem_type);
 #endif
 }
 

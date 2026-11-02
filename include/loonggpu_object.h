@@ -135,36 +135,15 @@ static inline void loonggpu_bo_unreserve(struct loonggpu_bo *bo)
 
 static inline unsigned long loonggpu_bo_size(struct loonggpu_bo *bo)
 {
-#if defined(LG_DRM_TTM_TTM_BO_H_PRESENT)
 	return bo->tbo.base.size;
-#else
-	return bo->tbo.num_pages << PAGE_SHIFT;
-#endif
-}
-
-static inline unsigned long lg_tbo_to_num_pages(struct ttm_buffer_object *tbo)
-{
-#if defined(LG_DRM_TTM_TTM_BO_H_PRESENT)
-	return PFN_UP(tbo->base.size);
-#else
-	return tbo->num_pages;
-#endif
 }
 
 static inline unsigned loonggpu_bo_ngpu_pages(struct loonggpu_bo *bo)
 {
-#if defined(LG_DRM_TTM_TTM_BO_H_PRESENT)
 	return bo->tbo.base.size / LOONGGPU_GPU_PAGE_SIZE;
-#else
-	return (bo->tbo.num_pages << PAGE_SHIFT) / LOONGGPU_GPU_PAGE_SIZE;
-#endif
 }
 
-#if defined(LG_TTM_BUFFER_OBJECT_HAS_BASE) || defined(LG_DRM_TTM_TTM_BO_H_PRESENT)
 #define to_dma_resv(bo) ((bo)->tbo.base.resv)
-#else
-#define to_dma_resv(bo) ((bo)->tbo.resv)
-#endif
 
 /**
  * loonggpu_bo_mmap_offset - return mmap offset of bo
@@ -174,29 +153,7 @@ static inline unsigned loonggpu_bo_ngpu_pages(struct loonggpu_bo *bo)
  */
 static inline u64 loonggpu_bo_mmap_offset(struct loonggpu_bo *bo)
 {
-#if defined(LG_TTM_BUFFER_OBJECT_HAS_BASE) || defined(LG_DRM_TTM_TTM_BO_H_PRESENT)
 	return drm_vma_node_offset_addr(&bo->tbo.base.vma_node);
-#else
-	return drm_vma_node_offset_addr(&bo->tbo.vma_node);
-#endif
-}
-
-/**
- * loonggpu_bo_gpu_accessible - return whether the bo is currently in memory that
- * is accessible to the GPU.
- */
-static inline bool loonggpu_bo_gpu_accessible(struct loonggpu_bo *bo)
-{
-	switch (lg_get_bo_mem_type(bo)) {
-	case TTM_PL_TT:
-	#if defined(LG_DRM_TTM_TTM_BO_H_PRESENT)
-		return loonggpu_gtt_mgr_has_gart_addr(bo->tbo.resource);
-	#else
-		return loonggpu_gtt_mgr_has_gart_addr(&bo->tbo.mem);
-	#endif
-	case TTM_PL_VRAM: return true;
-	default: return false;
-	}
 }
 
 /**
@@ -207,7 +164,7 @@ static inline bool loonggpu_bo_in_cpu_visible_vram(struct loonggpu_bo *bo)
 	struct loonggpu_device *adev = loonggpu_ttm_adev(bo->tbo.bdev);
 	struct loonggpu_res_cursor cursor;
 
-	if (!lg_tbo_to_mem(&bo->tbo) || lg_get_bo_mem_type(bo) != TTM_PL_VRAM)
+	if (!bo->tbo.resource || bo->tbo.resource->mem_type != TTM_PL_VRAM)
 		return false;
 
 	loonggpu_res_first(bo->tbo.resource, 0, bo->tbo.base.size, &cursor);

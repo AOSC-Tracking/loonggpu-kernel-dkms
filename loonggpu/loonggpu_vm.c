@@ -67,7 +67,7 @@ static void loonggpu_vm_bo_base_init(struct loonggpu_vm_bo_base *base,
 		return;
 
 	if (bo->preferred_domains &
-	    loonggpu_mem_type_to_domain(lg_get_bo_mem_type(bo)))
+	    loonggpu_mem_type_to_domain(bo->tbo.resource->mem_type))
 		return;
 
 	/*
@@ -1372,7 +1372,7 @@ int loonggpu_vm_bo_update(struct loonggpu_device *ldev,
 		nodes = NULL;
 		exclusive = NULL;
 	} else {
-		mem = lg_tbo_to_mem(&bo->tbo);
+		mem = bo->tbo.resource;
 		if (mem->mem_type == TTM_PL_TT) {
 			pages_addr = lg_tbo_to_dma_address(&bo->tbo);
 		}
@@ -1422,7 +1422,7 @@ int loonggpu_vm_bo_update(struct loonggpu_device *ldev,
 	 * next command submission.
 	 */
 	if (bo && bo_resv == root_resv) {
-		u32 mem_type = lg_get_bo_mem_type(bo);
+		u32 mem_type = bo->tbo.resource->mem_type;
 
 		if (!(bo->preferred_domains & loonggpu_mem_type_to_domain(mem_type)))
 			list_add_tail(&bo_va->base.vm_status, &vm->evicted);

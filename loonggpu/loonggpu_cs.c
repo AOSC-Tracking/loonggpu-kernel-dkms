@@ -376,9 +376,6 @@ static int loonggpu_cs_bo_validate(struct loonggpu_cs_parser *p,
 		.interruptible = true,
 		.no_wait_gpu = false,
 		.resv = to_dma_resv(bo),
-#if !defined(LG_DRM_TTM_TTM_BO_H_PRESENT)
-		.flags = 0
-#endif
 	};
 	uint32_t domain;
 	int r;
@@ -452,7 +449,7 @@ static bool loonggpu_cs_try_evict(struct loonggpu_cs_parser *p,
 		if (lg_bo_pin_count(bo))
 			continue;
 
-		other = loonggpu_mem_type_to_domain(lg_get_bo_mem_type(bo));
+		other = loonggpu_mem_type_to_domain(bo->tbo.resource->mem_type);
 
 		/* Check if this BO is in one of the domains we need space for */
 		if (!(other & domain))

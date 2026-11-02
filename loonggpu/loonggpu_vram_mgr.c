@@ -82,7 +82,7 @@ u64 loonggpu_vram_mgr_vis_size(struct loonggpu_device *adev,
 u64 loonggpu_vram_mgr_bo_visible_size(struct loonggpu_bo *bo)
 {
 	struct loonggpu_device *adev = loonggpu_ttm_adev(bo->tbo.bdev);
-	struct ttm_resource *mem = lg_bo_to_mem;
+	struct ttm_resource *mem = bo->tbo.resource;
 	struct loonggpu_vram_mgr_resource *vres = to_loonggpu_vram_mgr_resource(mem);
 	lg_buddy_block_t *block;
 	u64 usage;

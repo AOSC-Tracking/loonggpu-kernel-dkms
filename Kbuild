@@ -244,7 +244,6 @@ LG_HEADER_PRESENCE_TESTS = \
  drm/drm_mode_config.h \
  drm/drm_modeset_lock.h \
  drm/display/drm_dp_mst_helper.h \
- drm/ttm/ttm_bo.h \
  drm/drm_damage_helper.h \
  drm/ttm/ttm_device.h \
  drm/ttm/ttm_bo_api.h \

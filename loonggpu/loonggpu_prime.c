@@ -18,7 +18,7 @@
 struct sg_table *loonggpu_gem_prime_get_sg_table(struct drm_gem_object *obj)
 {
 	struct loonggpu_bo *bo = gem_to_loonggpu_bo(obj);
-	int npages = lg_tbo_to_num_pages(&bo->tbo);
+	int npages = PFN_UP(bo->tbo.base.size);
 
 	return lg_drm_prime_pages_to_sg(obj->dev, bo->tbo.ttm->pages, npages);
 }
@@ -37,7 +37,7 @@ void *loonggpu_gem_prime_vmap(struct drm_gem_object *obj)
 	struct loonggpu_bo *bo = gem_to_loonggpu_bo(obj);
 	int ret;
 
-	ret = ttm_bo_kmap(&bo->tbo, 0, lg_tbo_to_num_pages(&bo->tbo),
+	ret = ttm_bo_kmap(&bo->tbo, 0, PFN_UP(bo->tbo.base.size),
 			  &bo->dma_buf_vmap);
 	if (ret)
 		return ERR_PTR(ret);

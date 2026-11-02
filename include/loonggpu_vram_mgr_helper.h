@@ -151,11 +151,6 @@ static inline void lg_vram_mm_fini(struct loonggpu_vram_mgr *mgr)
 	mutex_unlock(&mgr->m_lock);
 }
 
-#if defined(LG_DRM_TTM_TTM_BO_H_PRESENT)
-#define lg_bo_to_mem bo->tbo.resource
-#else
-#define lg_bo_to_mem &bo->tbo.mem
-#endif
 u64 loonggpu_vram_mgr_vis_size(struct loonggpu_device *adev,
 			       lg_buddy_block_t *block);
 #endif

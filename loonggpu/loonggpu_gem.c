@@ -141,7 +141,7 @@ retry:
 		}
 		return r;
 	}
-	*obj = &lg_gbo_to_gem_obj(bo);
+	*obj = &bo->tbo.base;
 #if !defined(LG_DRM_DRIVER_HAS_GEM_FREE)
 	(*obj)->funcs = &loonggpu_gem_object_funcs;
 #endif
@@ -763,7 +763,7 @@ int loonggpu_gem_op_ioctl(struct drm_device *dev, void *data,
 		struct drm_loonggpu_gem_create_in info;
 		void __user *out = u64_to_user_ptr(args->value);
 
-		info.bo_size = lg_gbo_to_gem_obj(robj).size;
+		info.bo_size = robj->tbo.base.size;
 		info.alignment = lg_tbo_get_page_alignment(&robj->tbo) << PAGE_SHIFT;
 		info.domains = robj->preferred_domains;
 		info.domain_flags = robj->flags;
@@ -859,7 +859,7 @@ static int loonggpu_debugfs_gem_bo_info(int id, void *ptr, void *data)
 	const char *placement;
 	unsigned pin_count;
 
-	domain = loonggpu_mem_type_to_domain(lg_get_bo_mem_type(bo));
+	domain = loonggpu_mem_type_to_domain(bo->tbo.resource->mem_type);
 	switch (domain) {
 	case LOONGGPU_GEM_DOMAIN_VRAM:
 		placement = "VRAM";
@@ -879,8 +879,8 @@ static int loonggpu_debugfs_gem_bo_info(int id, void *ptr, void *data)
 	if (pin_count)
 		seq_printf(m, " pin count %d", pin_count);
 
-	dma_buf = READ_ONCE(lg_gbo_to_gem_obj(bo).dma_buf);
-	attachment = READ_ONCE(lg_gbo_to_gem_obj(bo).import_attach);
+	dma_buf = READ_ONCE(bo->tbo.base.dma_buf);
+	attachment = READ_ONCE(bo->tbo.base.import_attach);
 
 	if (attachment)
 		seq_printf(m, " imported from %p", dma_buf);

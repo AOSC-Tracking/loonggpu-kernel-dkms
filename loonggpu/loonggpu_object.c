@@ -50,11 +50,11 @@ static void loonggpu_bo_subtract_pin_size(struct loonggpu_bo *bo)
 {
 	struct loonggpu_device *adev = loonggpu_ttm_adev(bo->tbo.bdev);
 
-	if (lg_get_bo_mem_type(bo) == TTM_PL_VRAM) {
+	if (bo->tbo.resource->mem_type == TTM_PL_VRAM) {
 		atomic64_sub(loonggpu_bo_size(bo), &adev->vram_pin_size);
 		atomic64_sub(loonggpu_vram_mgr_bo_visible_size(bo),
 			     &adev->visible_pin_size);
-	} else if (lg_get_bo_mem_type(bo) == TTM_PL_TT) {
+	} else if (bo->tbo.resource->mem_type == TTM_PL_TT) {
 		atomic64_sub(loonggpu_bo_size(bo), &adev->gart_pin_size);
 	}
 }
@@ -72,9 +72,9 @@ static void loonggpu_bo_destroy(struct ttm_buffer_object *tbo)
 
 	loonggpu_bo_kunmap(bo);
 
-	if (lg_gbo_to_gem_obj(bo).import_attach)
-		drm_prime_gem_destroy(&lg_gbo_to_gem_obj(bo), bo->tbo.sg);
-	drm_gem_object_release(&lg_gbo_to_gem_obj(bo));
+	if (bo->tbo.base.import_attach)
+		drm_prime_gem_destroy(&bo->tbo.base, bo->tbo.sg);
+	drm_gem_object_release(&bo->tbo.base);
 	loonggpu_bo_unref(&bo->parent);
 	if (!list_empty(&bo->shadow_list)) {
 		mutex_lock(&adev->shadow_list_lock);
@@ -429,11 +429,7 @@ static int loonggpu_bo_do_create(struct loonggpu_device *adev,
 		.interruptible = (bp->type != ttm_bo_type_kernel),
 		.no_wait_gpu = false,
 		.resv = bp->resv,
-	#if defined(LG_DRM_TTM_TTM_BO_H_PRESENT)
 		.allow_res_evict = (bp->type != ttm_bo_type_kernel),
-	#else
-		.flags = TTM_OPT_FLAG_ALLOW_RES_EVICT
-	#endif
 	};
 	struct loonggpu_bo *bo;
 	lg_dma_resv_t *resv;
@@ -455,7 +451,7 @@ static int loonggpu_bo_do_create(struct loonggpu_device *adev,
 	bo = kzalloc(sizeof(struct loonggpu_bo), GFP_KERNEL);
 	if (bo == NULL)
 		return -ENOMEM;
-	drm_gem_private_object_init(adev->ddev, &lg_gbo_to_gem_obj(bo), size);
+	drm_gem_private_object_init(adev->ddev, &bo->tbo.base, size);
 	INIT_LIST_HEAD(&bo->shadow_list);
 	INIT_LIST_HEAD(&bo->va);
 	bo->preferred_domains = bp->preferred_domain ? bp->preferred_domain :
@@ -476,13 +472,16 @@ static int loonggpu_bo_do_create(struct loonggpu_device *adev,
 	if (bp->type == ttm_bo_type_kernel)
 		bo->tbo.priority = 1;
 
-	r = lg_ttm_bo_init_reserved;
+	r = ttm_bo_init_reserved(&adev->mman.bdev, &bo->tbo, bp->type,
+				 &bo->placement, page_align, &ctx, NULL,
+				 bp->resv, &loonggpu_bo_destroy);
+
 	if (unlikely(r != 0))
 		return r;
 
 	if (!loonggpu_gmc_vram_full_visible(&adev->gmc) &&
-	    lg_get_bo_mem_type(bo) == TTM_PL_VRAM &&
-	    lg_tbo_to_mem(&bo->tbo)->start < adev->gmc.visible_vram_size >> PAGE_SHIFT)
+	    bo->tbo.resource->mem_type == TTM_PL_VRAM &&
+	    bo->tbo.resource->start < adev->gmc.visible_vram_size >> PAGE_SHIFT)
 		loonggpu_cs_report_moved_bytes(adev, ctx.bytes_moved,
 					     ctx.bytes_moved);
 	else
@@ -492,7 +491,7 @@ static int loonggpu_bo_do_create(struct loonggpu_device *adev,
 	#if defined(TTM_PL_FLAG_VRAM)
 		bo->tbo.mem.placement & TTM_PL_FLAG_VRAM
 	#else
-		lg_get_bo_mem_type(bo) == TTM_PL_VRAM
+		bo->tbo.resource->mem_type == TTM_PL_VRAM
 	#endif
 	) {
 
@@ -504,7 +503,6 @@ static int loonggpu_bo_do_create(struct loonggpu_device *adev,
 			goto fail_unreserve;
 
 		loonggpu_bo_fence(bo, fence, false);
-		lg_set_tbo_moving_fence(&bo->tbo, fence);
 		dma_fence_put(fence);
 	}
 
@@ -761,7 +759,7 @@ int loonggpu_bo_kmap(struct loonggpu_bo *bo, void **ptr)
 	if (r < 0)
 		return r;
 
-	r = ttm_bo_kmap(&bo->tbo, 0, lg_tbo_to_num_pages(&bo->tbo), &bo->kmap);
+	r = ttm_bo_kmap(&bo->tbo, 0, PFN_UP(bo->tbo.base.size), &bo->kmap);
 	if (r)
 		return r;
 
@@ -888,7 +886,7 @@ int loonggpu_bo_pin_restricted(struct loonggpu_bo *bo, u32 domain,
 	domain = loonggpu_bo_get_preferred_pin_domain(adev, domain);
 
 	if (lg_bo_pin_count(bo)) {
-		uint32_t mem_type = lg_get_bo_mem_type(bo);
+		uint32_t mem_type = bo->tbo.resource->mem_type;
 
 		if (!(domain & loonggpu_mem_type_to_domain(mem_type)))
 			return -EINVAL;
@@ -933,7 +931,7 @@ int loonggpu_bo_pin_restricted(struct loonggpu_bo *bo, u32 domain,
 
 	lg_bo_pin(bo);
 
-	domain = loonggpu_mem_type_to_domain(lg_get_bo_mem_type(bo));
+	domain = loonggpu_mem_type_to_domain(bo->tbo.resource->mem_type);
 	if (domain == LOONGGPU_GEM_DOMAIN_VRAM) {
 		atomic64_add(loonggpu_bo_size(bo), &adev->vram_pin_size);
 		atomic64_add(loonggpu_vram_mgr_bo_visible_size(bo),
@@ -1243,7 +1241,7 @@ void loonggpu_bo_move_notify(struct ttm_buffer_object *bo,
 {
 	struct loonggpu_device *adev = loonggpu_ttm_adev(bo->bdev);
 	struct loonggpu_bo *abo;
-	struct ttm_resource *old_mem = lg_tbo_to_mem(bo);
+	struct ttm_resource *old_mem = bo->resource;
 
 	if (!loonggpu_bo_is_loonggpu_bo(bo))
 		return;
@@ -1292,11 +1290,11 @@ int loonggpu_bo_fault_reserve_notify(struct ttm_buffer_object *bo)
 	/* Remember that this BO was accessed by the CPU */
 	abo->flags |= LOONGGPU_GEM_CREATE_CPU_ACCESS_REQUIRED;
 
-	if (lg_tbo_to_mem(bo)->mem_type != TTM_PL_VRAM)
+	if (bo->resource->mem_type != TTM_PL_VRAM)
 		return 0;
 
 	size = lg_get_tbo_res_size(bo);
-	offset = lg_tbo_to_mem(bo)->start << PAGE_SHIFT;
+	offset = bo->resource->start << PAGE_SHIFT;
 	if ((offset + size) <= adev->gmc.visible_vram_size)
 		return 0;
 
@@ -1315,9 +1313,9 @@ int loonggpu_bo_fault_reserve_notify(struct ttm_buffer_object *bo)
 	if (unlikely(r != 0))
 		return r;
 
-	offset = lg_tbo_to_mem(bo)->start << PAGE_SHIFT;
+	offset = bo->resource->start << PAGE_SHIFT;
 	/* this should never happen */
-	if (lg_tbo_to_mem(bo)->mem_type == TTM_PL_VRAM &&
+	if (bo->resource->mem_type == TTM_PL_VRAM &&
 	    (offset + size) > adev->gmc.visible_vram_size)
 		return -EINVAL;
 
@@ -1383,13 +1381,14 @@ static int loonggpu_bo_sync_wait_resv(struct loonggpu_device *adev,
  * Returns:
  * 0 on success, errno otherwise.
  */
-int loonggpu_bo_sync_wait(struct loonggpu_bo *bo, enum loonggpu_sync_mode sync_mode,
-			void *owner, bool intr, bool explicit)
+int loonggpu_bo_sync_wait(struct loonggpu_bo *bo,
+			  enum loonggpu_sync_mode sync_mode,
+			  void *owner, bool intr, bool explicit)
 {
 	struct loonggpu_device *adev = loonggpu_ttm_adev(bo->tbo.bdev);
 
-	return loonggpu_bo_sync_wait_resv(adev, lg_tbo_to_resv(&bo->tbo),
-					sync_mode, owner, intr, explicit);
+	return loonggpu_bo_sync_wait_resv(adev, bo->tbo.base.resv,
+					  sync_mode, owner, intr, explicit);
 }
 
 /**
@@ -1407,12 +1406,12 @@ u64 loonggpu_bo_gpu_offset(struct loonggpu_bo *bo)
 	lg_dma_resv_t *resv = to_dma_resv(bo);
 	struct loonggpu_device *adev = loonggpu_ttm_adev(bo->tbo.bdev);
 
-	WARN_ON_ONCE(lg_tbo_to_mem(&bo->tbo)->mem_type == TTM_PL_SYSTEM);
-	WARN_ON_ONCE(lg_tbo_to_mem(&bo->tbo)->mem_type == TTM_PL_TT &&
-		     !loonggpu_gtt_mgr_has_gart_addr(lg_tbo_to_mem(&bo->tbo)));
+	WARN_ON_ONCE(bo->tbo.resource->mem_type == TTM_PL_SYSTEM);
+	WARN_ON_ONCE(bo->tbo.resource->mem_type == TTM_PL_TT &&
+		     !loonggpu_gtt_mgr_has_gart_addr(bo->tbo.resource));
 	WARN_ON_ONCE(!ww_mutex_is_locked(&resv->lock) && !lg_bo_pin_count(bo));
-	WARN_ON_ONCE(lg_tbo_to_mem(&bo->tbo)->start == LOONGGPU_BO_INVALID_OFFSET);
-	WARN_ON_ONCE(lg_tbo_to_mem(&bo->tbo)->mem_type == TTM_PL_VRAM &&
+	WARN_ON_ONCE(bo->tbo.resource->start == LOONGGPU_BO_INVALID_OFFSET);
+	WARN_ON_ONCE(bo->tbo.resource->mem_type == TTM_PL_VRAM &&
 		     !(bo->flags & LOONGGPU_GEM_CREATE_VRAM_CONTIGUOUS));
 
 	return lg_loonggpu_ttm_alloc_gart_get_bo_offset(adev, &bo->tbo);

@@ -273,7 +273,7 @@ int loonggpu_lgkcd_alloc_gtt_mem(struct loonggpu_device *adev, size_t size,
 	*cpu_ptr = cpu_ptr_tmp;
 
 #if !defined(LG_DRM_DRIVER_HAS_GEM_FREE)
-	lg_gbo_to_gem_obj(bo).funcs = &loonggpu_gem_object_funcs;
+	bo->tbo.base.funcs = &loonggpu_gem_object_funcs;
 #endif
 
 	loonggpu_bo_unreserve(bo);

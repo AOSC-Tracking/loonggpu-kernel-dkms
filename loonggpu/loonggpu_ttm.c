@@ -29,13 +29,7 @@
 #include "loonggpu_gtt_mgr_helper.h"
 #include "loonggpu_vram_mgr_helper.h"
 #include "loonggpu_bo_pin_helper.h"
-#if defined(LG_DRM_TTM_TTM_BO_H_PRESENT)
 #include <drm/ttm/ttm_bo.h>
-#else
-#include <drm/ttm/ttm_bo_api.h>
-#include <drm/ttm/ttm_bo_driver.h>
-#include <drm/ttm/ttm_module.h>
-#endif
 
 /**TODO
  *Need fixed this, mmap ops had access handler.
@@ -150,7 +144,7 @@ static void loonggpu_evict_flags(struct ttm_buffer_object *bo,
 		return;
 	}
 
-	switch (lg_tbo_to_mem(bo)->mem_type) {
+	switch (bo->resource->mem_type) {
 	case LOONGGPU_PL_DOORBELL:
 		placement->num_placement = 0;
 		lg_ttm_placement_set_num_busy(placement, 0);
@@ -207,24 +201,8 @@ static int loonggpu_verify_access(struct ttm_buffer_object *bo, struct file *fil
 
 	if (loonggpu_ttm_tt_get_usermm(bo->ttm))
 		return -EPERM;
-	return drm_vma_node_verify_access(&(lg_gbo_to_gem_obj(abo).vma_node),
+	return drm_vma_node_verify_access(&(abo->tbo.base.vma_node),
 					  filp->private_data);
-}
-
-/**
- * loonggpu_move_null - Register memory for a buffer object
- *
- * @bo: The bo to assign the memory to
- * @new_mem: The memory to be assigned.
- *
- * Assign the memory from new_mem to the memory of the buffer object bo.
- */
-static void loonggpu_move_null(struct ttm_buffer_object *bo,
-			     struct ttm_resource *new_mem)
-{
-	struct ttm_resource *old_mem = lg_tbo_to_mem(bo);
-
-	lg_ttm_move_null(bo, old_mem, new_mem);
 }
 
 /**
@@ -361,7 +339,7 @@ static int loonggpu_move_blit(struct ttm_buffer_object *bo,
 	struct loonggpu_copy_mem src, dst;
 	struct dma_fence *fence = NULL;
 	int r;
-	lg_dma_resv_t *resv = lg_tbo_to_resv(bo);
+	lg_dma_resv_t *resv = bo->base.resv;
 
 	src.bo = bo;
 	dst.bo = bo;
@@ -400,7 +378,7 @@ static int loonggpu_bo_move(struct ttm_buffer_object *bo, bool evict,
 {
 	struct loonggpu_device *adev;
 	struct loonggpu_bo *abo;
-	struct ttm_resource *old_mem = lg_tbo_to_mem(bo);
+	struct ttm_resource *old_mem = bo->resource;
 	int r;
 
 	if (new_mem->mem_type == TTM_PL_TT) {
@@ -418,14 +396,14 @@ static int loonggpu_bo_move(struct ttm_buffer_object *bo, bool evict,
 
 	if (!old_mem || (old_mem->mem_type == TTM_PL_SYSTEM
 			 && bo->ttm == NULL)) {
-		loonggpu_move_null(bo, new_mem);
+		ttm_bo_move_null(bo, new_mem);
 		goto out;
 	}
 
 	if (old_mem->mem_type == TTM_PL_SYSTEM &&
 	    new_mem->mem_type == TTM_PL_TT) {
 		/* bind is enough */
-		loonggpu_move_null(bo, new_mem);
+		ttm_bo_move_null(bo, new_mem);
 		goto out;
 	}
 
@@ -436,14 +414,14 @@ static int loonggpu_bo_move(struct ttm_buffer_object *bo, bool evict,
 			return r;
 
 		loonggpu_ttm_backend_unbind(bo->bdev, bo->ttm);
-		loonggpu_move_null(bo, new_mem);
+		ttm_bo_move_null(bo, new_mem);
 		goto out; // XXX this is not in LG110, maybe a mistake
 	}
 
 	if (old_mem->mem_type == LOONGGPU_PL_DOORBELL ||
 	    new_mem->mem_type == LOONGGPU_PL_DOORBELL) {
 		/* Nothing to save here */
-		loonggpu_move_null(bo, new_mem);
+		ttm_bo_move_null(bo, new_mem);
 		return 0;
 	}
 
@@ -482,7 +460,7 @@ static int loonggpu_bo_move(struct ttm_buffer_object *bo, bool evict,
 
 out:
 	/* update statistics */
-	atomic64_add(lg_gbo_to_gem_obj(abo).size, &adev->num_bytes_moved);
+	atomic64_add(abo->tbo.base.size, &adev->num_bytes_moved);
 	loonggpu_bo_move_notify(bo, evict, new_mem);
 	return 0;
 }
@@ -587,8 +565,8 @@ static unsigned long loonggpu_ttm_io_mem_pfn(struct ttm_buffer_object *bo,
 		loonggpu_res_first(bo->resource, 0, 0, &cursor);
 		return ((uint64_t)(adev->doorbell.base + cursor.start)) >> PAGE_SHIFT;
 	}
-	mm = loonggpu_find_mm_node(lg_tbo_to_mem(bo), &offset);
-	return (lg_get_bus_placement_base(lg_tbo_to_mem(bo), adev) >> PAGE_SHIFT) + mm->start +
+	mm = loonggpu_find_mm_node(bo->resource, &offset);
+	return (lg_get_bus_placement_base(bo->resource, adev) >> PAGE_SHIFT) + mm->start +
 		(offset >> PAGE_SHIFT);
 }
 
@@ -874,22 +852,22 @@ int loonggpu_ttm_alloc_gart(struct ttm_buffer_object *bo)
 	uint64_t flags;
 	int r;
 
-	if (lg_tbo_to_mem(bo)->mem_type != TTM_PL_TT ||
-	    loonggpu_gtt_mgr_has_gart_addr(lg_tbo_to_mem(bo)))
+	if (bo->resource->mem_type != TTM_PL_TT ||
+	    loonggpu_gtt_mgr_has_gart_addr(bo->resource))
 		return 0;
 
 	/* allocate GTT space */
-	tmp = lg_tbo_to_mem(bo);
+	tmp = bo->resource;
 	placement.num_placement = 1;
 	placement.placement = &placements;
 	lg_ttm_placement_set_busy_place(&placement, &placements, 1);
 	placements.fpfn = 0;
 	placements.lpfn = adev->gmc.gart_size >> PAGE_SHIFT;
 #if defined(TTM_PL_MASK_MEM)
-	placements.flags = (lg_tbo_to_mem(bo)->placement & ~TTM_PL_MASK_MEM) |
+	placements.flags = (bo->resource->placement & ~TTM_PL_MASK_MEM) |
 		TTM_PL_FLAG_TT;
 #else
-	placements.flags = lg_tbo_to_mem(bo)->placement;
+	placements.flags = bo->resource->placement;
 	placements.mem_type = TTM_PL_TT;
 #endif
 
@@ -909,8 +887,8 @@ int loonggpu_ttm_alloc_gart(struct ttm_buffer_object *bo)
 		return r;
 	}
 
-	lg_ttm_bo_mem_put(bo, lg_tbo_to_mem(bo));
-	lg_tbo_set_mem(bo, tmp);
+	lg_ttm_bo_mem_put(bo, bo->resource);
+	bo->resource = tmp;
 	lg_loonggpu_ttm_alloc_gart_set_bo_offset(bo);
 
 	return 0;
@@ -931,7 +909,7 @@ int loonggpu_ttm_recover_gart(struct ttm_buffer_object *tbo)
 	if (!tbo->ttm)
 		return 0;
 
-	flags = loonggpu_ttm_tt_pte_flags(adev, tbo->ttm, lg_tbo_to_mem(tbo));
+	flags = loonggpu_ttm_tt_pte_flags(adev, tbo->ttm, tbo->resource);
 	r = loonggpu_ttm_gart_bind(adev, tbo, flags);
 
 	return r;
@@ -1314,11 +1292,11 @@ static bool loonggpu_ttm_bo_eviction_valuable(struct ttm_buffer_object *bo,
 	if (gbo->flags & LOONGGPU_GEM_CREATE_PREEMPTIBLE)
 		return false;
 
-        if (lg_tbo_to_mem(bo)->mem_type == LOONGGPU_PL_DOORBELL)
+        if (bo->resource->mem_type == LOONGGPU_PL_DOORBELL)
                 return false;
 
         /* Swapout? */
-        if (lg_tbo_to_mem(bo)->mem_type == TTM_PL_SYSTEM)
+        if (bo->resource->mem_type == TTM_PL_SYSTEM)
                 return true;
 
         return ttm_bo_eviction_valuable(bo, place);
@@ -1348,7 +1326,7 @@ static int loonggpu_ttm_access_memory(struct ttm_buffer_object *bo,
 	uint64_t pos;
 	unsigned long flags;
 
-	if (lg_tbo_to_mem(bo)->mem_type != TTM_PL_VRAM)
+	if (bo->resource->mem_type != TTM_PL_VRAM)
 		return -EIO;
 
 	if (adev->family_type < CHIP_LG200)
@@ -1471,7 +1449,7 @@ static int loonggpu_ttm_fw_reserve_vram_init(struct loonggpu_device *adev)
 			bo->placements[i].lpfn = (offset + size) >> PAGE_SHIFT;
 		}
 
-		lg_ttm_bo_mem_put(&bo->tbo, lg_tbo_to_mem(&bo->tbo));
+		lg_ttm_bo_mem_put(&bo->tbo, bo->tbo.resource);
 		r = ttm_bo_mem_space(&bo->tbo, &bo->placement,
 				     &bo->tbo.resource, &ctx);
 		if (r)
@@ -1906,14 +1884,14 @@ int loonggpu_fill_buffer(struct loonggpu_bo *bo,
 		return -EINVAL;
 	}
 
-	if (lg_get_bo_mem_type(bo) == TTM_PL_TT) {
+	if (bo->tbo.resource->mem_type == TTM_PL_TT) {
 		r = loonggpu_ttm_alloc_gart(&bo->tbo);
 		if (r)
 			return r;
 	}
 
-	num_pages = lg_tbo_to_num_pages(&bo->tbo);
-	mm_node = lg_res_to_drm_node(lg_tbo_to_mem(&bo->tbo));
+	num_pages = PFN_UP(bo->tbo.base.size);
+	mm_node = lg_res_to_drm_node(bo->tbo.resource);
 	num_loops = 0;
 	while (num_pages) {
 		uint32_t byte_count = mm_node->size << PAGE_SHIFT;
@@ -1940,14 +1918,14 @@ int loonggpu_fill_buffer(struct loonggpu_bo *bo,
 		}
 	}
 
-	num_pages = lg_tbo_to_num_pages(&bo->tbo);
-	mm_node = lg_res_to_drm_node(lg_tbo_to_mem(&bo->tbo));
+	num_pages = PFN_UP(bo->tbo.base.size);
+	mm_node = lg_res_to_drm_node(bo->tbo.resource);
 
 	while (num_pages) {
 		uint32_t byte_count = mm_node->size << PAGE_SHIFT;
 		uint64_t dst_addr;
 
-		dst_addr = loonggpu_mm_node_addr(&bo->tbo, mm_node, lg_tbo_to_mem(&bo->tbo));
+		dst_addr = loonggpu_mm_node_addr(&bo->tbo, mm_node, bo->tbo.resource);
 		while (byte_count) {
 			uint32_t cur_size_in_bytes = min(byte_count, max_bytes);
 
