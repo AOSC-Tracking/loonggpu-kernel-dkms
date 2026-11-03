@@ -243,7 +243,6 @@ int loonggpu_vm_validate_pt_bos(struct loonggpu_device *ldev, struct loonggpu_vm
 			      int (*validate)(void *p, struct loonggpu_bo *bo),
 			      void *param)
 {
-	lg_ttm_global_t *glob = lg_get_ttm_bo_glob(&ldev->mman.bdev);
 	struct loonggpu_vm_bo_base *bo_base, *tmp;
 	int r = 0;
 
@@ -255,11 +254,11 @@ int loonggpu_vm_validate_pt_bos(struct loonggpu_device *ldev, struct loonggpu_vm
 			break;
 
 		if (bo->parent) {
-			lg_spin_lock_glob_lock(glob, ldev);
-			lg_ttm_bo_move_to_lru_tail(lg_ttm_bo_move_pass_args(&bo->tbo, NULL));
+			spin_lock(&ldev->mman.bdev.lru_lock);
+			ttm_bo_move_to_lru_tail(&bo->tbo);
 			if (bo->shadow)
-				lg_ttm_bo_move_to_lru_tail(lg_ttm_bo_move_pass_args(&bo->shadow->tbo, NULL));
-			lg_spin_lock_glob_unlock(glob, ldev);
+				ttm_bo_move_to_lru_tail(&bo->shadow->tbo);
+			spin_unlock(&ldev->mman.bdev.lru_lock);
 		}
 
 		if (bo->tbo.type != ttm_bo_type_kernel) {
@@ -271,18 +270,18 @@ int loonggpu_vm_validate_pt_bos(struct loonggpu_device *ldev, struct loonggpu_vm
 		}
 	}
 
-	lg_spin_lock_glob_lock(glob, ldev);
+	spin_lock(&ldev->mman.bdev.lru_lock);
 	list_for_each_entry(bo_base, &vm->idle, vm_status) {
 		struct loonggpu_bo *bo = bo_base->bo;
 
 		if (!bo->parent)
 			continue;
 
-		lg_ttm_bo_move_to_lru_tail(lg_ttm_bo_move_pass_args(&bo->tbo, NULL));
+		ttm_bo_move_to_lru_tail(&bo->tbo);
 		if (bo->shadow)
-			lg_ttm_bo_move_to_lru_tail(lg_ttm_bo_move_pass_args(&bo->shadow->tbo, NULL));
+			ttm_bo_move_to_lru_tail(&bo->shadow->tbo);
 	}
-	lg_spin_lock_glob_unlock(glob, ldev);
+	spin_unlock(&ldev->mman.bdev.lru_lock);
 
 	return r;
 }

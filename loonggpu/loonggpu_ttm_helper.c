@@ -64,7 +64,7 @@ int lg_loonggpu_ttm_global_init(struct loonggpu_device *adev)
 		adev->mman.mem_global_ref.object;
 	global_ref = &adev->mman.bo_global_ref.ref;
 	global_ref->global_type = DRM_GLOBAL_TTM_BO;
-	global_ref->size = sizeof(lg_ttm_global_t);
+	global_ref->size = sizeof(struct ttm_global);
 	global_ref->init = &ttm_bo_global_init;
 	global_ref->release = &ttm_bo_global_release;
 	r = drm_global_item_ref(global_ref);

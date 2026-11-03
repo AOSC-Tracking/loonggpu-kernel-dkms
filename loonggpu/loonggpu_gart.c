@@ -39,7 +39,7 @@
  */
 static int loonggpu_gart_dummy_page_init(struct loonggpu_device *adev)
 {
-	struct page *dummy_page = lg_get_ttm_bo_glob(&adev->mman.bdev)->dummy_read_page;
+	struct page *dummy_page = ttm_glob.dummy_read_page;
 	void *dummy_addr;
 
 	if (adev->dummy_page_addr)

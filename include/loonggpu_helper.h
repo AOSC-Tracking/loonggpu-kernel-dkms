@@ -165,23 +165,6 @@ static inline int lg_drm_syncobj_find_fence(struct drm_file *file_private,
 #endif
 }
 
-#if defined(LG_TTM_BO_MOVE_TO_LRU_TAIL_HAS_BULK_ARG)
-#define lg_ttm_bo_move_define_args struct ttm_buffer_object *bo, struct ttm_lru_bulk_move *bulk
-#define lg_ttm_bo_move_pass_args(buffer_obj, bulk) buffer_obj, bulk
-#else
-#define lg_ttm_bo_move_define_args struct ttm_buffer_object *bo
-#define lg_ttm_bo_move_pass_args(buffer_obj, bulk) buffer_obj
-#endif
-
-static inline void lg_ttm_bo_move_to_lru_tail(lg_ttm_bo_move_define_args)
-{
-#if defined(LG_TTM_BO_MOVE_TO_LRU_TAIL_HAS_BULK_ARG)
-	ttm_bo_move_to_lru_tail(bo, bulk);
-#else
-	ttm_bo_move_to_lru_tail(bo);
-#endif
-}
-
 /*
  * fix case 35
  */
@@ -629,32 +612,13 @@ static inline int lg_pci_set_consistent_dma_mask(struct pci_dev *pci_dev, struct
 #endif
 }
 
-#if defined(LG_TTM_GLOBAL)
-typedef struct ttm_global lg_ttm_global_t;
-#else
-typedef struct ttm_bo_global lg_ttm_global_t;
-#endif
-
 #if defined(LG_ATOMIC_CHECK_HAS_CRTC_STATE_ARG)
 typedef struct drm_crtc_state lg_atomic_check_state_arg;
 #else
 typedef struct drm_atomic_commit lg_atomic_check_state_arg;
 #endif
 
-static inline lg_ttm_global_t *lg_get_ttm_bo_glob(lg_ttm_device_t *bdev)
-{
-#if !defined(LG_TTM_BO_DEVICE_HAS_GLOB)
-#if defined(LG_TTM_GLOBAL)
-	return &ttm_glob;
-#else
-	return &ttm_bo_glob;
-#endif
-#else
-	return bdev->glob;
-#endif
-}
-
-static inline void lg_spin_lock_glob_lock(lg_ttm_global_t *glob,
+static inline void lg_spin_lock_glob_lock(struct ttm_global *glob,
 					  struct loonggpu_device *adev)
 {
 #if defined(LG_TTM_DEVICE_HAS_LRU_LOCK)
@@ -664,7 +628,7 @@ static inline void lg_spin_lock_glob_lock(lg_ttm_global_t *glob,
 #endif
 }
 
-static inline void lg_spin_lock_glob_unlock(lg_ttm_global_t *glob,
+static inline void lg_spin_lock_glob_unlock(struct ttm_global *glob,
 					  struct loonggpu_device *adev)
 {
 #if defined(LG_TTM_DEVICE_HAS_LRU_LOCK)

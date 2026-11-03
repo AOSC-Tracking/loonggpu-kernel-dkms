@@ -790,24 +790,6 @@ compile_test() {
             compile_check_conftest "$CODE" "LG_DRM_SYNCOBJ_FIND_FENCE_HAS_FLAGS_ARG" "" "types"
         ;;
 
-        ttm_bo_move_to_lru_tail_has_bulk_arg)
-            #
-            # Determine if the function ttm_bo_move_to_lru_tail() has
-            # 'bulk' parameter.
-            #
-            # ttm_bo_move_to_lru_tail() added 'bulk' parameter by
-            # commit 9a2779528edd ("drm/ttm: revise ttm_bo_move_to_lru_tail to
-            # support bulk moves") in v4.20-rc1.
-            #
-            CODE="
-            #include <drm/ttm/ttm_bo_api.h>
-            void conftest_ttm_bo_move_to_lru_tail_has_bulk_arg(void) {
-                (void) ttm_bo_move_to_lru_tail(NULL, NULL);
-            }"
-
-            compile_check_conftest "$CODE" "LG_TTM_BO_MOVE_TO_LRU_TAIL_HAS_BULK_ARG" "" "types"
-        ;;
-
         loongson_screen_state)
            #
            # Determine if loongson_screen_state exist.
@@ -2100,21 +2082,6 @@ compile_test() {
             compile_check_conftest "$CODE" "LG_TTM_BO_DRIVER_HAS_TTM_TT_BIND" "" "types"
         ;;
 
-	ttm_bo_device_has_glob)
-            #
-            # Determine if ttm_bo_device structure has glob member.
-            #
-            # Changed by commit 97588b5b9a6b330dc2e3fbf3dea987e37d30194e ("drm/ttm:
-            # remove pointers to globals") in v5.4-rc5
-            #
-            CODE="
-            #include <drm/ttm/ttm_bo_driver.h>
-            int conftest_ttm_bo_device_has_glob(void) {
-		return offsetof(struct ttm_bo_device, glob);
-            }"
-            compile_check_conftest "$CODE" "LG_TTM_BO_DEVICE_HAS_GLOB" "" "types"
-        ;;
-
 	ttm_bo_device_init_has_man)
             #
             # Determine if ttm_bo_device_init function has manager argument.
@@ -2890,21 +2857,6 @@ compile_test() {
                 return drm_gem_prime_handle_to_fd();
             }"
             compile_check_conftest "$CODE" "LG_DRM_GEM_PRIME_HANDLE_TO_FD" "" "functions"
-        ;;
-
-        ttm_global)
-            #
-            # Determine if ttm_global structure exists.
-            #
-            # Changed by commit 8af8a109b34fa88b8b91f25d11485b37d37549c3 ("drm/ttm:
-            # device naming cleanup") in v5.11-rc5
-            # proting in 6.6
-            #
-            CODE="
-            #include <drm/ttm/ttm_device.h>
-            void conftest_ttm_global(struct ttm_global *glob) {
-            }"
-            compile_check_conftest "$CODE" "LG_TTM_GLOBAL" "" "types"
         ;;
 
         ttm_dma_tt)
