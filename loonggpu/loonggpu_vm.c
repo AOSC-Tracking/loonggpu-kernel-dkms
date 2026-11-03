@@ -379,6 +379,26 @@ error:
 	return r;
 }
 
+static void loonggpu_vm_bo_param(struct loonggpu_device *ldev,
+				 struct loonggpu_vm *vm, int level,
+				 struct loonggpu_bo_param *bp)
+{
+	memset(bp, 0, sizeof(*bp));
+
+	bp->size = loonggpu_vm_bo_size(ldev, level);
+	bp->byte_align = LOONGGPU_GPU_PAGE_SIZE;
+	bp->domain = LOONGGPU_GEM_DOMAIN_VRAM;
+	bp->flags = LOONGGPU_GEM_CREATE_VRAM_CONTIGUOUS;
+	if (vm->use_cpu_for_update)
+		bp->flags |= LOONGGPU_GEM_CREATE_CPU_ACCESS_REQUIRED;
+	else if (!vm->root.base.bo || vm->root.base.bo->shadow)
+		bp->flags |= LOONGGPU_GEM_CREATE_SHADOW;
+
+	bp->type = ttm_bo_type_kernel;
+	if (vm->root.base.bo)
+		bp->resv = vm->root.base.bo->tbo.base.resv;
+}
+
 /**
  * loonggpu_vm_alloc_levels - allocate the PD/PT levels
  *
@@ -401,8 +421,8 @@ static int loonggpu_vm_alloc_levels(struct loonggpu_device *ldev,
 				  unsigned level)
 {
 	unsigned shift = loonggpu_vm_level_shift(ldev, level);
+	struct loonggpu_bo_param bp;
 	unsigned pt_idx, from, to;
-	u64 flags;
 	int r;
 
 	if (!parent->entries) {
@@ -425,32 +445,16 @@ static int loonggpu_vm_alloc_levels(struct loonggpu_device *ldev,
 	saddr = saddr & ((1 << shift) - 1);
 	eaddr = eaddr & ((1 << shift) - 1);
 
-	flags = LOONGGPU_GEM_CREATE_VRAM_CONTIGUOUS;
-	if (vm->root.base.bo->shadow)
-		flags |= LOONGGPU_GEM_CREATE_SHADOW;
-	if (vm->use_cpu_for_update)
-		flags |= LOONGGPU_GEM_CREATE_CPU_ACCESS_REQUIRED;
-	else
-		flags |= LOONGGPU_GEM_CREATE_NO_CPU_ACCESS;
+	loonggpu_vm_bo_param(ldev, vm, level, &bp);
 
 	/**
 	 * walk over the address space and allocate the page tables
 	 */
 	for (pt_idx = from; pt_idx <= to; ++pt_idx) {
-		lg_dma_resv_t *resv = to_dma_resv(vm->root.base.bo);
 		struct loonggpu_vm_pt *entry = &parent->entries[pt_idx];
 		struct loonggpu_bo *pt;
 
 		if (!entry->base.bo) {
-			struct loonggpu_bo_param bp;
-
-			memset(&bp, 0, sizeof(bp));
-			bp.size = loonggpu_vm_bo_size(ldev, level);
-			bp.byte_align = LOONGGPU_GPU_PAGE_SIZE;
-			bp.domain = LOONGGPU_GEM_DOMAIN_VRAM;
-			bp.flags = flags;
-			bp.type = ttm_bo_type_kernel;
-			bp.resv = resv;
 			r = loonggpu_bo_create(ldev, &bp, &pt);
 			if (r)
 				return r;
@@ -2168,8 +2172,6 @@ int loonggpu_vm_init(struct loonggpu_device *ldev, struct loonggpu_vm *vm,
 	struct loonggpu_ring *ring;
 	struct drm_sched_rq *rq;
 	struct drm_gpu_scheduler *sched;
-	unsigned long size;
-	u64 flags;
 	int r;
 
 	vm->va = RB_ROOT_CACHED;
@@ -2205,20 +2207,9 @@ int loonggpu_vm_init(struct loonggpu_device *ldev, struct loonggpu_vm *vm,
 		  "CPU update of VM recommended only for large BAR system\n");
 	vm->last_update = NULL;
 
-	flags = LOONGGPU_GEM_CREATE_VRAM_CONTIGUOUS;
-	if (vm->use_cpu_for_update)
-		flags |= LOONGGPU_GEM_CREATE_CPU_ACCESS_REQUIRED;
-	else if (vm_context != LOONGGPU_VM_CONTEXT_COMPUTE)
-		flags |= LOONGGPU_GEM_CREATE_SHADOW;
-
-	size = loonggpu_vm_bo_size(ldev, ldev->vm_manager.root_level);
-	memset(&bp, 0, sizeof(bp));
-	bp.size = size;
-	bp.byte_align = LOONGGPU_GPU_PAGE_SIZE;
-	bp.domain = LOONGGPU_GEM_DOMAIN_VRAM;
-	bp.flags = flags;
-	bp.type = ttm_bo_type_kernel;
-	bp.resv = NULL;
+	loonggpu_vm_bo_param(ldev, vm, ldev->vm_manager.root_level, &bp);
+	if (vm_context == LOONGGPU_VM_CONTEXT_COMPUTE)
+		bp.flags &= ~LOONGGPU_GEM_CREATE_SHADOW;
 	r = loonggpu_bo_create(ldev, &bp, &root);
 	if (r)
 		goto error_free_sched_entity;
