@@ -1822,7 +1822,10 @@ int loonggpu_copy_buffer(struct loonggpu_ring *ring, uint64_t src_offset,
 	if (r)
 		return r;
 
-	job->vm_needs_flush = vm_needs_flush;
+	if (vm_needs_flush) {
+		job->vm_pd_addr = adev->gart.table_addr;
+		job->vm_needs_flush = true;
+	}
 	if (resv) {
 		r = loonggpu_sync_resv(adev, &job->sync, resv,
 				     LOONGGPU_SYNC_ALWAYS,
