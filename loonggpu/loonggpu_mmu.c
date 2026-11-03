@@ -221,7 +221,7 @@ static int mmu_gart_enable(struct loonggpu_device *adev)
 {
 	int r, i;
 
-	if (adev->gart.robj == NULL) {
+	if (adev->gart.bo == NULL) {
 		dev_err(adev->dev, "No VRAM object for PCIE GART.\n");
 		return -EINVAL;
 	}
@@ -281,7 +281,7 @@ static int mmu_gart_init(struct loonggpu_device *adev)
 {
 	int r;
 
-	if (adev->gart.robj) {
+	if (adev->gart.bo) {
 		WARN(1, "LOONGGPU PCIE GART already initialized\n");
 		return 0;
 	}

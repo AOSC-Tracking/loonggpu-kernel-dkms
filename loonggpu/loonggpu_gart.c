@@ -82,7 +82,7 @@ int loonggpu_gart_table_vram_alloc(struct loonggpu_device *adev)
 {
 	int r;
 
-	if (adev->gart.robj == NULL) {
+	if (adev->gart.bo == NULL) {
 		struct loonggpu_bo_param bp;
 
 		memset(&bp, 0, sizeof(bp));
@@ -100,7 +100,7 @@ int loonggpu_gart_table_vram_alloc(struct loonggpu_device *adev)
 			LOONGGPU_GEM_CREATE_VRAM_CONTIGUOUS;
 		bp.type = ttm_bo_type_kernel;
 		bp.resv = NULL;
-		r = loonggpu_bo_create(adev, &bp, &adev->gart.robj);
+		r = loonggpu_bo_create(adev, &bp, &adev->gart.bo);
 		if (r) {
 			return r;
 		}
@@ -122,19 +122,19 @@ int loonggpu_gart_table_vram_pin(struct loonggpu_device *adev)
 {
 	int r;
 
-	r = loonggpu_bo_reserve(adev->gart.robj, false);
+	r = loonggpu_bo_reserve(adev->gart.bo, false);
 	if (unlikely(r != 0))
 		return r;
-	r = loonggpu_bo_pin(adev->gart.robj, LOONGGPU_GEM_DOMAIN_VRAM);
+	r = loonggpu_bo_pin(adev->gart.bo, LOONGGPU_GEM_DOMAIN_VRAM);
 	if (r) {
-		loonggpu_bo_unreserve(adev->gart.robj);
+		loonggpu_bo_unreserve(adev->gart.bo);
 		return r;
 	}
-	r = loonggpu_bo_kmap(adev->gart.robj, &adev->gart.ptr);
+	r = loonggpu_bo_kmap(adev->gart.bo, &adev->gart.ptr);
 	if (r)
-		loonggpu_bo_unpin(adev->gart.robj);
-	loonggpu_bo_unreserve(adev->gart.robj);
-	adev->gart.table_addr = loonggpu_bo_gpu_offset(adev->gart.robj);
+		loonggpu_bo_unpin(adev->gart.bo);
+	loonggpu_bo_unreserve(adev->gart.bo);
+	adev->gart.table_addr = loonggpu_bo_gpu_offset(adev->gart.bo);
 	return r;
 }
 
@@ -150,14 +150,14 @@ void loonggpu_gart_table_vram_unpin(struct loonggpu_device *adev)
 {
 	int r;
 
-	if (adev->gart.robj == NULL) {
+	if (adev->gart.bo == NULL) {
 		return;
 	}
-	r = loonggpu_bo_reserve(adev->gart.robj, true);
+	r = loonggpu_bo_reserve(adev->gart.bo, true);
 	if (likely(r == 0)) {
-		loonggpu_bo_kunmap(adev->gart.robj);
-		loonggpu_bo_unpin(adev->gart.robj);
-		loonggpu_bo_unreserve(adev->gart.robj);
+		loonggpu_bo_kunmap(adev->gart.bo);
+		loonggpu_bo_unpin(adev->gart.bo);
+		loonggpu_bo_unreserve(adev->gart.bo);
 		adev->gart.ptr = NULL;
 	}
 }
@@ -173,10 +173,10 @@ void loonggpu_gart_table_vram_unpin(struct loonggpu_device *adev)
  */
 void loonggpu_gart_table_vram_free(struct loonggpu_device *adev)
 {
-	if (adev->gart.robj == NULL) {
+	if (adev->gart.bo == NULL) {
 		return;
 	}
-	loonggpu_bo_unref(&adev->gart.robj);
+	loonggpu_bo_unref(&adev->gart.bo);
 }
 
 /*

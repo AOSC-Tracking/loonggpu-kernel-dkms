@@ -171,7 +171,7 @@ static int loonggpu_ttm_map_buffer(struct ttm_buffer_object *bo,
 	src_addr = num_dw * 4;
 	src_addr += job->ibs[0].gpu_addr;
 
-	dst_addr = loonggpu_bo_gpu_offset(adev->gart.robj);
+	dst_addr = loonggpu_bo_gpu_offset(adev->gart.bo);
 	dst_addr += window * LOONGGPU_GTT_MAX_TRANSFER_SIZE * 8;
 	loonggpu_emit_copy_buffer(adev, &job->ibs[0], src_addr,
 				dst_addr, num_bytes);

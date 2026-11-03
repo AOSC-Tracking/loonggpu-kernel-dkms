@@ -28,7 +28,7 @@ struct loonggpu_bo;
 
 struct loonggpu_gart {
 	u64				table_addr;
-	struct loonggpu_bo			*robj;
+	struct loonggpu_bo		*bo;
 	void				*ptr;
 	unsigned			num_gpu_pages;
 	unsigned			num_cpu_pages;
