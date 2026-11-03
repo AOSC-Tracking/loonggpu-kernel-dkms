@@ -1763,7 +1763,7 @@ static int loonggpu_map_buffer(struct ttm_buffer_object *bo,
 	src_addr = num_dw * 4;
 	src_addr += job->ibs[0].gpu_addr;
 
-	dst_addr = adev->gart.table_addr;
+	dst_addr = loonggpu_bo_gpu_offset(adev->gart.bo);
 	dst_addr += window * LOONGGPU_GTT_MAX_TRANSFER_SIZE * 8;
 	loonggpu_emit_copy_buffer(adev, &job->ibs[0], src_addr,
 				dst_addr, num_bytes);
@@ -1823,7 +1823,7 @@ int loonggpu_copy_buffer(struct loonggpu_ring *ring, uint64_t src_offset,
 		return r;
 
 	if (vm_needs_flush) {
-		job->vm_pd_addr = adev->gart.table_addr;
+		job->vm_pd_addr = loonggpu_bo_gpu_offset(adev->gart.bo);
 		job->vm_needs_flush = true;
 	}
 	if (resv) {

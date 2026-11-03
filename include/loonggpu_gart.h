@@ -27,7 +27,6 @@ struct loonggpu_bo;
 #define LOONGGPU_GPU_PAGES_IN_CPU_PAGE (PAGE_SIZE / LOONGGPU_GPU_PAGE_SIZE)
 
 struct loonggpu_gart {
-	u64				table_addr;
 	struct loonggpu_bo		*bo;
 	void				*ptr;
 	unsigned			num_gpu_pages;

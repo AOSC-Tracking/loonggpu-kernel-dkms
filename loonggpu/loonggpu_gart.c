@@ -134,7 +134,6 @@ int loonggpu_gart_table_vram_pin(struct loonggpu_device *adev)
 	if (r)
 		loonggpu_bo_unpin(adev->gart.bo);
 	loonggpu_bo_unreserve(adev->gart.bo);
-	adev->gart.table_addr = loonggpu_bo_gpu_offset(adev->gart.bo);
 	return r;
 }
 

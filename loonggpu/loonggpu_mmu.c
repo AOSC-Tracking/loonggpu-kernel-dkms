@@ -220,6 +220,7 @@ static void mmu_get_vm_pde(struct loonggpu_device *adev, int level,
 static int mmu_gart_enable(struct loonggpu_device *adev)
 {
 	int r, i;
+	uint64_t table_addr;
 
 	if (adev->gart.bo == NULL) {
 		dev_err(adev->dev, "No VRAM object for PCIE GART.\n");
@@ -229,14 +230,18 @@ static int mmu_gart_enable(struct loonggpu_device *adev)
 	if (r)
 		return r;
 
+	table_addr = loonggpu_bo_gpu_offset(adev->gart.bo);
+
 	if (adev->family_type == CHIP_LG100) {
 		loonggpu_cmd_exec(adev, GSCMD(GSCMD_MMU, MMU_SET_EXC), 3, 0);
-		loonggpu_cmd_exec(adev, GSCMDi(GSCMD_MMU, MMU_SET_PGD, 0), \
-				lower_32_bits(adev->gart.table_addr), upper_32_bits(adev->gart.table_addr));
-		loonggpu_cmd_exec(adev, GSCMD(GSCMD_MMU, MMU_SET_SAFE), \
-				lower_32_bits(adev->dummy_page_addr), upper_32_bits(adev->dummy_page_addr));
+		loonggpu_cmd_exec(adev, GSCMDi(GSCMD_MMU, MMU_SET_PGD, 0),
+				  lower_32_bits(table_addr),
+				  upper_32_bits(table_addr));
+		loonggpu_cmd_exec(adev, GSCMD(GSCMD_MMU, MMU_SET_SAFE),
+				  lower_32_bits(adev->dummy_page_addr),
+				  upper_32_bits(adev->dummy_page_addr));
 		loonggpu_cmd_exec(adev, GSCMDi(GSCMD_MMU, MMU_SET_DIR, 0),
-				LOONGGPU_MMU_DIR_CTRL_256M_1LVL, 0);
+				  LOONGGPU_MMU_DIR_CTRL_256M_1LVL, 0);
 
 		for (i = 1; i < LOONGGPU_NUM_OF_VMIDS; i++) {
 			loonggpu_cmd_exec(adev, GSCMDi(GSCMD_MMU, MMU_SET_DIR, i),
@@ -248,30 +253,51 @@ static int mmu_gart_enable(struct loonggpu_device *adev)
 	}
 	else if (adev->family_type == CHIP_LG200 ||
 		 adev->family_type == CHIP_LG210) {
-		loonggpu_cmd_exec(adev, LG2XX_ICMD32(LG2XX_ICMD32_MOP_MMU, LG2XX_ICMD32_SOP_MMU_UEXP), 3, 0);
-		loonggpu_cmd_exec(adev, LG2XX_ICMD32i(LG2XX_ICMD32_MOP_MMU, LG2XX_ICMD32_SOP_MMU_UDIR, 0), \
-				lower_32_bits(adev->gart.table_addr), upper_32_bits(adev->gart.table_addr));
-		loonggpu_cmd_exec(adev, LG2XX_ICMD32(LG2XX_ICMD32_MOP_MMU, LG2XX_ICMD32_SOP_MMU_USAFE), \
-				lower_32_bits(adev->dummy_page_addr), upper_32_bits(adev->dummy_page_addr));
-		loonggpu_cmd_exec(adev, LG2XX_ICMD32i(LG2XX_ICMD32_MOP_MMU, LG2XX_ICMD32_SOP_MMU_UPG, 0),
-				LOONGGPU_MMU_DIR_CTRL_512M_1LVL, 0);
+		loonggpu_cmd_exec(adev,
+				  LG2XX_ICMD32(LG2XX_ICMD32_MOP_MMU,
+					       LG2XX_ICMD32_SOP_MMU_UEXP),
+				  3, 0);
+		loonggpu_cmd_exec(adev,
+				  LG2XX_ICMD32i(LG2XX_ICMD32_MOP_MMU,
+						LG2XX_ICMD32_SOP_MMU_UDIR, 0),
+				  lower_32_bits(table_addr),
+				  upper_32_bits(table_addr));
+		loonggpu_cmd_exec(adev,
+				  LG2XX_ICMD32(LG2XX_ICMD32_MOP_MMU,
+				  LG2XX_ICMD32_SOP_MMU_USAFE),
+				  lower_32_bits(adev->dummy_page_addr),
+				  upper_32_bits(adev->dummy_page_addr));
+		loonggpu_cmd_exec(adev,
+				  LG2XX_ICMD32i(LG2XX_ICMD32_MOP_MMU,
+						LG2XX_ICMD32_SOP_MMU_UPG, 0),
+				  LOONGGPU_MMU_DIR_CTRL_512M_1LVL, 0);
 
 		for (i = 1; i < LOONGGPU_NUM_OF_VMIDS + 4; i++) {
-			loonggpu_cmd_exec(adev, LG2XX_ICMD32i(LG2XX_ICMD32_MOP_MMU, LG2XX_ICMD32_SOP_MMU_UPG, i),
-					LOONGGPU_MMU_DIR_CTRL_1T_3LVL, 0);
+			loonggpu_cmd_exec(adev,
+					  LG2XX_ICMD32i(LG2XX_ICMD32_MOP_MMU,
+							LG2XX_ICMD32_SOP_MMU_UPG,
+							i),
+					  LOONGGPU_MMU_DIR_CTRL_1T_3LVL, 0);
 		}
 
-		loonggpu_cmd_exec(adev, LG2XX_ICMD32(LG2XX_ICMD32_MOP_MMU, LG2XX_ICMD32_SOP_MMU_MMUEN), MMU_ENABLE | 
-			      (loonggpu_noretry ? LOONGGPU_LG2XX_MMU_EN_FAULT : 0), ~1);
-		loonggpu_cmd_exec(adev, LG2XX_ICMD32(LG2XX_ICMD32_MOP_MMU, LG2XX_ICMD32_SOP_MMU_FTLB), 
-				LOONGGPU_MMU_FLUSH_PKT(0, LOONGGPU_MMU_FLUSH_ALL), 0);
+		loonggpu_cmd_exec(adev,
+				  LG2XX_ICMD32(LG2XX_ICMD32_MOP_MMU,
+					       LG2XX_ICMD32_SOP_MMU_MMUEN),
+				  (MMU_ENABLE
+				   | (loonggpu_noretry
+				      ? LOONGGPU_LG2XX_MMU_EN_FAULT
+				      : 0)), ~1);
+		loonggpu_cmd_exec(adev, LG2XX_ICMD32(LG2XX_ICMD32_MOP_MMU,
+						     LG2XX_ICMD32_SOP_MMU_FTLB),
+				  LOONGGPU_MMU_FLUSH_PKT(0,
+							 LOONGGPU_MMU_FLUSH_ALL),
+				  0);
 	}
 	else
 		DRM_ERROR("%s Illegal Family type %d\n", __FUNCTION__, adev->family_type);
 
 	DRM_INFO("PCIE GART of %uM enabled (table at 0x%016llX).\n",
-		 (unsigned)(adev->gmc.gart_size >> 20),
-		 (unsigned long long)adev->gart.table_addr);
+		 (unsigned)(adev->gmc.gart_size >> 20), table_addr);
 	adev->gart.ready = true;
 	adev->gmc.noretry = loonggpu_noretry;
 	return 0;
