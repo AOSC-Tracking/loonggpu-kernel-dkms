@@ -1769,21 +1769,6 @@ compile_test() {
             compile_check_conftest "$CODE" "LG_TTM_FBDEV_MMAP" "" "functions"
         ;;
 
-        ttm_bo_init_mm)
-            #
-            # Determine if the ttm_bo_init_mm function exists.
-            #
-            # Changed by commit 98399abd52b234b82457ef6c40c41543d806d3b7 ("drm/ttm:
-            # purge old manager init path") in v5.9-rc1
-            #
-            CODE="
-            #include <drm/ttm/ttm_bo_api.h>
-            int conftest_ttm_bo_init_mm(void) {
-                return ttm_bo_init_mm();
-            }"
-            compile_check_conftest "$CODE" "LG_TTM_BO_INIT_MM" "" "functions"
-        ;;
-
         ttm_bo_clean_mm)
             #
             # Determine if the ttm_bo_clean_mm function exists.

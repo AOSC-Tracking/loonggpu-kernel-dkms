@@ -1461,7 +1461,7 @@ int loonggpu_ttm_init(struct loonggpu_device *adev)
 	lg_bdev_set_no_retry(&adev->mman.bdev, true);
 
 	/* Initialize VRAM pool with all of VRAM divided into pages */
-	r = lg_vram_mgr_init(adev);
+	r = loonggpu_vram_mgr_init_buddy(adev);
 	if (r) {
 		DRM_ERROR("Failed initializing VRAM heap.\n");
 		return r;
@@ -1506,13 +1506,8 @@ int loonggpu_ttm_init(struct loonggpu_device *adev)
 
 	if (adev->doorbell.size) {
 		/* Initialize DOORBELL pool with all of DOORBELL divided into pages */
-#if defined(LG_TTM_BO_INIT_MM) && defined(LG_DRM_TTM_TTM_BO_API_H_PRESENT)
-		r = ttm_bo_init_mm(&adev->mman.bdev, LOONGGPU_PL_DOORBELL,
-					adev->doorbell.size >> PAGE_SHIFT);
-#else
 		r = ttm_range_man_init(&adev->mman.bdev, LOONGGPU_PL_DOORBELL,
 					false, adev->doorbell.size >> PAGE_SHIFT);
-#endif
 		if (r) {
 			DRM_ERROR("Failed initializing DOORBELL heap.\n");
 			return r;
@@ -1541,7 +1536,7 @@ int loonggpu_ttm_init(struct loonggpu_device *adev)
 		gtt_size = (uint64_t)loonggpu_gtt_size << 20;
 
 	/* Initialize GTT memory pool */
-	r = lg_gtt_mgr_init(adev, gtt_size);
+	r = loonggpu_gtt_mgr_init(&adev->mman.gtt_mgr.manager, gtt_size);
 	if (r) {
 		DRM_ERROR("Failed initializing GTT heap.\n");
 		return r;

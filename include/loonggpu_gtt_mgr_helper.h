@@ -72,15 +72,6 @@ static inline void lg_gtt_mgr_init_set_man_and_used(struct ttm_resource_manager 
 #endif
 }
 
-static inline int lg_gtt_mgr_init(struct loonggpu_device *adev, uint64_t gtt_size)
-{
-#if defined(LG_TTM_BO_INIT_MM) && defined(LG_DRM_TTM_TTM_BO_API_H_PRESENT)
-	return ttm_bo_init_mm(&adev->mman.bdev, TTM_PL_TT, gtt_size);
-#else
-	return loonggpu_gtt_mgr_init(&adev->mman.gtt_mgr.manager, gtt_size);
-#endif
-}
-
 static inline int lg_gtt_mgr_fini_set_used_clean_list(struct ttm_resource_manager *man,
 					lg_ttm_device_t *bdev)
 {

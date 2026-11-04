@@ -29,16 +29,6 @@ static inline struct loonggpu_device *vram_mgr_to_loonggpu_device(struct loonggp
 	return NULL;
 }
 
-static inline int lg_vram_mgr_init(struct loonggpu_device *adev)
-{
-#if defined(LG_TTM_BO_INIT_MM) && defined(LG_DRM_TTM_TTM_BO_API_H_PRESENT)
-	return ttm_bo_init_mm(&adev->mman.bdev, TTM_PL_VRAM,
-			adev->gmc.real_vram_size >> PAGE_SHIFT);
-#else
-	return loonggpu_vram_mgr_init_buddy(adev);
-#endif
-}
-
 u64 loonggpu_vram_mgr_vis_size(struct loonggpu_device *adev,
 			       struct gpu_buddy_block *block);
 #endif
