@@ -2,55 +2,6 @@
 #include "loonggpu_vram_mgr_helper.h"
 
 /**
- * loonggpu_vram_mgr_init - init VRAM manager and DRM MM
- *
- * @man: TTM memory type manager
- * @p_size: maximum size of VRAM
- *
- * Allocate and initialize the VRAM manager.
- */
-int loonggpu_vram_mgr_init(struct ttm_resource_manager *man,
-				unsigned long p_size)
-{
-	int r;
-	struct loonggpu_vram_mgr *mgr;
-	struct loonggpu_device *adev;
-
-	lg_vram_mgr_init_mgr(man, mgr);
-	adev = lg_vram_mgr_man_to_loonggpu(man, mgr);
-
-	lg_vram_mgr_init_man_func(man, adev, p_size, &loonggpu_vram_mgr_func);
-	lg_vram_init_mgr(mgr);
-	r = lg_vram_init_mgr_mm(mgr, 0, p_size);
-	if (r)
-		return r;
-	lg_vram_mgr_init_drv_ptr_used(man, mgr);
-	return 0;
-}
-
-/**
- * loonggpu_vram_mgr_fini - free and destroy VRAM manager
- *
- * @man: TTM memory type manager
- *
- * Destroy and free the VRAM manager, returns -EBUSY if ranges are still
- * allocated inside it.
- */
-int loonggpu_vram_mgr_fini(struct ttm_resource_manager *man)
-{
-	struct loonggpu_vram_mgr *mgr = lg_man_to_vram_mgr(man);
-	int ret;
-
-	ret = lg_vram_mgr_fini_clean(man, mgr);
-	if (ret)
-		return ret;
-
-	lg_vram_mm_fini(mgr);
-	lg_vram_mgr_fini_free(man, mgr);
-	return 0;
-}
-
-/**
  * loonggpu_vram_mgr_vis_size - Calculate visible node size
  *
  * @adev: loonggpu device structure
@@ -125,5 +76,9 @@ uint64_t loonggpu_vram_mgr_vis_usage(struct ttm_resource_manager *man)
 }
 
 const struct ttm_resource_manager_func loonggpu_vram_mgr_func = {
-	lg_vram_mgr_func_setting
+	.alloc = loonggpu_vram_mgr_new_buddy,
+	.free  = loonggpu_vram_mgr_del_buddy,
+	.intersects = loonggpu_vram_mgr_intersects,
+	.compatible = loonggpu_vram_mgr_compatible,
+	.debug = loonggpu_vram_mgr_debug_buddy,
 };

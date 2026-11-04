@@ -1584,7 +1584,7 @@ void loonggpu_ttm_fini(struct loonggpu_device *adev)
 		iounmap(adev->mman.aper_base_kaddr);
 	adev->mman.aper_base_kaddr = NULL;
 
-	lg_loonggpu_vram_mgr_fini(adev);
+	loonggpu_vram_mgr_fini_buddy(adev);
 	lg_loonggpu_gtt_mgr_fini(adev);
 	lg_ttm_bo_clean_mm(adev, TTM_PL_VRAM);
 	if (adev->doorbell.size)

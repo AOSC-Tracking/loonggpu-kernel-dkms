@@ -144,9 +144,7 @@ uint64_t loonggpu_ttm_tt_pte_flags(struct loonggpu_device *adev, struct ttm_tt *
 				 struct ttm_resource *mem);
 int loonggpu_ttm_tt_get_userptr(const struct ttm_buffer_object *tbo,
 		uint64_t *user_addr);
-int loonggpu_vram_mgr_init(struct ttm_resource_manager *man, unsigned long p_size);
 int loonggpu_gtt_mgr_init(struct ttm_resource_manager *man, unsigned long p_size);
-int loonggpu_vram_mgr_fini(struct ttm_resource_manager *man);
 int loonggpu_gtt_mgr_fini(struct ttm_resource_manager *man);
 int loonggpu_fill_buffer_buddy(struct loonggpu_bo *bo,
 			    uint32_t src_data,
