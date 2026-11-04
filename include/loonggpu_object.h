@@ -200,6 +200,11 @@ int loonggpu_bo_create_kernel(struct loonggpu_device *adev,
 			    unsigned long size, int align,
 			    u32 domain, struct loonggpu_bo **bo_ptr,
 			    u64 *gpu_addr, void **cpu_addr);
+int loonggpu_bo_create_kernel_at(struct loonggpu_device *ldev,
+				 uint64_t offset, uint64_t size,
+				 uint32_t domain,
+				 struct loonggpu_bo **bo_ptr,
+				 void **cpu_addr);
 void loonggpu_bo_free_kernel(struct loonggpu_bo **bo, u64 *gpu_addr,
 			   void **cpu_addr);
 int loonggpu_bo_kmap(struct loonggpu_bo *bo, void **ptr);

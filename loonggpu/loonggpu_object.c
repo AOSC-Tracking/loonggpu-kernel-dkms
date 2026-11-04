@@ -353,6 +353,62 @@ int loonggpu_bo_create_kernel(struct loonggpu_device *adev,
 	return 0;
 }
 
+int loonggpu_bo_create_kernel_at(struct loonggpu_device *ldev,
+				 uint64_t offset, uint64_t size,
+				 uint32_t domain,
+				 struct loonggpu_bo **bo_ptr,
+				 void **cpu_addr)
+{
+	struct ttm_operation_ctx ctx = { false, false };
+	unsigned int i;
+	int r;
+
+	offset &= PAGE_MASK;
+	size = ALIGN(size, PAGE_SIZE);
+
+	r = loonggpu_bo_create_reserved(ldev, size, PAGE_SIZE, domain,
+					bo_ptr, NULL, NULL);
+	if (r)
+		return r;
+
+	if ((*bo_ptr) == NULL)
+		return 0;
+
+	/*
+	 * Remove the original mem node and create a new one at the
+	 * request position.
+	 */
+	if (cpu_addr)
+		loonggpu_bo_kunmap(*bo_ptr);
+
+	ttm_resource_free(&(*bo_ptr)->tbo, &(*bo_ptr)->tbo.resource);
+
+	for (i = 0; i < (*bo_ptr)->placement.num_placement; i++) {
+		(*bo_ptr)->placements[i].fpfn = offset >> PAGE_SHIFT;
+		(*bo_ptr)->placements[i].lpfn =
+			(offset + size) >> PAGE_SHIFT;
+	}
+
+	r = ttm_bo_mem_space(&(*bo_ptr)->tbo, &(*bo_ptr)->placement,
+			     &(*bo_ptr)->tbo.resource, &ctx);
+	if (r)
+		goto error;
+
+	if (cpu_addr) {
+		r = loonggpu_bo_kmap(*bo_ptr, cpu_addr);
+		if (r)
+			goto error;
+	}
+
+	loonggpu_bo_unreserve(*bo_ptr);
+	return 0;
+
+error:
+	loonggpu_bo_unreserve(*bo_ptr);
+	loonggpu_bo_unref(bo_ptr);
+	return r;
+}
+
 /**
  * loonggpu_bo_free_kernel - free BO for kernel use
  *

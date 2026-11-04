@@ -1407,80 +1407,21 @@ static void loonggpu_ttm_fw_reserve_vram_fini(struct loonggpu_device *adev)
  */
 static int loonggpu_ttm_fw_reserve_vram_init(struct loonggpu_device *adev)
 {
-	struct ttm_operation_ctx ctx = { false, false };
-	struct loonggpu_bo_param bp;
-	int r = 0;
-	int i;
-	u64 vram_size = adev->gmc.visible_vram_size;
-	u64 offset = adev->fw_vram_usage.start_offset;
-	u64 size = adev->fw_vram_usage.size;
-	struct loonggpu_bo *bo;
+	uint64_t vram_size = adev->gmc.visible_vram_size;
 
-	memset(&bp, 0, sizeof(bp));
-	bp.size = adev->fw_vram_usage.size;
-	bp.byte_align = PAGE_SIZE;
-	bp.domain = LOONGGPU_GEM_DOMAIN_VRAM;
-	bp.flags = LOONGGPU_GEM_CREATE_CPU_ACCESS_REQUIRED |
-		LOONGGPU_GEM_CREATE_VRAM_CONTIGUOUS;
-	bp.type = ttm_bo_type_kernel;
-	bp.resv = NULL;
 	adev->fw_vram_usage.va = NULL;
 	adev->fw_vram_usage.reserved_bo = NULL;
 
-	if (adev->fw_vram_usage.size > 0 &&
-		adev->fw_vram_usage.size <= vram_size) {
+	if (adev->fw_vram_usage.size == 0
+	    || adev->fw_vram_usage.size > vram_size)
+		return 0;
 
-		r = loonggpu_bo_create(adev, &bp,
-				     &adev->fw_vram_usage.reserved_bo);
-		if (r)
-			goto error_create;
-
-		r = loonggpu_bo_reserve(adev->fw_vram_usage.reserved_bo, false);
-		if (r)
-			goto error_reserve;
-
-		/* remove the original mem node and create a new one at the
-		 * request position
-		 */
-		bo = adev->fw_vram_usage.reserved_bo;
-		offset = ALIGN(offset, PAGE_SIZE);
-		for (i = 0; i < bo->placement.num_placement; ++i) {
-			bo->placements[i].fpfn = offset >> PAGE_SHIFT;
-			bo->placements[i].lpfn = (offset + size) >> PAGE_SHIFT;
-		}
-
-		lg_ttm_bo_mem_put(&bo->tbo, bo->tbo.resource);
-		r = ttm_bo_mem_space(&bo->tbo, &bo->placement,
-				     &bo->tbo.resource, &ctx);
-		if (r)
-			goto error_pin;
-
-		r = loonggpu_bo_pin_restricted(adev->fw_vram_usage.reserved_bo,
-			LOONGGPU_GEM_DOMAIN_VRAM,
-			adev->fw_vram_usage.start_offset,
-			(adev->fw_vram_usage.start_offset +
-			adev->fw_vram_usage.size));
-		if (r)
-			goto error_pin;
-		r = loonggpu_bo_kmap(adev->fw_vram_usage.reserved_bo,
-			&adev->fw_vram_usage.va);
-		if (r)
-			goto error_kmap;
-
-		loonggpu_bo_unreserve(adev->fw_vram_usage.reserved_bo);
-	}
-	return r;
-
-error_kmap:
-	loonggpu_bo_unpin(adev->fw_vram_usage.reserved_bo);
-error_pin:
-	loonggpu_bo_unreserve(adev->fw_vram_usage.reserved_bo);
-error_reserve:
-	loonggpu_bo_unref(&adev->fw_vram_usage.reserved_bo);
-error_create:
-	adev->fw_vram_usage.va = NULL;
-	adev->fw_vram_usage.reserved_bo = NULL;
-	return r;
+	return loonggpu_bo_create_kernel_at(adev,
+					    adev->fw_vram_usage.start_offset,
+					    adev->fw_vram_usage.size,
+					    LOONGGPU_GEM_DOMAIN_VRAM,
+					    &adev->fw_vram_usage.reserved_bo,
+					    &adev->fw_vram_usage.va);
 }
 
 /**
