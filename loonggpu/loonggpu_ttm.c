@@ -883,11 +883,11 @@ int loonggpu_ttm_alloc_gart(struct ttm_buffer_object *bo)
 	gtt->offset = (u64)tmp->start << PAGE_SHIFT;
 	r = loonggpu_ttm_gart_bind(adev, bo, flags);
 	if (unlikely(r)) {
-		lg_ttm_bo_mem_put(bo, tmp);
+		ttm_resource_free(bo, &tmp);
 		return r;
 	}
 
-	lg_ttm_bo_mem_put(bo, bo->resource);
+	ttm_resource_free(bo, &bo->resource);
 	bo->resource = tmp;
 	lg_loonggpu_ttm_alloc_gart_set_bo_offset(bo);
 

@@ -1870,21 +1870,6 @@ compile_test() {
             compile_check_conftest "$CODE" "LG_TTM_BO_PIPELINE_MOVE" "" "functions"
         ;;
 
-        ttm_bo_mem_put)
-            #
-            # Determine if the ttm_bo_mem_put function exists.
-            #
-            # Changed by commit b2458726b38cb69f3da3677dbdf53e47af0e8792 ("drm/ttm:
-            # give resource functions their own [ch] files") in v5.9-rc1
-            #
-            CODE="
-            #include <drm/ttm/ttm_bo_driver.h>
-            int conftest_ttm_bo_mem_put(void) {
-                return ttm_bo_mem_put();
-            }"
-            compile_check_conftest "$CODE" "LG_TTM_BO_MEM_PUT" "" "functions"
-        ;;
-
         ttm_bus_placement_has_size)
             #
             # Determine if ttm_bus_placement structure has size member.
@@ -2875,24 +2860,6 @@ compile_test() {
                 return 0;
             }"
             compile_check_conftest "$CODE" "LG_TTM_DMA_TT" "" "types"
-        ;;
-
-        ttm_resource_free_double_ptr)
-            #
-            # Determine if ttm_resource_free->res is double ptr.
-            #
-            # Changed by commit bfa3357ef9abc9d56a2910222d2deeb9f15c91ff ("drm/ttm:
-            # allocate resource object instead of embedding it v2") in v5.13-rc5
-            # porting in 6.6
-            #
-            CODE="
-            #include <drm/ttm/ttm_resource.h>
-            typeof(ttm_resource_free) conftest_ttm_resource_free_double_ptr;
-            void conftest_ttm_resource_free_double_ptr(struct ttm_buffer_object *bo,
-                                                       struct ttm_resource **res) {
-                return;
-            }"
-            compile_check_conftest "$CODE" "LG_TTM_RESOURCE_FREE_DOUBLE_PTR" "" "types"
         ;;
 
         drm_driver_syncobj_timeline_present)

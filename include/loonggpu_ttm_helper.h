@@ -130,17 +130,6 @@ static inline int lg_ttm_bo_pipeline_move(struct ttm_buffer_object *bo,
 	return r;
 }
 
-static inline void lg_ttm_bo_mem_put(struct ttm_buffer_object *bo, struct ttm_resource *mem)
-{
-#if defined(LG_TTM_BO_MEM_PUT) && defined(LG_DRM_TTM_TTM_BO_DRIVER_H_PRESENT)
-	ttm_bo_mem_put(bo, mem);
-#elif defined(LG_TTM_RESOURCE_FREE_DOUBLE_PTR)
-	ttm_resource_free(bo, &mem);
-#else
-	ttm_resource_free(bo, mem);
-#endif
-}
-
 static inline void lg_set_bus_placement_base(struct ttm_resource *mem, phys_addr_t base)
 {
 #if defined(LG_TTM_BUS_PLACEMENT_HAS_SIZE)
