@@ -59,7 +59,7 @@ int loonggpu_vram_mgr_fini(struct ttm_resource_manager *man)
  * Calculate how many bytes of the MM node are inside visible VRAM
  */
 u64 loonggpu_vram_mgr_vis_size(struct loonggpu_device *adev,
-			       lg_buddy_block_t *block)
+			       struct gpu_buddy_block *block)
 {
 	uint64_t start = loonggpu_vram_mgr_block_start(block);
 	uint64_t end = start + loonggpu_vram_mgr_block_size(block);
@@ -84,7 +84,7 @@ u64 loonggpu_vram_mgr_bo_visible_size(struct loonggpu_bo *bo)
 	struct loonggpu_device *adev = loonggpu_ttm_adev(bo->tbo.bdev);
 	struct ttm_resource *mem = bo->tbo.resource;
 	struct loonggpu_vram_mgr_resource *vres = to_loonggpu_vram_mgr_resource(mem);
-	lg_buddy_block_t *block;
+	struct gpu_buddy_block *block;
 	u64 usage;
 
 	if (loonggpu_gmc_vram_full_visible(&adev->gmc))

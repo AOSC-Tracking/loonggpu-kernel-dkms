@@ -1182,26 +1182,6 @@ compile_test() {
             compile_check_conftest "$CODE" "LG_DRM_GEM_DMABUF_KMAP_PRESENT" "" "types"
         ;;
 
-        drm_buddy_free_list_has_flags)
-            #
-            # Determine if drm_buddy_free_list has flags arg.
-            #
-            # Changed by commit 96950929eb232038022abd961be46d492d7a6f0f
-            # drm/buddy: Implement tracking clear page feature") in v6.9-rc6
-            # porting in v6.10
-            #
-            CODE="
-            #include <drm/drm_buddy.h>
-            typeof(drm_buddy_free_list) conftest_drm_buddy_free_list;
-            void conftest_drm_buddy_free_list(struct drm_buddy *mm,
-                                              struct list_head *objects,
-                                              unsigned int flags
-                                              ) {
-                return;
-            }"
-            compile_check_conftest "$CODE" "LG_DRM_BUDDY_FREE_LIST_HAS_FLAGS" "" "types"
-        ;;
-
         zone_managed_pages)
             #
             # Determine if zone_managed_pages exist.
@@ -1283,27 +1263,6 @@ compile_test() {
                 return 0;
             }"
             compile_check_conftest "$CODE" "LG_SYSFS_EMIT" "" "types"
-        ;;
-
-        drm_buddy_block_trim_has_start)
-            #
-            # Determine if drm_buddy_block_trim has start arg.
-            #
-            # Changed by commit d507ae0dc83b7f43cdf6760b8f1a30aac4fc405a
-            # drm/buddy: Add start address support to trim function") in v6.11-rc3
-            # porting in v6.11
-            #
-            CODE="
-            #include <drm/drm_buddy.h>
-            typeof(drm_buddy_block_trim) conftest_drm_buddy_block_trim_has_start;
-            int conftest_drm_buddy_block_trim_has_start(struct drm_buddy *mm,
-                                                        u64 *start,
-                                                        u64 new_size,
-                                                        struct list_head *blocks
-                                                        ) {
-                return 0;
-            }"
-            compile_check_conftest "$CODE" "LG_DRM_BUDDY_BLOCK_TRIM_HAS_START" "" "types"
         ;;
 
         drm_sched_init_has_device_rq)

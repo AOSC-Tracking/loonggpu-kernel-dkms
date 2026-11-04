@@ -7,7 +7,7 @@ void loonggpu_res_first(struct ttm_resource *res,
 		     u64 start, u64 size,
 		     struct loonggpu_res_cursor *cur)
 {
-	lg_buddy_block_t *block;
+	struct gpu_buddy_block *block;
 	struct list_head *head, *next;
 	struct drm_mm_node *node;
 
@@ -22,7 +22,7 @@ void loonggpu_res_first(struct ttm_resource *res,
 	case TTM_PL_VRAM:
 		head = &to_loonggpu_vram_mgr_resource(res)->blocks;
 
-		block = list_first_entry_or_null(head, lg_buddy_block_t,
+		block = list_first_entry_or_null(head, struct gpu_buddy_block,
 						 link);
 		if (!block)
 			goto fallback;
@@ -32,7 +32,9 @@ void loonggpu_res_first(struct ttm_resource *res,
 
 			next = block->link.next;
 			if (next != head)
-				block = list_entry(next, lg_buddy_block_t, link);
+				block = list_entry(next,
+						   struct gpu_buddy_block,
+						   link);
 		}
 
 		cur->start = loonggpu_vram_mgr_block_start(block) + start;
@@ -68,7 +70,7 @@ fallback:
 
 void loonggpu_res_next(struct loonggpu_res_cursor *cur, u64 size)
 {
-	lg_buddy_block_t *block;
+	struct gpu_buddy_block *block;
 	struct drm_mm_node *node;
 	struct list_head *next;
 
@@ -89,7 +91,7 @@ void loonggpu_res_next(struct loonggpu_res_cursor *cur, u64 size)
 		block = cur->node;
 
 		next = block->link.next;
-		block = list_entry(next, lg_buddy_block_t, link);
+		block = list_entry(next, struct gpu_buddy_block, link);
 
 		cur->node = block;
 		cur->start = loonggpu_vram_mgr_block_start(block);
