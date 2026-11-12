@@ -151,6 +151,6 @@ int loonggpu_fill_buffer_buddy(struct loonggpu_bo *bo,
 			    struct dma_resv *resv,
 			    struct dma_fence **f,
 			    bool delayed);
-int loonggpu_vram_mgr_init_buddy(struct loonggpu_device *adev);
-void loonggpu_vram_mgr_fini_buddy(struct loonggpu_device *adev);
+int loonggpu_vram_mgr_init(struct loonggpu_device *adev);
+void loonggpu_vram_mgr_fini(struct loonggpu_device *adev);
 #endif /* __LOONGGPU_TTM_H__ */

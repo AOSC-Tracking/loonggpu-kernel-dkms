@@ -1461,7 +1461,7 @@ int loonggpu_ttm_init(struct loonggpu_device *adev)
 	lg_bdev_set_no_retry(&adev->mman.bdev, true);
 
 	/* Initialize VRAM pool with all of VRAM divided into pages */
-	r = loonggpu_vram_mgr_init_buddy(adev);
+	r = loonggpu_vram_mgr_init(adev);
 	if (r) {
 		DRM_ERROR("Failed initializing VRAM heap.\n");
 		return r;
@@ -1579,7 +1579,7 @@ void loonggpu_ttm_fini(struct loonggpu_device *adev)
 		iounmap(adev->mman.aper_base_kaddr);
 	adev->mman.aper_base_kaddr = NULL;
 
-	loonggpu_vram_mgr_fini_buddy(adev);
+	loonggpu_vram_mgr_fini(adev);
 	lg_loonggpu_gtt_mgr_fini(adev);
 	lg_ttm_bo_clean_mm(adev, TTM_PL_VRAM);
 	if (adev->doorbell.size)

@@ -17,7 +17,7 @@ struct loonggpu_vram_reservation {
  *
  * Allocate and initialize the VRAM manager.
  */
-int loonggpu_vram_mgr_init_buddy(struct loonggpu_device *adev)
+int loonggpu_vram_mgr_init(struct loonggpu_device *adev)
 {
 	struct loonggpu_vram_mgr *mgr = &adev->mman.vram_mgr;
 	struct ttm_resource_manager *man = &mgr->manager;
@@ -48,7 +48,7 @@ int loonggpu_vram_mgr_init_buddy(struct loonggpu_device *adev)
  * Destroy and free the VRAM manager, returns -EBUSY if ranges are still
  * allocated inside it.
  */
-void loonggpu_vram_mgr_fini_buddy(struct loonggpu_device *adev)
+void loonggpu_vram_mgr_fini(struct loonggpu_device *adev)
 {
 	struct loonggpu_vram_mgr *mgr = &adev->mman.vram_mgr;
 	struct ttm_resource_manager *man = &mgr->manager;
@@ -105,7 +105,7 @@ loonggpu_is_vram_mgr_blocks_contiguous(struct list_head *head)
 }
 
 /**
- * loonggpu_vram_mgr_new_buddy - allocate new ranges
+ * loonggpu_vram_mgr_new - allocate new ranges
  *
  * @man: TTM memory type manager
  * @tbo: TTM BO we need this range for
@@ -114,10 +114,10 @@ loonggpu_is_vram_mgr_blocks_contiguous(struct list_head *head)
  *
  * Allocate VRAM for the given BO.
  */
-int loonggpu_vram_mgr_new_buddy(struct ttm_resource_manager *man,
-			     struct ttm_buffer_object *tbo,
-			     const struct ttm_place *place,
-			     struct ttm_resource **res)
+int loonggpu_vram_mgr_new(struct ttm_resource_manager *man,
+			  struct ttm_buffer_object *tbo,
+			  const struct ttm_place *place,
+			  struct ttm_resource **res)
 {
 	u64 vis_usage = 0, max_bytes, cur_size, min_block_size;
 	struct loonggpu_vram_mgr *mgr = lg_man_to_vram_mgr(man);
@@ -325,7 +325,7 @@ static void loonggpu_vram_mgr_do_reserve(struct ttm_resource_manager *man)
 }
 
 /**
- * loonggpu_vram_mgr_del_buddy - free ranges
+ * loonggpu_vram_mgr_del - free ranges
  *
  * @man: TTM memory type manager
  * @tbo: TTM BO we need this range for
@@ -334,8 +334,8 @@ static void loonggpu_vram_mgr_do_reserve(struct ttm_resource_manager *man)
  *
  * Free the allocated VRAM again.
  */
-void loonggpu_vram_mgr_del_buddy(struct ttm_resource_manager *man,
-			      struct ttm_resource *res)
+void loonggpu_vram_mgr_del(struct ttm_resource_manager *man,
+			   struct ttm_resource *res)
 {
 	struct loonggpu_vram_mgr_resource *vres = to_loonggpu_vram_mgr_resource(res);
 	struct loonggpu_vram_mgr *mgr = lg_man_to_vram_mgr(man);
@@ -367,8 +367,8 @@ void loonggpu_vram_mgr_del_buddy(struct ttm_resource_manager *man,
  *
  * Dump the table content using printk.
  */
-void loonggpu_vram_mgr_debug_buddy(struct ttm_resource_manager *man,
-			  	struct drm_printer *printer)
+void loonggpu_vram_mgr_debug(struct ttm_resource_manager *man,
+			     struct drm_printer *printer)
 {
 	struct loonggpu_vram_mgr *mgr = lg_man_to_vram_mgr(man);
 	struct gpu_buddy *mm = &mgr->b_mm;
@@ -393,9 +393,9 @@ void loonggpu_vram_mgr_debug_buddy(struct ttm_resource_manager *man,
  * Test each drm buddy block for intersection for eviction decision.
  */
 bool loonggpu_vram_mgr_intersects(struct ttm_resource_manager *man,
-				struct ttm_resource *res,
-				const struct ttm_place *place,
-				size_t size)
+				  struct ttm_resource *res,
+				  const struct ttm_place *place,
+				  size_t size)
 {
 	struct loonggpu_vram_mgr_resource *mgr = to_loonggpu_vram_mgr_resource(res);
 	struct gpu_buddy_block *block;

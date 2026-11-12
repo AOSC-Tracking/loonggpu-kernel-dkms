@@ -76,9 +76,9 @@ uint64_t loonggpu_vram_mgr_vis_usage(struct ttm_resource_manager *man)
 }
 
 const struct ttm_resource_manager_func loonggpu_vram_mgr_func = {
-	.alloc = loonggpu_vram_mgr_new_buddy,
-	.free  = loonggpu_vram_mgr_del_buddy,
+	.alloc = loonggpu_vram_mgr_new,
+	.free  = loonggpu_vram_mgr_del,
 	.intersects = loonggpu_vram_mgr_intersects,
 	.compatible = loonggpu_vram_mgr_compatible,
-	.debug = loonggpu_vram_mgr_debug_buddy,
+	.debug = loonggpu_vram_mgr_debug,
 };
