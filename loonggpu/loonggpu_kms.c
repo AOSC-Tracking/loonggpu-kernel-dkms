@@ -367,7 +367,7 @@ static int loonggpu_info_ioctl(struct drm_device *dev, void *data, struct drm_fi
 		ui64 = loonggpu_vram_mgr_vis_usage(lg_bdev_to_ttm_man(&adev->mman.bdev, TTM_PL_VRAM));
 		return copy_to_user(out, &ui64, min(size, 8u)) ? -EFAULT : 0;
 	case LOONGGPU_INFO_GTT_USAGE:
-		ui64 = loonggpu_gtt_mgr_usage(lg_bdev_to_ttm_man(&adev->mman.bdev, TTM_PL_TT));
+		ui64 = ttm_resource_manager_usage(&adev->mman.gtt_mgr.manager);
 		return copy_to_user(out, &ui64, min(size, 8u)) ? -EFAULT : 0;
 	case LOONGGPU_INFO_GDS_CONFIG:
 		return -ENODATA;
@@ -407,7 +407,7 @@ static int loonggpu_info_ioctl(struct drm_device *dev, void *data, struct drm_fi
 		mem.gtt.usable_heap_size = mem.gtt.total_heap_size -
 			atomic64_read(&adev->gart_pin_size);
 		mem.gtt.heap_usage =
-			loonggpu_gtt_mgr_usage(lg_bdev_to_ttm_man(&adev->mman.bdev, TTM_PL_TT));
+			ttm_resource_manager_usage(&adev->mman.gtt_mgr.manager);
 		mem.gtt.max_allocation = mem.gtt.usable_heap_size * 3 / 4;
 
 		return copy_to_user(out, &mem,

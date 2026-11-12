@@ -206,18 +206,6 @@ static void loonggpu_gtt_mgr_del(struct ttm_resource_manager *man,
 	kfree(node);
 }
 
-/**
- * loonggpu_gtt_mgr_usage - return usage of GTT domain
- *
- * @man: TTM memory type manager
- *
- * Return how many bytes are used in the GTT domain
- */
-uint64_t loonggpu_gtt_mgr_usage(struct ttm_resource_manager *man)
-{
-	return ttm_resource_manager_usage(man);
-}
-
 int loonggpu_gtt_mgr_recover(struct ttm_resource_manager *man)
 {
 	struct loonggpu_gtt_mgr *mgr = lg_man_to_gtt_mgr(man);
@@ -256,7 +244,7 @@ static void loonggpu_gtt_mgr_debug(struct ttm_resource_manager *man,
 
 	drm_printf(printer, "man size:%llu pages, gtt available:%lld pages, usage:%lluMB\n",
 		   man->size, (u64)atomic64_read(&mgr->available),
-		   loonggpu_gtt_mgr_usage(man) >> 20);
+		   ttm_resource_manager_usage(man) >> 20);
 }
 
 const struct ttm_resource_manager_func loonggpu_gtt_mgr_func = {
