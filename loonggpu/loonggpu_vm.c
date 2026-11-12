@@ -266,6 +266,8 @@ int loonggpu_vm_validate_pt_bos(struct loonggpu_device *ldev, struct loonggpu_vm
 			list_move(&bo_base->vm_status, &vm->moved);
 			spin_unlock(&vm->moved_lock);
 		} else {
+			if (vm->use_cpu_for_update)
+				r = loonggpu_bo_kmap(bo, NULL);
 			list_move(&bo_base->vm_status, &vm->relocated);
 		}
 	}
@@ -928,14 +930,6 @@ restart:
 	params.ldev = ldev;
 
 	if (vm->use_cpu_for_update) {
-		struct loonggpu_vm_bo_base *bo_base;
-
-		list_for_each_entry(bo_base, &vm->relocated, vm_status) {
-			r = loonggpu_bo_kmap(bo_base->bo, NULL);
-			if (unlikely(r))
-				return r;
-		}
-
 		r = loonggpu_vm_wait_pd(ldev, vm, LOONGGPU_FENCE_OWNER_VM);
 		if (unlikely(r))
 			return r;
