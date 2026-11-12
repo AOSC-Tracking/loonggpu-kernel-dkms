@@ -161,11 +161,6 @@ struct loonggpu_vm_pt {
 	struct loonggpu_vm_pt		*entries;
 };
 
-#define LOONGGPU_VM_FAULT(pasid, addr) (((u64)(pasid) << 48) | (addr))
-#define LOONGGPU_VM_FAULT_PASID(fault) ((u64)(fault) >> 48)
-#define LOONGGPU_VM_FAULT_ADDR(fault)  ((u64)(fault) & 0xfffffffff000ULL)
-
-
 struct loonggpu_task_info {
 	char	process_name[TASK_COMM_LEN];
 	char	task_name[TASK_COMM_LEN];
