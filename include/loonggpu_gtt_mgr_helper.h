@@ -27,13 +27,6 @@ static inline uint64_t lg_bdev_to_gpu_offset(lg_ttm_device_t *bdev, int mem_type
 	return loonggpu_ttm_domain_start(loonggpu_ttm_adev(bdev), mem_type);
 }
 
-static inline struct loonggpu_gtt_mgr *lg_man_to_gtt_mgr(struct ttm_resource_manager *man)
-{
-	return container_of(man, struct loonggpu_gtt_mgr, manager);
-}
-
-#define lg_gtt_mgr_init_mgr(man, mgr)  mgr = container_of(man, struct loonggpu_gtt_mgr, manager);
-
 static inline void lg_gtt_mgr_func_setting(struct ttm_resource_manager *man,
 					   struct loonggpu_device *adev,
                                            const struct ttm_resource_manager_func *loonggpu_gtt_mgr_func,

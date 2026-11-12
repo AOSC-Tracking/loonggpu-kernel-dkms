@@ -1,6 +1,12 @@
 #include "loonggpu.h"
 #include "loonggpu_gtt_mgr_helper.h"
 
+static inline struct loonggpu_gtt_mgr *
+to_gtt_mgr(struct ttm_resource_manager *man)
+{
+	return container_of(man, struct loonggpu_gtt_mgr, manager);
+}
+
 /**
  * loonggpu_gtt_mgr_init - init GTT manager and DRM MM
  *
@@ -13,12 +19,10 @@ int loonggpu_gtt_mgr_init(struct ttm_resource_manager *man,
 			       unsigned long p_size)
 {
 	struct loonggpu_device *adev;
-	struct loonggpu_gtt_mgr *mgr;
+	struct loonggpu_gtt_mgr *mgr = to_gtt_mgr(man);
 	uint64_t start, size;
 
-	lg_gtt_mgr_init_mgr(man, mgr);
-
-        adev = lg_gtt_mgr_man_to_adev(man, mgr);
+	adev = lg_gtt_mgr_man_to_adev(man, mgr);
 	lg_gtt_mgr_func_setting(man, adev, &loonggpu_gtt_mgr_func, p_size);
 	start = LOONGGPU_GTT_MAX_TRANSFER_SIZE * LOONGGPU_GTT_NUM_TRANSFER_WINDOWS;
 	size = (adev->gmc.gart_size >> PAGE_SHIFT) - start;
@@ -40,7 +44,7 @@ int loonggpu_gtt_mgr_init(struct ttm_resource_manager *man,
 int loonggpu_gtt_mgr_fini(struct ttm_resource_manager *man)
 {
 	int ret;
-	struct loonggpu_gtt_mgr *mgr = lg_man_to_gtt_mgr(man);
+	struct loonggpu_gtt_mgr *mgr = to_gtt_mgr(man);
 	struct loonggpu_device *adev = lg_gtt_mgr_man_to_adev(man, mgr);
 
 	ret = lg_gtt_mgr_fini_set_used_clean_list(man, &adev->mman.bdev);
@@ -86,7 +90,7 @@ static int loonggpu_gtt_mgr_alloc(struct ttm_resource_manager *man,
 				const struct ttm_place *place,
 				struct ttm_resource *mem)
 {
-	struct loonggpu_gtt_mgr *mgr = lg_man_to_gtt_mgr(man);
+	struct loonggpu_gtt_mgr *mgr = to_gtt_mgr(man);
 	struct loonggpu_device *adev = lg_gtt_mgr_man_to_adev(man, mgr);
 	struct ttm_range_mgr_node *node = to_ttm_range_mgr_node(mem);
 	enum drm_mm_insert_mode mode;
@@ -192,7 +196,7 @@ err_free:
 static void loonggpu_gtt_mgr_del(struct ttm_resource_manager *man,
 			       struct ttm_resource *mem)
 {
-	struct loonggpu_gtt_mgr *mgr = lg_man_to_gtt_mgr(man);
+	struct loonggpu_gtt_mgr *mgr = to_gtt_mgr(man);
 	struct ttm_range_mgr_node *node = to_ttm_range_mgr_node(mem);
 
 	if (!node)
@@ -208,7 +212,7 @@ static void loonggpu_gtt_mgr_del(struct ttm_resource_manager *man,
 
 int loonggpu_gtt_mgr_recover(struct ttm_resource_manager *man)
 {
-	struct loonggpu_gtt_mgr *mgr = lg_man_to_gtt_mgr(man);
+	struct loonggpu_gtt_mgr *mgr = to_gtt_mgr(man);
 	struct ttm_range_mgr_node *node;
 	struct drm_mm_node *mm_node;
 	int r = 0;
@@ -236,7 +240,7 @@ int loonggpu_gtt_mgr_recover(struct ttm_resource_manager *man)
 static void loonggpu_gtt_mgr_debug(struct ttm_resource_manager *man,
 				 struct drm_printer *printer)
 {
-	struct loonggpu_gtt_mgr *mgr = lg_man_to_gtt_mgr(man);
+	struct loonggpu_gtt_mgr *mgr = to_gtt_mgr(man);
 
 	spin_lock(&mgr->lock);
 	drm_mm_print(&mgr->mm, printer);
