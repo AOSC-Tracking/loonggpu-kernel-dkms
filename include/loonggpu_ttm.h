@@ -95,7 +95,6 @@ uint64_t loonggpu_gtt_mgr_usage(struct ttm_resource_manager *man);
 int loonggpu_gtt_mgr_recover(struct ttm_resource_manager *man);
 
 u64 loonggpu_vram_mgr_bo_visible_size(struct loonggpu_bo *bo);
-uint64_t loonggpu_vram_mgr_usage(struct ttm_resource_manager *man);
 uint64_t loonggpu_vram_mgr_vis_usage(struct ttm_resource_manager *man);
 
 int loonggpu_ttm_init(struct loonggpu_device *adev);

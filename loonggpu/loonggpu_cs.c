@@ -287,7 +287,7 @@ static void loonggpu_cs_get_threshold_for_moves(struct loonggpu_device *adev,
 	}
 
 	total_vram = adev->gmc.real_vram_size - atomic64_read(&adev->vram_pin_size);
-	used_vram = loonggpu_vram_mgr_usage(lg_bdev_to_ttm_man(&adev->mman.bdev, TTM_PL_VRAM));
+	used_vram = ttm_resource_manager_usage(lg_bdev_to_ttm_man(&adev->mman.bdev, TTM_PL_VRAM));
 	free_vram = used_vram >= total_vram ? 0 : total_vram - used_vram;
 
 	spin_lock(&adev->mm_stats.lock);

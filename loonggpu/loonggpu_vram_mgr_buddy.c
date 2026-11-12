@@ -378,7 +378,7 @@ void loonggpu_vram_mgr_debug(struct ttm_resource_manager *man,
 	mutex_unlock(&mgr->m_lock);
 
 	drm_printf(printer, "man size:%llu pages, ram usage:%lluMB, vis usage:%lluMB\n",
-		   (man->size)>>PAGE_SHIFT, loonggpu_vram_mgr_usage(man) >> 20,
+		   (man->size)>>PAGE_SHIFT, ttm_resource_manager_usage(man) >> 20,
 		   loonggpu_vram_mgr_vis_usage(man) >> 20);
 }
 

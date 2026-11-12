@@ -49,17 +49,6 @@ u64 loonggpu_vram_mgr_bo_visible_size(struct loonggpu_bo *bo)
 
 	return usage;
 }
-/**
- * loonggpu_vram_mgr_usage - how many bytes are used in this domain
- *
- * @man: TTM memory type manager
- *
- * Returns how many bytes are used in this domain.
- */
-uint64_t loonggpu_vram_mgr_usage(struct ttm_resource_manager *man)
-{
-	return ttm_resource_manager_usage(man);
-}
 
 /**
  * loonggpu_vram_mgr_vis_usage - how many bytes are used in the visible part
