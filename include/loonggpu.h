@@ -964,9 +964,6 @@ struct loonggpu_gfx {
 	unsigned			ce_ram_size;
 	struct loonggpu_cu_info		cu_info;
 	const struct loonggpu_gfx_funcs	*funcs;
-
-	/* s3/s4 mask */
-	bool                            in_suspend;
 };
 
 int loonggpu_ib_get(struct loonggpu_device *adev, struct loonggpu_vm *vm,

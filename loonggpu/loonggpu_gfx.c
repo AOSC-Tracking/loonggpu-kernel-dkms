@@ -569,19 +569,12 @@ static int gfx_hw_fini(void *handle)
 
 static int gfx_suspend(void *handle)
 {
-	struct loonggpu_device *adev = (struct loonggpu_device *)handle;
-	adev->gfx.in_suspend = true;
-	return gfx_hw_fini(adev);
+	return gfx_hw_fini(handle);
 }
 
 static int gfx_resume(void *handle)
 {
-	int r;
-	struct loonggpu_device *adev = (struct loonggpu_device *)handle;
-
-	r = gfx_hw_init(adev);
-	adev->gfx.in_suspend = false;
-	return r;
+	return gfx_hw_init(handle);
 }
 
 static bool gfx_is_idle(void *handle)

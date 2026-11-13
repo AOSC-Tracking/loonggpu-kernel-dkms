@@ -1916,6 +1916,7 @@ int loonggpu_device_resume(struct drm_device *dev, bool resume, bool notify_clie
 #ifdef CONFIG_PM
 	dev->dev->power.disable_depth--;
 #endif
+
 	return 0;
 }
 
