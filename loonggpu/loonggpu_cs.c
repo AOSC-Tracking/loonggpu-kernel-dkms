@@ -334,7 +334,7 @@ static void loonggpu_cs_get_threshold_for_moves(struct loonggpu_device *adev,
 	if (!loonggpu_gmc_vram_full_visible(&adev->gmc)) {
 		u64 total_vis_vram = adev->gmc.visible_vram_size;
 		u64 used_vis_vram =
-			loonggpu_vram_mgr_vis_usage(lg_bdev_to_ttm_man(&adev->mman.bdev, TTM_PL_VRAM));
+			loonggpu_vram_mgr_vis_usage(&adev->mman.vram_mgr);
 
 		if (used_vis_vram < total_vis_vram) {
 			u64 free_vis_vram = total_vis_vram - used_vis_vram;

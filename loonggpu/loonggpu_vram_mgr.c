@@ -53,14 +53,12 @@ u64 loonggpu_vram_mgr_bo_visible_size(struct loonggpu_bo *bo)
 /**
  * loonggpu_vram_mgr_vis_usage - how many bytes are used in the visible part
  *
- * @man: TTM memory type manager
+ * @mgr: loonggpu_vram_mgr pointer
  *
  * Returns how many bytes are used in the visible part of VRAM
  */
-uint64_t loonggpu_vram_mgr_vis_usage(struct ttm_resource_manager *man)
+uint64_t loonggpu_vram_mgr_vis_usage(struct loonggpu_vram_mgr *mgr)
 {
-	struct loonggpu_vram_mgr *mgr = lg_man_to_vram_mgr(man);
-
 	return atomic64_read(&mgr->vis_usage);
 }
 

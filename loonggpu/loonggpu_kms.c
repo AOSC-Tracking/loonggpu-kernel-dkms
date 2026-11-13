@@ -364,7 +364,7 @@ static int loonggpu_info_ioctl(struct drm_device *dev, void *data, struct drm_fi
 		ui64 = ttm_resource_manager_usage(lg_bdev_to_ttm_man(&adev->mman.bdev, TTM_PL_VRAM));
 		return copy_to_user(out, &ui64, min(size, 8u)) ? -EFAULT : 0;
 	case LOONGGPU_INFO_VIS_VRAM_USAGE:
-		ui64 = loonggpu_vram_mgr_vis_usage(lg_bdev_to_ttm_man(&adev->mman.bdev, TTM_PL_VRAM));
+		ui64 = loonggpu_vram_mgr_vis_usage(&adev->mman.vram_mgr);
 		return copy_to_user(out, &ui64, min(size, 8u)) ? -EFAULT : 0;
 	case LOONGGPU_INFO_GTT_USAGE:
 		ui64 = ttm_resource_manager_usage(&adev->mman.gtt_mgr.manager);
@@ -399,7 +399,7 @@ static int loonggpu_info_ioctl(struct drm_device *dev, void *data, struct drm_fi
 		mem.cpu_accessible_vram.usable_heap_size = adev->gmc.visible_vram_size -
 			atomic64_read(&adev->visible_pin_size);
 		mem.cpu_accessible_vram.heap_usage =
-			loonggpu_vram_mgr_vis_usage(lg_bdev_to_ttm_man(&adev->mman.bdev, TTM_PL_VRAM));
+			loonggpu_vram_mgr_vis_usage(&adev->mman.vram_mgr);
 		mem.cpu_accessible_vram.max_allocation =
 			mem.cpu_accessible_vram.usable_heap_size * 3 / 4;
 
