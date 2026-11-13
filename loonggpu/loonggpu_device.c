@@ -2221,7 +2221,7 @@ retry:
 				atomic_inc(&adev->vram_lost_counter);
 			}
 
-			r = loonggpu_gtt_mgr_recover(lg_bdev_to_ttm_man(&adev->mman.bdev, TTM_PL_TT));
+			r = loonggpu_gtt_mgr_recover(adev);
 			if (r)
 				goto out;
 

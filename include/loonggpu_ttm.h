@@ -91,7 +91,7 @@ extern const struct ttm_resource_manager_func loonggpu_gtt_mgr_func;
 extern const struct ttm_resource_manager_func loonggpu_vram_mgr_func;
 
 bool loonggpu_gtt_mgr_has_gart_addr(struct ttm_resource *mem);
-int loonggpu_gtt_mgr_recover(struct ttm_resource_manager *man);
+int loonggpu_gtt_mgr_recover(struct loonggpu_device *ldev);
 
 u64 loonggpu_vram_mgr_bo_visible_size(struct loonggpu_bo *bo);
 uint64_t loonggpu_vram_mgr_vis_usage(struct ttm_resource_manager *man);

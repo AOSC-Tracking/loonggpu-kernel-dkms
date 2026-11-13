@@ -210,12 +210,16 @@ static void loonggpu_gtt_mgr_del(struct ttm_resource_manager *man,
 	kfree(node);
 }
 
-int loonggpu_gtt_mgr_recover(struct ttm_resource_manager *man)
+int loonggpu_gtt_mgr_recover(struct loonggpu_device *ldev)
 {
-	struct loonggpu_gtt_mgr *mgr = to_gtt_mgr(man);
+	struct ttm_resource_manager *man;
+	struct loonggpu_gtt_mgr *mgr;
 	struct ttm_range_mgr_node *node;
 	struct drm_mm_node *mm_node;
 	int r = 0;
+
+	man = ttm_manager_type(&ldev->mman.bdev, TTM_PL_TT);
+	mgr = to_gtt_mgr(man);
 
 	spin_lock(&mgr->lock);
 	drm_mm_for_each_node(mm_node, &mgr->mm) {
