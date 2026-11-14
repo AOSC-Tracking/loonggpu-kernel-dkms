@@ -27,7 +27,6 @@
 #include "loonggpu_helper.h"
 #include "loonggpu_ttm_helper.h"
 #include "loonggpu_gtt_mgr_helper.h"
-#include "loonggpu_vram_mgr_helper.h"
 #include "loonggpu_bo_pin_helper.h"
 #include <drm/ttm/ttm_bo.h>
 

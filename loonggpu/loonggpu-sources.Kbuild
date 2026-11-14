@@ -54,7 +54,6 @@ LOONGGPU_SOURCES += loonggpu/loonggpu_ttm_buddy.c
 LOONGGPU_SOURCES += loonggpu/loonggpu_vm.c
 LOONGGPU_SOURCES += loonggpu/loonggpu_vm_it.c
 LOONGGPU_SOURCES += loonggpu/loonggpu_vram_mgr.c
-LOONGGPU_SOURCES += loonggpu/loonggpu_vram_mgr_buddy.c
 LOONGGPU_SOURCES += loonggpu/loonggpu_xdma.c
 LOONGGPU_SOURCES += loonggpu/loonggpu_zip.c
 LOONGGPU_SOURCES += loonggpu/loonggpu_zip_meta.c
