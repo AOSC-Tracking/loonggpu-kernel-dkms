@@ -7,12 +7,14 @@ struct loonggpu_vram_reservation {
 	struct list_head blocks;
 };
 
-static inline struct loonggpu_vram_mgr *lg_man_to_vram_mgr(struct ttm_resource_manager *man)
+static inline struct loonggpu_vram_mgr *
+to_vram_mgr(struct ttm_resource_manager *man)
 {
 	return container_of(man, struct loonggpu_vram_mgr, manager);
 }
 
-static inline struct loonggpu_device *vram_mgr_to_loonggpu_device(struct loonggpu_vram_mgr *mgr)
+static inline struct loonggpu_device *
+to_loonggpu_device(struct loonggpu_vram_mgr *mgr)
 {
 	return container_of(mgr, struct loonggpu_device, mman.vram_mgr);
 }
@@ -97,8 +99,8 @@ u64 loonggpu_vram_mgr_bo_visible_size(struct loonggpu_bo *bo)
 /* Commit the reservation of VRAM pages */
 static void loonggpu_vram_mgr_do_reserve(struct ttm_resource_manager *man)
 {
-	struct loonggpu_vram_mgr *mgr = lg_man_to_vram_mgr(man);
-	struct loonggpu_device *adev = vram_mgr_to_loonggpu_device(mgr);
+	struct loonggpu_vram_mgr *mgr = to_vram_mgr(man);
+	struct loonggpu_device *adev = to_loonggpu_device(mgr);
 	struct loonggpu_vram_reservation *rsv, *tmp;
 	struct gpu_buddy *mm = &mgr->b_mm;
 	struct gpu_buddy_block *block;
@@ -148,8 +150,8 @@ static int loonggpu_vram_mgr_new(struct ttm_resource_manager *man,
 				 struct ttm_resource **res)
 {
 	u64 vis_usage = 0, max_bytes, cur_size, min_block_size;
-	struct loonggpu_vram_mgr *mgr = lg_man_to_vram_mgr(man);
-	struct loonggpu_device *adev = vram_mgr_to_loonggpu_device(mgr);
+	struct loonggpu_vram_mgr *mgr = to_vram_mgr(man);
+	struct loonggpu_device *adev = to_loonggpu_device(mgr);
 	struct loonggpu_vram_mgr_resource *vres;
 	u64 size, remaining_size, lpfn, fpfn;
 	struct gpu_buddy *mm = &mgr->b_mm;
@@ -328,8 +330,8 @@ static void loonggpu_vram_mgr_del(struct ttm_resource_manager *man,
 				  struct ttm_resource *res)
 {
 	struct loonggpu_vram_mgr_resource *vres = to_loonggpu_vram_mgr_resource(res);
-	struct loonggpu_vram_mgr *mgr = lg_man_to_vram_mgr(man);
-	struct loonggpu_device *adev = vram_mgr_to_loonggpu_device(mgr);
+	struct loonggpu_vram_mgr *mgr = to_vram_mgr(man);
+	struct loonggpu_device *adev = to_loonggpu_device(mgr);
 	struct gpu_buddy *mm = &mgr->b_mm;
 	struct gpu_buddy_block *block;
 	uint64_t vis_usage = 0;
@@ -438,8 +440,8 @@ static bool loonggpu_vram_mgr_compatible(struct ttm_resource_manager *man,
 static void loonggpu_vram_mgr_debug(struct ttm_resource_manager *man,
 				    struct drm_printer *printer)
 {
-	struct loonggpu_vram_mgr *mgr = lg_man_to_vram_mgr(man);
-	struct loonggpu_device *ldev = vram_mgr_to_loonggpu_device(mgr);
+	struct loonggpu_vram_mgr *mgr = to_vram_mgr(man);
+	struct loonggpu_device *ldev = to_loonggpu_device(mgr);
 	struct gpu_buddy *mm = &mgr->b_mm;
 
 	mutex_lock(&mgr->m_lock);
